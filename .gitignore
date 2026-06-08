@@ -1,0 +1,34 @@
+# dependencies
+node_modules/
+.pnp
+.pnp.js
+
+# next
+apps/web/.next/
+apps/web/out/
+
+# env
+.env
+.env.local
+.env*.local
+
+# debug
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# misc
+.DS_Store
+*.pem
+.vercel
+
+# supabase
+supabase/.branches
+supabase/.temp
+
+# metrics evidence (sensitive)
+works/
+
+# typescript
+*.tsbuildinfo
+next-env.d.ts
