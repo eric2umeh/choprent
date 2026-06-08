@@ -1,0 +1,16 @@
+{
+  "name": "choprent",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "npm run dev --workspace=web",
+    "build": "npm run build --workspace=web",
+    "lint": "npm run lint --workspace=web",
+    "db:reset": "supabase db reset",
+    "db:push": "supabase db push",
+    "db:types": "supabase gen types typescript --local > apps/web/src/types/database.generated.ts"
+  },
+  "workspaces": [
+    "apps/*"
+  ]
+}
