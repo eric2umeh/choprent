@@ -17,6 +17,8 @@ supabase link --project-ref YOUR_REF
 supabase db push
 ```
 
+See **[docs/07_supabase_setup.md](docs/07_supabase_setup.md)** — you do **not** paste SQL manually; CLI applies `supabase/migrations/` in order.
+
 ## Docs
 
 | Doc | Purpose |
@@ -27,6 +29,8 @@ supabase db push
 | [docs/02_metrics_tracking_checklist.md](docs/02_metrics_tracking_checklist.md) | Monthly OC3 evidence |
 | [docs/03_decisions_log.md](docs/03_decisions_log.md) | Locked product decisions |
 | [docs/04_privacy_ndpr.md](docs/04_privacy_ndpr.md) | Privacy & NDPR checklist |
+| [docs/06_competitive_positioning.md](docs/06_competitive_positioning.md) | vs PayRent; unique OC3 differentiators |
+| [docs/07_supabase_setup.md](docs/07_supabase_setup.md) | Cloud setup; how migrations work |
 
 ## Repo
 

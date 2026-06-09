@@ -94,6 +94,8 @@ flowchart TB
 | Preview | Vercel PR previews | Supabase staging project | Seed data only |
 | Local | `pnpm dev` | Supabase CLI local or staging | `.env.local` |
 
+**Schema changes:** SQL lives in `supabase/migrations/`. Apply with `supabase db push` (cloud) or `supabase db reset` (local + seed). Do not maintain schema only in the Supabase dashboard SQL editor — see [`07_supabase_setup.md`](07_supabase_setup.md).
+
 **Secrets:** Vercel env vars for `NEXT_PUBLIC_SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY` (server only), AI keys, future gateway keys.
 
 **CI:** GitHub Actions — lint, typecheck, `supabase db lint`, optional Playwright smoke.
@@ -690,3 +692,19 @@ Deliverables for monthly pack:
 3. Screenshots: admin dashboard, tenant mobile, receipt upload flow
 
 Keep diagrams in Mermaid; export to PNG for evidence zip if needed.
+
+---
+
+## 18. Competitive positioning & uniqueness
+
+Full analysis: [`06_competitive_positioning.md`](06_competitive_positioning.md) (vs [PayRent](https://www.payrent.com/rent-payment-app-features/#h-product)).
+
+**Lead with these moats for OC3 — not generic rent-app features:**
+
+1. **Sticky NUBAN per shop** (Paystack DVA) — traders pay without app; account survives tenant change
+2. **Verified bank-transfer audit pipeline** — exportable evidence fields + monthly metrics pack
+3. **Plaza charge engine** — annual rent + % service + fixed fees + partial pay + year-carry arrears
+4. **Composite units** (`14/16`) and mixed property types in one plaza
+5. **Landlord / manager / agent** verification chain with site-scoped agents
+
+**Defer (commodity):** US credit reporting, tenant screening marketplace, landlord lending, card-first checkout.

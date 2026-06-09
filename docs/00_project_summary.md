@@ -15,6 +15,8 @@ Plaza landlords track rent across shops, flats, and offices using spreadsheets, 
 
 ChopRent centralizes **plaza → units → leases → charges → payments → verified receipts**, with optional **Paystack dedicated accounts per shop**, real-time dashboards, tenant self-service, and monthly exportable metrics.
 
+**Why not “just another rent app”:** See [`06_competitive_positioning.md`](06_competitive_positioning.md) — ChopRent is **plaza / Nigeria / trader-first** (sticky shop NUBAN, verified transfer audit, composite units), not a US card/ACH clone like PayRent.
+
 ---
 
 ## Users

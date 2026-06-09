@@ -37,3 +37,5 @@ Locked product decisions from pre-build Q&A. Architecture doc implements these; 
 | 31 | Paystack DVA | **Phase 1.5** — dedicated virtual account **per unit**; account number persists, display name updates on tenant change | 2026-06-08 |
 | 32 | Trader UX | Traders pay via **static account number** without app login; app optional for receipts/statements | 2026-06-08 |
 | 33 | Electricity | **Phase 2** — prepaid meter / token flow; disco partnership + optional platform margin (TBD legally) | 2026-06-08 |
+| 34 | vs PayRent | Lead OC3 with DVA + verified transfer + plaza charge engine; skip credit reporting/lending/screening | 2026-06-08 |
+| 35 | Supabase schema | Apply via **`supabase db push`** — not manual SQL editor (see `07_supabase_setup.md`) | 2026-06-08 |
