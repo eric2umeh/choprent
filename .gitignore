@@ -10,7 +10,10 @@ apps/web/out/
 # env
 .env
 .env.local
-.env*.local
+.env.*.local
+.env.production.local
+.env.test.local
+.env.example
 
 # debug
 npm-debug.log*
