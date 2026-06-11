@@ -1,23 +1,23 @@
 @import "tailwindcss";
 
 :root {
-  --background: #f8fafc;
-  --foreground: #0f172a;
-  --muted: #64748b;
-  --muted-foreground: #94a3b8;
+  --background: #ffffff;
+  --foreground: #111827;
+  --muted: #4b5563;
+  --muted-foreground: #6b7280;
   --card: #ffffff;
-  --border: #e2e8f0;
-  --surface-dark: #0b1220;
-  --surface-dark-elevated: #111827;
+  --border: #e5e7eb;
+  --surface-subtle: #f9fafb;
+  --surface-accent: #ecfdf5;
   --green-50: #ecfdf5;
   --green-100: #d1fae5;
   --green-200: #a7f3d0;
-  --green-400: #6ee7b7;
-  --green-500: #4ade80;
-  --green-600: #22c55e;
-  --green-700: #16a34a;
-  --green-glow: rgba(74, 222, 128, 0.35);
-  --ring: #4ade80;
+  --green-500: #22c55e;
+  --green-600: #16a34a;
+  --green-700: #15803d;
+  --green-800: #166534;
+  --green-glow: rgba(34, 197, 94, 0.2);
+  --ring: #22c55e;
 }
 
 @theme inline {
@@ -27,15 +27,15 @@
   --color-muted-foreground: var(--muted-foreground);
   --color-card: var(--card);
   --color-border: var(--border);
-  --color-surface-dark: var(--surface-dark);
-  --color-surface-dark-elevated: var(--surface-dark-elevated);
+  --color-surface-subtle: var(--surface-subtle);
+  --color-surface-accent: var(--surface-accent);
   --color-green-50: var(--green-50);
   --color-green-100: var(--green-100);
   --color-green-200: var(--green-200);
-  --color-green-400: var(--green-400);
   --color-green-500: var(--green-500);
   --color-green-600: var(--green-600);
   --color-green-700: var(--green-700);
+  --color-green-800: var(--green-800);
   --color-ring: var(--ring);
   --font-sans: var(--font-inter);
 }
@@ -47,11 +47,10 @@ body {
   -webkit-font-smoothing: antialiased;
 }
 
-/* Subtle grid for dark hero sections */
-.bg-grid {
+.bg-grid-light {
   background-image:
-    linear-gradient(rgba(74, 222, 128, 0.04) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(74, 222, 128, 0.04) 1px, transparent 1px);
+    linear-gradient(rgba(34, 197, 94, 0.06) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(34, 197, 94, 0.06) 1px, transparent 1px);
   background-size: 48px 48px;
 }
 
@@ -64,13 +63,13 @@ body {
   padding: 0.625rem 1.25rem;
   font-size: 0.875rem;
   font-weight: 600;
-  color: #052e16;
+  color: #ffffff;
   transition: background 0.15s ease, box-shadow 0.15s ease;
 }
 
 .btn-primary:hover {
-  background: var(--green-400);
-  box-shadow: 0 0 24px var(--green-glow);
+  background: var(--green-600);
+  box-shadow: 0 4px 14px var(--green-glow);
 }
 
 .btn-ghost {
@@ -88,7 +87,7 @@ body {
 }
 
 .btn-ghost:hover {
-  border-color: var(--green-400);
+  border-color: var(--green-200);
   background: var(--green-50);
 }
 
@@ -96,7 +95,7 @@ body {
   width: 100%;
   border-radius: 0.625rem;
   border: 1px solid var(--border);
-  background: #f8fafc;
+  background: var(--surface-subtle);
   padding: 0.75rem 1rem;
   font-size: 0.875rem;
   color: var(--foreground);
@@ -104,7 +103,16 @@ body {
   transition: border-color 0.15s ease, box-shadow 0.15s ease;
 }
 
+.input-field::placeholder {
+  color: var(--muted-foreground);
+}
+
 .input-field:focus {
   border-color: var(--green-500);
-  box-shadow: 0 0 0 3px rgba(74, 222, 128, 0.2);
+  background: #ffffff;
+  box-shadow: 0 0 0 3px rgba(34, 197, 94, 0.15);
+}
+
+.text-accent {
+  color: var(--green-700);
 }
