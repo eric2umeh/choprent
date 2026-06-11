@@ -1,17 +1,17 @@
 export function DashboardPreview() {
   return (
-    <div className="overflow-hidden rounded-2xl border border-white/10 bg-surface-dark-elevated shadow-2xl shadow-black/40">
-      <div className="flex border-b border-white/10">
-        <div className="hidden w-44 shrink-0 border-r border-white/10 bg-surface-dark p-4 sm:block">
-          <div className="mb-6 h-8 w-24 rounded bg-white/10" />
+    <div className="overflow-hidden rounded-2xl border border-border bg-white shadow-xl shadow-gray-200/60">
+      <div className="flex border-b border-border">
+        <div className="hidden w-44 shrink-0 border-r border-border bg-surface-subtle p-4 sm:block">
+          <div className="mb-6 h-8 w-24 rounded-md bg-gray-200" />
           <div className="space-y-2">
             {["Dashboard", "Units", "Payments", "Documents"].map((item, i) => (
               <div
                 key={item}
                 className={`rounded-lg px-3 py-2 text-xs font-medium ${
                   i === 0
-                    ? "bg-green-500/20 text-green-400"
-                    : "text-white/50"
+                    ? "bg-green-100 text-green-800"
+                    : "text-muted"
                 }`}
               >
                 {item}
@@ -19,21 +19,21 @@ export function DashboardPreview() {
             ))}
           </div>
         </div>
-        <div className="flex-1 p-4 sm:p-5">
-          <p className="text-sm font-medium text-white/90">Good afternoon 👋</p>
-          <p className="text-xs text-white/40">Plaza collection overview</p>
+        <div className="flex-1 bg-white p-4 sm:p-5">
+          <p className="text-sm font-semibold text-foreground">Good afternoon 👋</p>
+          <p className="text-xs text-muted">Plaza collection overview</p>
           <div className="mt-4 grid grid-cols-2 gap-3">
             {[
-              { label: "Collected", value: "₦4.2M", accent: "text-green-400" },
-              { label: "Outstanding", value: "₦890K", accent: "text-amber-300" },
-              { label: "Units", value: "42", accent: "text-white" },
-              { label: "Rate", value: "78%", accent: "text-green-400" },
+              { label: "Collected", value: "₦4.2M", accent: "text-green-700" },
+              { label: "Outstanding", value: "₦890K", accent: "text-amber-600" },
+              { label: "Units", value: "42", accent: "text-foreground" },
+              { label: "Rate", value: "78%", accent: "text-green-700" },
             ].map((stat) => (
               <div
                 key={stat.label}
-                className="rounded-xl border border-white/10 bg-white/5 p-3"
+                className="rounded-xl border border-border bg-surface-subtle p-3"
               >
-                <p className="text-[10px] uppercase tracking-wider text-white/40">
+                <p className="text-[10px] font-medium uppercase tracking-wider text-muted">
                   {stat.label}
                 </p>
                 <p className={`mt-1 text-lg font-semibold ${stat.accent}`}>
@@ -42,17 +42,17 @@ export function DashboardPreview() {
               </div>
             ))}
           </div>
-          <div className="mt-4 rounded-xl border border-white/10 bg-white/5 p-3">
-            <div className="flex items-end gap-1.5 h-16">
+          <div className="mt-4 rounded-xl border border-border bg-surface-subtle p-3">
+            <div className="flex h-16 items-end gap-1.5">
               {[40, 65, 45, 80, 55, 90, 70].map((h, i) => (
                 <div
                   key={i}
-                  className="flex-1 rounded-sm bg-green-500/60"
+                  className="flex-1 rounded-sm bg-green-500"
                   style={{ height: `${h}%` }}
                 />
               ))}
             </div>
-            <p className="mt-2 text-[10px] text-white/40">Revenue trend</p>
+            <p className="mt-2 text-[10px] font-medium text-muted">Revenue trend</p>
           </div>
         </div>
       </div>
