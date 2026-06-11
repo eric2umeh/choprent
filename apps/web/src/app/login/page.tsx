@@ -9,19 +9,18 @@ const stats = [
 
 export default function LoginPage() {
   return (
-    <div className="flex min-h-screen">
-      {/* Left panel — PropertyREM-style branding */}
-      <div className="relative hidden w-1/2 flex-col justify-between overflow-hidden bg-surface-dark bg-grid p-10 lg:flex">
-        <div className="pointer-events-none absolute inset-0 bg-gradient-to-br from-green-500/15 via-transparent to-surface-dark" />
+    <div className="flex min-h-screen bg-white">
+      <div className="relative hidden w-1/2 flex-col justify-between overflow-hidden border-r border-border bg-green-50 bg-grid-light p-10 lg:flex">
+        <div className="pointer-events-none absolute inset-0 bg-gradient-to-br from-white/60 to-green-50" />
         <div className="relative">
-          <Logo variant="light" />
+          <Logo />
         </div>
         <div className="relative">
-          <h1 className="max-w-md text-4xl font-bold leading-tight text-white">
+          <h1 className="max-w-md text-4xl font-bold leading-tight text-foreground">
             Manage your plaza{" "}
-            <span className="text-green-400">with confidence.</span>
+            <span className="text-green-700">with confidence.</span>
           </h1>
-          <p className="mt-4 max-w-sm text-sm leading-relaxed text-white/55">
+          <p className="mt-4 max-w-sm text-sm leading-relaxed text-muted">
             From rent collection to receipt verification — everything you need
             to run a modern property business in Nigeria.
           </p>
@@ -29,22 +28,21 @@ export default function LoginPage() {
             {stats.map((stat) => (
               <div
                 key={stat.label}
-                className="rounded-xl border border-white/10 bg-white/5 px-3 py-4 backdrop-blur-sm"
+                className="rounded-xl border border-border bg-white px-3 py-4 shadow-sm"
               >
-                <p className="text-lg font-bold text-white">{stat.value}</p>
-                <p className="mt-1 text-[11px] leading-snug text-white/45">
+                <p className="text-lg font-bold text-foreground">{stat.value}</p>
+                <p className="mt-1 text-[11px] leading-snug text-muted">
                   {stat.label}
                 </p>
               </div>
             ))}
           </div>
         </div>
-        <p className="relative text-xs text-white/30">
+        <p className="relative text-xs text-muted-foreground">
           ChopRent · Plaza rent collection
         </p>
       </div>
 
-      {/* Right panel — clean form */}
       <div className="flex w-full flex-col items-center justify-center bg-white px-6 py-12 lg:w-1/2">
         <div className="w-full max-w-md">
           <div className="mb-8 lg:hidden">
@@ -83,7 +81,7 @@ export default function LoginPage() {
                 >
                   Password
                 </label>
-                <span className="text-xs font-medium text-green-600">
+                <span className="text-xs font-semibold text-green-700">
                   Forgot password?
                 </span>
               </div>
@@ -100,7 +98,7 @@ export default function LoginPage() {
             <button
               type="button"
               disabled
-              className="btn-primary w-full py-3 opacity-60 cursor-not-allowed"
+              className="btn-primary w-full cursor-not-allowed py-3 opacity-60"
             >
               Sign in — Sprint 1
             </button>
@@ -108,7 +106,7 @@ export default function LoginPage() {
 
           <p className="mt-6 text-center text-sm text-muted">
             Don&apos;t have an account?{" "}
-            <span className="font-semibold text-green-600">Create one</span>
+            <span className="font-semibold text-green-700">Create one</span>
           </p>
 
           <Link
