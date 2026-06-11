@@ -7,13 +7,14 @@ node_modules/
 apps/web/.next/
 apps/web/out/
 
-# env
+# env — never commit real secrets
 .env
 .env.local
 .env.*.local
 .env.production.local
 .env.test.local
-.env.example
+apps/web/.env
+apps/web/.env.local
 
 # debug
 npm-debug.log*
