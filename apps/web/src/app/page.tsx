@@ -29,9 +29,8 @@ const trustItems = [
 
 export default function HomePage() {
   return (
-    <div className="min-h-screen flex flex-col bg-background">
-      {/* Nav */}
-      <header className="sticky top-0 z-20 border-b border-border/80 bg-white/80 backdrop-blur-lg">
+    <div className="flex min-h-screen flex-col bg-white">
+      <header className="sticky top-0 z-20 border-b border-border bg-white/95 backdrop-blur-sm">
         <div className="mx-auto flex h-16 max-w-6xl items-center justify-between px-4 sm:px-6">
           <Logo />
           <nav className="hidden items-center gap-8 text-sm font-medium text-muted md:flex">
@@ -53,19 +52,18 @@ export default function HomePage() {
         </div>
       </header>
 
-      {/* Hero — PropertyREM dark + PayRent clean */}
-      <section className="relative overflow-hidden bg-surface-dark bg-grid">
-        <div className="pointer-events-none absolute inset-0 bg-gradient-to-br from-green-500/10 via-transparent to-transparent" />
+      <section className="relative overflow-hidden border-b border-border bg-white bg-grid-light">
+        <div className="pointer-events-none absolute inset-0 bg-gradient-to-b from-green-50/80 to-white" />
         <div className="relative mx-auto grid max-w-6xl gap-12 px-4 py-16 sm:px-6 lg:grid-cols-2 lg:items-center lg:py-24">
           <div>
-            <p className="mb-4 inline-flex items-center rounded-full border border-green-500/30 bg-green-500/10 px-3 py-1 text-xs font-medium text-green-400">
+            <p className="mb-4 inline-flex items-center rounded-full border border-green-200 bg-green-50 px-3 py-1 text-xs font-semibold text-green-800">
               Plaza rent collection · Nigeria
             </p>
-            <h1 className="text-4xl font-bold leading-[1.1] tracking-tight text-white sm:text-5xl lg:text-[3.25rem]">
+            <h1 className="text-4xl font-bold leading-[1.15] tracking-tight text-foreground sm:text-5xl lg:text-[3.25rem]">
               Collect rent from your plaza{" "}
-              <span className="text-green-400">with confidence.</span>
+              <span className="text-green-700">with confidence.</span>
             </h1>
-            <p className="mt-5 max-w-lg text-base leading-relaxed text-white/60 sm:text-lg">
+            <p className="mt-5 max-w-lg text-base leading-relaxed text-muted sm:text-lg">
               From shop transfers to verified receipts — everything landlords,
               managers, and traders need for modern plaza operations.
             </p>
@@ -77,7 +75,7 @@ export default function HomePage() {
                 href="https://github.com/eric2umeh/choprent"
                 target="_blank"
                 rel="noreferrer"
-                className="inline-flex items-center justify-center rounded-[0.625rem] border border-white/20 px-6 py-3 text-sm font-medium text-white transition hover:border-green-400/50 hover:bg-white/5"
+                className="btn-ghost px-6 py-3"
               >
                 View on GitHub
               </a>
@@ -86,9 +84,9 @@ export default function HomePage() {
               {trustItems.map((item) => (
                 <li
                   key={item}
-                  className="flex items-center gap-2 text-sm text-white/50"
+                  className="flex items-center gap-2 text-sm text-muted"
                 >
-                  <span className="flex h-5 w-5 items-center justify-center rounded-full bg-green-500/20 text-green-400">
+                  <span className="flex h-5 w-5 items-center justify-center rounded-full bg-green-100 text-xs font-bold text-green-700">
                     ✓
                   </span>
                   {item}
@@ -102,47 +100,47 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* Features */}
-      <section id="features" className="mx-auto max-w-6xl px-4 py-20 sm:px-6">
-        <div className="mx-auto max-w-2xl text-center">
-          <h2 className="text-3xl font-bold tracking-tight text-foreground">
-            Built different from generic rent apps
-          </h2>
-          <p className="mt-3 text-muted">
-            ChopRent is plaza-first — not a US card checkout clone.
-          </p>
-        </div>
-        <div className="mt-12 grid gap-5 sm:grid-cols-2">
-          {features.map((feature) => (
-            <article
-              key={feature.title}
-              className="rounded-2xl border border-border bg-card p-6 transition hover:border-green-200 hover:shadow-sm hover:shadow-green-500/5"
-            >
-              <div className="mb-4 flex h-10 w-10 items-center justify-center rounded-xl bg-green-50 text-green-600">
-                <span className="h-2 w-2 rounded-full bg-green-500" />
-              </div>
-              <h3 className="text-lg font-semibold text-foreground">
-                {feature.title}
-              </h3>
-              <p className="mt-2 text-sm leading-relaxed text-muted">
-                {feature.body}
-              </p>
-            </article>
-          ))}
+      <section id="features" className="bg-white px-4 py-20 sm:px-6">
+        <div className="mx-auto max-w-6xl">
+          <div className="mx-auto max-w-2xl text-center">
+            <h2 className="text-3xl font-bold tracking-tight text-foreground">
+              Built different from generic rent apps
+            </h2>
+            <p className="mt-3 text-base text-muted">
+              ChopRent is plaza-first — not a US card checkout clone.
+            </p>
+          </div>
+          <div className="mt-12 grid gap-5 sm:grid-cols-2">
+            {features.map((feature) => (
+              <article
+                key={feature.title}
+                className="rounded-2xl border border-border bg-white p-6 shadow-sm"
+              >
+                <div className="mb-4 flex h-10 w-10 items-center justify-center rounded-xl bg-green-100">
+                  <span className="h-2.5 w-2.5 rounded-full bg-green-600" />
+                </div>
+                <h3 className="text-lg font-semibold text-foreground">
+                  {feature.title}
+                </h3>
+                <p className="mt-2 text-sm leading-relaxed text-muted">
+                  {feature.body}
+                </p>
+              </article>
+            ))}
+          </div>
         </div>
       </section>
 
-      {/* How it works — PayRent-style alternating section */}
       <section
         id="how"
-        className="border-y border-border bg-white py-20"
+        className="border-y border-border bg-surface-subtle px-4 py-20 sm:px-6"
       >
-        <div className="mx-auto grid max-w-6xl gap-12 px-4 sm:px-6 lg:grid-cols-2 lg:items-center">
+        <div className="mx-auto grid max-w-6xl gap-12 lg:grid-cols-2 lg:items-center">
           <div>
             <h2 className="text-3xl font-bold tracking-tight text-foreground">
               Get paid faster, track every naira
             </h2>
-            <p className="mt-4 text-muted leading-relaxed">
+            <p className="mt-4 leading-relaxed text-muted">
               Tenants transfer to a shop account or upload a receipt. Managers
               verify in one queue. Landlords see collection rate, arrears, and
               exportable reports — in real time.
@@ -151,7 +149,7 @@ export default function HomePage() {
               Open dashboard
             </Link>
           </div>
-          <div className="rounded-2xl border border-border bg-green-50/50 p-8">
+          <div className="rounded-2xl border border-green-200 bg-green-50 p-8">
             <ol className="space-y-6">
               {[
                 "Landlord adds plaza units",
@@ -160,7 +158,7 @@ export default function HomePage() {
                 "Payment verified → ledger updated",
               ].map((step, i) => (
                 <li key={step} className="flex gap-4">
-                  <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-green-500 text-sm font-bold text-green-950">
+                  <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-green-600 text-sm font-bold text-white">
                     {i + 1}
                   </span>
                   <span className="pt-1 text-sm font-medium text-foreground">
@@ -173,14 +171,13 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* CTA */}
-      <section className="bg-surface-dark bg-grid py-16">
-        <div className="mx-auto max-w-2xl px-4 text-center sm:px-6">
-          <h2 className="text-2xl font-bold text-white sm:text-3xl">
+      <section className="bg-white px-4 py-16 sm:px-6">
+        <div className="mx-auto max-w-2xl rounded-2xl border border-border bg-surface-subtle px-6 py-12 text-center sm:px-10">
+          <h2 className="text-2xl font-bold text-foreground sm:text-3xl">
             Ready to run your plaza on ChopRent?
           </h2>
-          <p className="mt-3 text-white/60">
-            Mobile-first. Supabase-backed. Built for OC3 pilot metrics from day one.
+          <p className="mt-3 text-muted">
+            Mobile-first. Supabase-backed. Built for pilot metrics from day one.
           </p>
           <Link
             href="/login"
@@ -191,7 +188,7 @@ export default function HomePage() {
         </div>
       </section>
 
-      <footer className="border-t border-border py-8 text-center text-xs text-muted-foreground">
+      <footer className="border-t border-border bg-white py-8 text-center text-xs text-muted-foreground">
         © {new Date().getFullYear()} ChopRent · Next.js · Supabase · Vercel
       </footer>
     </div>
