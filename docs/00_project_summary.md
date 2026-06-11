@@ -97,12 +97,14 @@ This directly addresses the trader workflow your contact described.
 
 ## Design direction (distinct from FrontBill)
 
-Warm **property/spatial** aesthetic — not hotel invoice blue:
+Clean SaaS aesthetic inspired by [PropertyREM](https://propertyrem.ng/) and [PayRent](https://www.payrent.com/):
 
-- Colors: forest `#1B4332`, sand `#F5F0E8`, amber `#E9A319`
-- Fonts: DM Sans + Fraunces
+- **Primary:** light green `#4ade80` on dark `#0b1220` heroes
+- **Font:** Inter (single clean sans-serif)
+- **Landing:** dark hero + dashboard preview, white feature sections
+- **Login:** split panel (branded left, form right)
+- **Dashboard (Sprint 5+):** dark sidebar, green active states, card grid
 - Mobile: bottom nav (`Home`, `Units`, `Pay`, `Documents`)
-- Unit grid cards, timeline ledger, collection progress rings
 
 ---
 
