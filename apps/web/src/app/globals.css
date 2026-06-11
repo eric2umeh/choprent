@@ -1,39 +1,110 @@
 @import "tailwindcss";
 
 :root {
-  --background: #f5f0e8;
-  --foreground: #1a1a2e;
-  --forest: #1b4332;
-  --forest-light: #2d6a4f;
-  --sand: #f5f0e8;
-  --amber: #e9a319;
-  --slate: #1a1a2e;
-  --muted: #5c5c6d;
+  --background: #f8fafc;
+  --foreground: #0f172a;
+  --muted: #64748b;
+  --muted-foreground: #94a3b8;
   --card: #ffffff;
-  --ring: #e9a319;
+  --border: #e2e8f0;
+  --surface-dark: #0b1220;
+  --surface-dark-elevated: #111827;
+  --green-50: #ecfdf5;
+  --green-100: #d1fae5;
+  --green-200: #a7f3d0;
+  --green-400: #6ee7b7;
+  --green-500: #4ade80;
+  --green-600: #22c55e;
+  --green-700: #16a34a;
+  --green-glow: rgba(74, 222, 128, 0.35);
+  --ring: #4ade80;
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --color-forest: var(--forest);
-  --color-forest-light: var(--forest-light);
-  --color-sand: var(--sand);
-  --color-amber: var(--amber);
-  --color-slate: var(--slate);
   --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
   --color-card: var(--card);
+  --color-border: var(--border);
+  --color-surface-dark: var(--surface-dark);
+  --color-surface-dark-elevated: var(--surface-dark-elevated);
+  --color-green-50: var(--green-50);
+  --color-green-100: var(--green-100);
+  --color-green-200: var(--green-200);
+  --color-green-400: var(--green-400);
+  --color-green-500: var(--green-500);
+  --color-green-600: var(--green-600);
+  --color-green-700: var(--green-700);
   --color-ring: var(--ring);
-  --font-sans: var(--font-dm-sans);
-  --font-display: var(--font-fraunces);
+  --font-sans: var(--font-inter);
 }
 
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: var(--font-dm-sans), system-ui, sans-serif;
+  font-family: var(--font-inter), system-ui, -apple-system, sans-serif;
+  -webkit-font-smoothing: antialiased;
 }
 
-.font-display {
-  font-family: var(--font-fraunces), Georgia, serif;
+/* Subtle grid for dark hero sections */
+.bg-grid {
+  background-image:
+    linear-gradient(rgba(74, 222, 128, 0.04) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(74, 222, 128, 0.04) 1px, transparent 1px);
+  background-size: 48px 48px;
+}
+
+.btn-primary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 0.625rem;
+  background: var(--green-500);
+  padding: 0.625rem 1.25rem;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: #052e16;
+  transition: background 0.15s ease, box-shadow 0.15s ease;
+}
+
+.btn-primary:hover {
+  background: var(--green-400);
+  box-shadow: 0 0 24px var(--green-glow);
+}
+
+.btn-ghost {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 0.625rem;
+  border: 1px solid var(--border);
+  background: var(--card);
+  padding: 0.625rem 1.25rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--foreground);
+  transition: border-color 0.15s ease, background 0.15s ease;
+}
+
+.btn-ghost:hover {
+  border-color: var(--green-400);
+  background: var(--green-50);
+}
+
+.input-field {
+  width: 100%;
+  border-radius: 0.625rem;
+  border: 1px solid var(--border);
+  background: #f8fafc;
+  padding: 0.75rem 1rem;
+  font-size: 0.875rem;
+  color: var(--foreground);
+  outline: none;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.input-field:focus {
+  border-color: var(--green-500);
+  box-shadow: 0 0 0 3px rgba(74, 222, 128, 0.2);
 }
