@@ -1,10 +1,28 @@
 import Link from "next/link";
 import { Logo } from "@/components/logo";
+import { MOCK_ORG } from "@/lib/mock/data";
 
-const stats = [
-  { value: "80+", label: "Units per plaza" },
-  { value: "₦1M+", label: "Typical shop rent" },
-  { value: "100%", label: "Verified audit trail" },
+const demoRoles = [
+  {
+    label: "Landlord",
+    desc: "Full access · add units",
+    href: `/d/${MOCK_ORG.slug}`,
+  },
+  {
+    label: "Manager",
+    desc: "Leases · verify · no add units",
+    href: `/d/${MOCK_ORG.slug}?role=manager`,
+  },
+  {
+    label: "Agent",
+    desc: "Verify payments · assigned site",
+    href: `/d/${MOCK_ORG.slug}?role=agent`,
+  },
+  {
+    label: "Tenant",
+    desc: "Shop 14 · pay · ledger · docs",
+    href: `/t/${MOCK_ORG.slug}`,
+  },
 ];
 
 export default function LoginPage() {
@@ -21,25 +39,11 @@ export default function LoginPage() {
             <span className="text-green-700">with confidence.</span>
           </h1>
           <p className="mt-4 max-w-sm text-sm leading-relaxed text-muted">
-            From rent collection to receipt verification — everything you need
-            to run a modern property business in Nigeria.
+            UI preview with mock data — pick a role to explore the app.
           </p>
-          <div className="mt-10 grid grid-cols-3 gap-3">
-            {stats.map((stat) => (
-              <div
-                key={stat.label}
-                className="rounded-xl border border-border bg-white px-3 py-4 shadow-sm"
-              >
-                <p className="text-lg font-bold text-foreground">{stat.value}</p>
-                <p className="mt-1 text-[11px] leading-snug text-muted">
-                  {stat.label}
-                </p>
-              </div>
-            ))}
-          </div>
         </div>
         <p className="relative text-xs text-muted-foreground">
-          ChopRent · Plaza rent collection
+          Sprint 1 · Auth connects in next phase
         </p>
       </div>
 
@@ -50,64 +54,27 @@ export default function LoginPage() {
           </div>
 
           <h2 className="text-2xl font-bold tracking-tight text-foreground">
-            Welcome back
+            Welcome to ChopRent
           </h2>
           <p className="mt-2 text-sm text-muted">
-            Sign in to your ChopRent account
+            Choose a demo role to explore the UI (mock data)
           </p>
 
-          <form className="mt-8 space-y-5" action="#">
-            <div>
-              <label
-                htmlFor="email"
-                className="mb-1.5 block text-xs font-semibold uppercase tracking-wider text-muted"
+          <div className="mt-8 space-y-3">
+            {demoRoles.map((role) => (
+              <Link
+                key={role.label}
+                href={role.href}
+                className="flex items-center justify-between rounded-xl border border-border bg-white p-4 transition hover:border-green-300 hover:bg-green-50/50"
               >
-                Email address
-              </label>
-              <input
-                id="email"
-                type="email"
-                placeholder="you@example.com"
-                className="input-field"
-                autoComplete="email"
-                disabled
-              />
-            </div>
-            <div>
-              <div className="mb-1.5 flex items-center justify-between">
-                <label
-                  htmlFor="password"
-                  className="text-xs font-semibold uppercase tracking-wider text-muted"
-                >
-                  Password
-                </label>
-                <span className="text-xs font-semibold text-green-700">
-                  Forgot password?
-                </span>
-              </div>
-              <input
-                id="password"
-                type="password"
-                placeholder="••••••••"
-                className="input-field"
-                autoComplete="current-password"
-                disabled
-              />
-            </div>
-
-            <button
-              type="button"
-              disabled
-              className="btn-primary w-full cursor-not-allowed py-3 opacity-60"
-            >
-              Sign in — Sprint 1
-            </button>
-          </form>
-
-          <p className="mt-6 text-center text-sm text-muted">
-            Don&apos;t have an account?{" "}
-            <span className="font-semibold text-green-700">Create one</span>
-          </p>
+                <div>
+                  <p className="font-semibold text-foreground">{role.label}</p>
+                  <p className="text-sm text-muted">{role.desc}</p>
+                </div>
+                <span className="text-green-600">→</span>
+              </Link>
+            ))}
+          </div>
 
           <Link
             href="/"
