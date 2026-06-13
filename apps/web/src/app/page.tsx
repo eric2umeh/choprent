@@ -46,7 +46,7 @@ export default function HomePage() {
               Sign in
             </Link>
             <Link href="/login" className="btn-primary px-4 py-2">
-              Get started
+              Demo
             </Link>
           </div>
         </div>
@@ -69,7 +69,7 @@ export default function HomePage() {
             </p>
             <div className="mt-8 flex flex-col gap-3 sm:flex-row">
               <Link href="/login" className="btn-primary px-6 py-3 text-base">
-                Start free
+                Explore demo
               </Link>
               <a
                 href="https://github.com/eric2umeh/choprent"
