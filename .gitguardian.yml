@@ -1,0 +1,13 @@
+# GitGuardian — ignore known false positives in auth UI.
+# These are HTML autocomplete tokens, not hardcoded credentials.
+# Real secrets belong in .env.local (gitignored). See docs/11_security_env_and_git.md
+
+version: 2
+
+matches-ignore:
+  - name: Generic Password
+    match: new-password
+    path: apps/web/src/components/auth/login-form.tsx
+  - name: Generic Password
+    match: current-password
+    path: apps/web/src/components/auth/login-form.tsx
