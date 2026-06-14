@@ -1,10 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { isDemoMode } from "@/lib/env";
 import type { UnitListItem } from "@/lib/data/unit-types";
-import {
-  MOCK_UNITS,
-  type MockUnit,
-} from "@/lib/mock/data";
+import { MOCK_UNITS, type MockUnit } from "@/lib/mock/data";
 import type { PropertyType, UnitStatus } from "@/types/database";
 
 function mapMockUnit(u: MockUnit): UnitListItem {
@@ -24,7 +21,7 @@ function mapMockUnit(u: MockUnit): UnitListItem {
 
 export async function listUnitsForOrg(
   orgId: string,
-  demoMode: boolean
+  demoMode: boolean,
 ): Promise<UnitListItem[]> {
   if (demoMode) {
     return MOCK_UNITS.map(mapMockUnit);
@@ -35,7 +32,7 @@ export async function listUnitsForOrg(
   const { data: units, error } = await supabase
     .from("units")
     .select(
-      "id, unit_code, property_type, status, arrears_balance_ngn, is_composite, composite_note"
+      "id, unit_code, property_type, status, arrears_balance_ngn, is_composite, composite_note",
     )
     .eq("organization_id", orgId)
     .order("unit_code");
@@ -57,10 +54,10 @@ export async function listUnitsForOrg(
   ]);
 
   const tenantByUnit = new Map(
-    (leases ?? []).map((l) => [l.unit_id, l.tenant_display_name])
+    (leases ?? []).map((l) => [l.unit_id, l.tenant_display_name]),
   );
   const accountByUnit = new Map(
-    (accounts ?? []).map((a) => [a.unit_id, a.account_number])
+    (accounts ?? []).map((a) => [a.unit_id, a.account_number]),
   );
 
   return units.map((u) => ({
@@ -80,7 +77,7 @@ export async function listUnitsForOrg(
 export async function getUnitDetail(
   unitId: string,
   orgId: string,
-  demoMode: boolean
+  demoMode: boolean,
 ): Promise<UnitListItem | null> {
   if (demoMode) {
     const u = MOCK_UNITS.find((x) => x.id === unitId);
@@ -91,7 +88,7 @@ export async function getUnitDetail(
   const { data: unit } = await supabase
     .from("units")
     .select(
-      "id, unit_code, property_type, status, arrears_balance_ngn, is_composite, composite_note, organization_id"
+      "id, unit_code, property_type, status, arrears_balance_ngn, is_composite, composite_note, organization_id",
     )
     .eq("id", unitId)
     .eq("organization_id", orgId)
@@ -127,9 +124,7 @@ export async function getUnitDetail(
   };
 }
 
-export async function getDefaultSiteId(
-  orgId: string
-): Promise<string | null> {
+export async function getDefaultSiteId(orgId: string): Promise<string | null> {
   const supabase = await createClient();
   const { data } = await supabase
     .from("sites")

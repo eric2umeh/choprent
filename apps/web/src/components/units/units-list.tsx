@@ -8,7 +8,10 @@ import { CompactCard } from "@/components/ui/card";
 import { FilterBar, FilterSelect } from "@/components/ui/filter-bar";
 import { ListPanel, ListToolbar } from "@/components/ui/page-header";
 import { Pagination, usePagination } from "@/components/ui/pagination";
-import { ResponsiveDataTable, type Column } from "@/components/ui/responsive-table";
+import {
+  ResponsiveDataTable,
+  type Column,
+} from "@/components/ui/responsive-table";
 import { ViewToggle, type ViewMode } from "@/components/ui/view-toggle";
 import type { UnitListItem } from "@/lib/data/unit-types";
 import { formatPropertyType } from "@/lib/mock/data";
@@ -57,7 +60,7 @@ export function UnitsList({
 
   const { page, setPage, totalPages, slice, pageSize } = usePagination(
     filtered,
-    8
+    8,
   );
 
   const columns: Column<UnitListItem>[] = [
@@ -66,7 +69,9 @@ export function UnitsList({
       header: "Unit",
       mobilePrimary: true,
       render: (u) => (
-        <span className="text-sm font-semibold text-foreground">{u.unitCode}</span>
+        <span className="text-sm font-semibold text-foreground">
+          {u.unitCode}
+        </span>
       ),
     },
     {
@@ -74,16 +79,16 @@ export function UnitsList({
       header: "Type",
       mobilePrimary: true,
       render: (u) => (
-        <span className="text-cell-muted capitalize">{formatPropertyType(u.propertyType)}</span>
+        <span className="text-cell-muted capitalize">
+          {formatPropertyType(u.propertyType)}
+        </span>
       ),
     },
     {
       key: "tenant",
       header: "Tenant",
       mobilePrimary: true,
-      render: (u) => (
-        <span className="text-cell">{u.tenantName ?? "—"}</span>
-      ),
+      render: (u) => <span className="text-cell">{u.tenantName ?? "—"}</span>,
     },
     {
       key: "status",
@@ -105,7 +110,13 @@ export function UnitsList({
       key: "arrears",
       header: "Arrears",
       render: (u) => (
-        <span className={u.arrears > 0 ? "text-sm font-medium text-red-600" : "text-cell-muted"}>
+        <span
+          className={
+            u.arrears > 0
+              ? "text-sm font-medium text-red-600"
+              : "text-cell-muted"
+          }
+        >
           {u.arrears > 0 ? formatNaira(u.arrears) : "—"}
         </span>
       ),
@@ -189,22 +200,32 @@ export function UnitsList({
             {slice.map((unit) => (
               <CompactCard
                 key={unit.id}
-                onClick={() => router.push(`/d/${orgSlug}/units/${unit.id}${q}`)}
+                onClick={() =>
+                  router.push(`/d/${orgSlug}/units/${unit.id}${q}`)
+                }
               >
                 <div className="flex items-start justify-between gap-2">
                   <div>
                     <p className="text-sm font-semibold">{unit.unitCode}</p>
-                    <p className="text-cell-muted capitalize">{formatPropertyType(unit.propertyType)}</p>
+                    <p className="text-cell-muted capitalize">
+                      {formatPropertyType(unit.propertyType)}
+                    </p>
                   </div>
-                  <Badge variant={statusVariant(unit.status)}>{unit.status}</Badge>
+                  <Badge variant={statusVariant(unit.status)}>
+                    {unit.status}
+                  </Badge>
                 </div>
-                <p className="mt-1.5 truncate text-cell-muted">{unit.tenantName ?? "Vacant"}</p>
+                <p className="mt-1.5 truncate text-cell-muted">
+                  {unit.tenantName ?? "Vacant"}
+                </p>
                 <div className="mt-1.5 flex items-center justify-between text-xs">
                   <span className="font-medium">
                     {unit.annualRent > 0 ? formatNaira(unit.annualRent) : "—"}
                   </span>
                   {unit.arrears > 0 && (
-                    <span className="text-red-600">{formatNaira(unit.arrears)} due</span>
+                    <span className="text-red-600">
+                      {formatNaira(unit.arrears)} due
+                    </span>
                   )}
                 </div>
               </CompactCard>
