@@ -1,4 +1,5 @@
 import { Suspense } from "react";
+import { ListLoadingFallback } from "@/components/ui/list-loading-fallback";
 import { PageHeader } from "@/components/ui/page-header";
 import { TenantLedgerList } from "@/components/tenant/tenant-ledger-list";
 import { MOCK_TENANT_LEDGER } from "@/lib/mock/data";
@@ -22,7 +23,7 @@ export default function TenantLedgerPage() {
           </button>
         }
       />
-      <Suspense fallback={<div className="px-3 py-8 text-cell-muted">Loading…</div>}>
+      <Suspense fallback={<ListLoadingFallback />}>
         <TenantLedgerList balance={balance} />
       </Suspense>
     </div>
