@@ -16,8 +16,9 @@ import {
 } from "lucide-react";
 import { Logo } from "@/components/logo";
 import { cn } from "@/lib/utils";
-import type { MockRole } from "@/lib/mock/data";
+import type { MembershipRole } from "@/types/database";
 import { canAddUnits } from "@/lib/auth/roles";
+import { signOutAction } from "@/lib/actions/auth";
 
 const navItems = [
   { href: "", label: "Dashboard", icon: LayoutDashboard },
@@ -34,18 +35,21 @@ function NavLinks({
   role,
   pendingCount,
   collapsed,
+  demoMode,
   onNavigate,
 }: {
   orgSlug: string;
-  role: MockRole;
+  role: MembershipRole;
   pendingCount: number;
   collapsed?: boolean;
+  demoMode?: boolean;
   onNavigate?: () => void;
 }) {
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const base = `/d/${orgSlug}`;
-  const q = searchParams.toString() ? `?${searchParams.toString()}` : "";
+  const q =
+    demoMode && searchParams.toString() ? `?${searchParams.toString()}` : "";
 
   const filteredNav = navItems.filter((item) => {
     if (item.href === "/settings" && role === "agent") return false;
@@ -97,16 +101,18 @@ export function DashboardSidebar({
   pendingCount = 0,
   collapsed,
   mobileOpen,
+  demoMode = false,
   onCloseMobile,
   onToggleCollapse,
 }: {
   orgSlug: string;
-  role: MockRole;
+  role: MembershipRole;
   userName: string;
   userInitials: string;
   pendingCount?: number;
   collapsed: boolean;
   mobileOpen: boolean;
+  demoMode?: boolean;
   onCloseMobile: () => void;
   onToggleCollapse: () => void;
 }) {
@@ -156,6 +162,7 @@ export function DashboardSidebar({
           role={role}
           pendingCount={pendingCount}
           collapsed={collapsed}
+          demoMode={demoMode}
           onNavigate={onCloseMobile}
         />
 
@@ -175,10 +182,17 @@ export function DashboardSidebar({
               </div>
             </div>
           )}
-          {!canAddUnits(role === "tenant" ? null : role) && role !== "agent" && !collapsed && (
+          {!canAddUnits(role) && role === "manager" && !collapsed && (
             <p className="mb-2 px-1 text-[10px] text-muted-foreground">
               Manager — cannot add units
             </p>
+          )}
+          {!demoMode && !collapsed && (
+            <form action={signOutAction} className="mb-2">
+              <button type="submit" className="btn-ghost w-full py-1.5 text-xs">
+                Sign out
+              </button>
+            </form>
           )}
           <button
             type="button"
@@ -206,9 +220,11 @@ export function DashboardSidebar({
 export function DashboardTopBar({
   onOpenSidebar,
   title,
+  demoMode = false,
 }: {
   onOpenSidebar: () => void;
   title?: string;
+  demoMode?: boolean;
 }) {
   return (
     <header className="sticky top-0 z-30 flex h-11 items-center gap-2 border-b border-border bg-white px-3 lg:hidden">
@@ -221,6 +237,13 @@ export function DashboardTopBar({
         <PanelLeft className="h-4 w-4" />
       </button>
       {title && <span className="truncate text-sm font-semibold">{title}</span>}
+      {!demoMode && (
+        <form action={signOutAction} className="ml-auto">
+          <button type="submit" className="text-xs font-medium text-muted">
+            Sign out
+          </button>
+        </form>
+      )}
     </header>
   );
 }
@@ -228,12 +251,17 @@ export function DashboardTopBar({
 export function DashboardMobileNav({
   orgSlug,
   pendingCount = 0,
+  demoMode = false,
 }: {
   orgSlug: string;
   pendingCount?: number;
+  demoMode?: boolean;
 }) {
   const pathname = usePathname();
+  const searchParams = useSearchParams();
   const base = `/d/${orgSlug}`;
+  const q =
+    demoMode && searchParams.toString() ? `?${searchParams.toString()}` : "";
 
   const items = [
     { href: "", label: "Home", icon: LayoutDashboard },
@@ -253,7 +281,7 @@ export function DashboardMobileNav({
           return (
             <Link
               key={href}
-              href={path}
+              href={`${path}${q}`}
               className={cn(
                 "relative flex flex-1 flex-col items-center justify-center gap-0.5 text-[10px] font-medium",
                 active ? "text-green-700" : "text-muted"

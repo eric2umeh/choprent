@@ -31,6 +31,9 @@ See **[docs/07_supabase_setup.md](docs/07_supabase_setup.md)** — you do **not*
 | [docs/04_privacy_ndpr.md](docs/04_privacy_ndpr.md) | Privacy & NDPR checklist |
 | [docs/06_competitive_positioning.md](docs/06_competitive_positioning.md) | vs PayRent; unique OC3 differentiators |
 | [docs/07_supabase_setup.md](docs/07_supabase_setup.md) | Cloud setup; how migrations work |
+| [docs/08_sprint1_auth_setup.md](docs/08_sprint1_auth_setup.md) | Sprint 1 auth, roles, password login |
+| [docs/09_web_app_setup.md](docs/09_web_app_setup.md) | Web app local dev |
+| [docs/11_security_env_and_git.md](docs/11_security_env_and_git.md) | Env files, leaked keys, git cleanup |
 
 ## Repo
 

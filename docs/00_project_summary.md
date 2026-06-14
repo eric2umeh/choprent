@@ -21,13 +21,13 @@ ChopRent centralizes **plaza → units → leases → charges → payments → v
 
 ## Users
 
-| Role | Primary jobs |
-|------|----------------|
-| **Landlord (owner)** | Full access: portfolio, units, charges, verify payments, reports |
-| **Manager** | Day-to-day ops: assign tenants, set charges on existing units, verify receipts, issue letters — **cannot add units** |
-| **Agent** | **Assigned plazas only**: verify receipts, record cash — **cannot add units** |
-| **Tenant** | Pay (transfer or DVA), optional upload receipt, view ledger, download statements & management letters |
-| **Platform admin** | Onboard orgs, support, metrics export |
+| Role                 | Primary jobs                                                                                                         |
+| -------------------- | -------------------------------------------------------------------------------------------------------------------- |
+| **Landlord (owner)** | Full access: portfolio, units, charges, verify payments, reports                                                     |
+| **Manager**          | Day-to-day ops: assign tenants, set charges on existing units, verify receipts, issue letters — **cannot add units** |
+| **Agent**            | **Assigned plazas only**: verify receipts, record cash — **cannot add units**                                        |
+| **Tenant**           | Pay (transfer or DVA), optional upload receipt, view ledger, download statements & management letters                |
+| **Platform admin**   | Onboard orgs, support, metrics export                                                                                |
 
 Pilot starts with **one landlord / one plaza**; schema is multi-tenant for year-1 expansion.
 
@@ -70,12 +70,12 @@ This directly addresses the trader workflow your contact described.
 
 ## Payment strategy
 
-| Method | When | Notes |
-|--------|------|-------|
-| Bank transfer + receipt | Phase 1 | Tenant or manager; verify queue |
-| Cash recorded | Phase 1 | Manager/agent entry |
+| Method                              | When      | Notes                              |
+| ----------------------------------- | --------- | ---------------------------------- |
+| Bank transfer + receipt             | Phase 1   | Tenant or manager; verify queue    |
+| Cash recorded                       | Phase 1   | Manager/agent entry                |
 | **Dedicated virtual account (DVA)** | Phase 1.5 | Best for traders; low app friction |
-| Card / checkout | Phase 2 | Fee bearer TBD; partial payments |
+| Card / checkout                     | Phase 2   | Fee bearer TBD; partial payments   |
 
 **Why DVA before card checkout:** Rent is often ₦1M+. Traders already use transfer. DVA gives **auto-reconciliation** without 1.5% on every million. Card checkout remains optional later.
 
@@ -83,15 +83,15 @@ This directly addresses the trader workflow your contact described.
 
 ## Stack
 
-| Layer | Choice |
-|-------|--------|
-| Web | Next.js 15, TypeScript, Tailwind, shadcn/ui |
-| Backend | Supabase (Postgres, Auth, Storage, Realtime, Edge Functions) |
-| Hosting | Vercel |
-| Email | Resend (transactional) |
-| Payments | Paystack DVA + webhooks (Phase 1.5) |
+| Layer      | Choice                                                       |
+| ---------- | ------------------------------------------------------------ |
+| Web        | Next.js 15, TypeScript, Tailwind, shadcn/ui                  |
+| Backend    | Supabase (Postgres, Auth, Storage, Realtime, Edge Functions) |
+| Hosting    | Vercel                                                       |
+| Email      | Resend (transactional)                                       |
+| Payments   | Paystack DVA + webhooks (Phase 1.5)                          |
 | AI (cheap) | Tesseract.js client OCR; template reminders; FAQ keyword bot |
-| Privacy | See `04_privacy_ndpr.md` |
+| Privacy    | See `04_privacy_ndpr.md`                                     |
 
 ---
 
@@ -134,18 +134,18 @@ Counts toward “tenants self-serving” when tenant account has:
 
 ## Build order (updated sprints)
 
-| Sprint | Deliverable |
-|--------|-------------|
-| 0 | Supabase schema v1, RLS, enums, seed |
-| 1 | Auth (email+phone), org, plaza, unit CRUD, composite unit codes |
-| 2 | Leases + renewals, charge engine, annual/quarterly/monthly ledger |
-| 3 | Arrears + partial payment allocation, cash + transfer flows |
-| 4 | Tenant portal, letters, PDF statements, receipt upload |
-| 5 | Verification queue (landlord/manager/agent), multi bank accounts |
-| 6 | Dashboards, Realtime, metrics CSV export |
-| 7 | Client OCR + reminder rules + mobile polish |
-| **8** | **Paystack DVA per unit + webhooks** |
-| **9** | Electricity metering design spike / partner API |
+| Sprint | Deliverable                                                       |
+| ------ | ----------------------------------------------------------------- | ------------------------------------------------ |
+| 0      | Supabase schema v1, RLS, enums, seed                              |
+| 1      | Auth (email+phone), org, plaza, unit CRUD, composite unit codes   | **In progress** — see `08_sprint1_auth_setup.md` |
+| 2      | Leases + renewals, charge engine, annual/quarterly/monthly ledger |
+| 3      | Arrears + partial payment allocation, cash + transfer flows       |
+| 4      | Tenant portal, letters, PDF statements, receipt upload            |
+| 5      | Verification queue (landlord/manager/agent), multi bank accounts  |
+| 6      | Dashboards, Realtime, metrics CSV export                          |
+| 7      | Client OCR + reminder rules + mobile polish                       |
+| **8**  | **Paystack DVA per unit + webhooks**                              |
+| **9**  | Electricity metering design spike / partner API                   |
 
 ---
 
@@ -169,4 +169,4 @@ choprent/
 
 ## Next step
 
-Scaffold Next.js + Supabase migrations from `01_architecture.md` → deploy Vercel preview → onboard pilot landlord plaza.
+Sprint 1: follow [`docs/08_sprint1_auth_setup.md`](08_sprint1_auth_setup.md) → push migrations → create landlord membership → onboard pilot plaza units live.

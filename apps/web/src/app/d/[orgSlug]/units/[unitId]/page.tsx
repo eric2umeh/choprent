@@ -1,9 +1,11 @@
 import { PageHeader } from "@/components/ui/page-header";
 import { Card } from "@/components/ui/card";
-import { getUnitById } from "@/lib/mock/data";
+import { requireStaffContext } from "@/lib/auth/session";
+import { getUnitDetail } from "@/lib/data/units";
 import { formatNaira } from "@/lib/auth/roles";
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import type { MockRole } from "@/lib/mock/data";
 
 export default async function UnitDetailPage({
   params,
@@ -13,9 +15,9 @@ export default async function UnitDetailPage({
   searchParams: Promise<{ role?: string }>;
 }) {
   const { orgSlug, unitId } = await params;
-  const { role = "owner" } = await searchParams;
-  const q = role === "owner" ? "" : `?role=${role}`;
-  const unit = getUnitById(unitId);
+  const { role: roleParam } = await searchParams;
+  const ctx = await requireStaffContext(orgSlug, roleParam as MockRole | undefined);
+  const unit = await getUnitDetail(unitId, ctx.org.id, ctx.demoMode);
   if (!unit) notFound();
 
   return (
@@ -24,7 +26,7 @@ export default async function UnitDetailPage({
         title={`Unit ${unit.unitCode}`}
         description={`${unit.propertyType} · ${unit.status}`}
         action={
-          <Link href={`/d/${orgSlug}/units${q}`} className="btn-ghost px-3 py-1.5">
+          <Link href={`/d/${orgSlug}/units`} className="btn-ghost px-3 py-1.5">
             ← Back
           </Link>
         }
@@ -39,14 +41,26 @@ export default async function UnitDetailPage({
             </div>
             <div>
               <dt className="text-label normal-case">Annual rent</dt>
-              <dd className="mt-0.5 font-medium">{formatNaira(unit.annualRent)}</dd>
+              <dd className="mt-0.5 font-medium">
+                {unit.annualRent > 0 ? formatNaira(unit.annualRent) : "—"}
+              </dd>
             </div>
             <div>
               <dt className="text-label normal-case">Arrears</dt>
-              <dd className={`mt-0.5 font-medium ${unit.arrears > 0 ? "text-red-600" : "text-green-700"}`}>
+              <dd
+                className={`mt-0.5 font-medium ${
+                  unit.arrears > 0 ? "text-red-600" : "text-green-700"
+                }`}
+              >
                 {formatNaira(unit.arrears)}
               </dd>
             </div>
+            {unit.isComposite && unit.compositeNote && (
+              <div className="sm:col-span-2">
+                <dt className="text-label normal-case">Composite note</dt>
+                <dd className="mt-0.5 text-cell-muted">{unit.compositeNote}</dd>
+              </div>
+            )}
           </dl>
         </Card>
 
