@@ -10,11 +10,8 @@ import { ListPanel, ListToolbar } from "@/components/ui/page-header";
 import { Pagination, usePagination } from "@/components/ui/pagination";
 import { ResponsiveDataTable, type Column } from "@/components/ui/responsive-table";
 import { ViewToggle, type ViewMode } from "@/components/ui/view-toggle";
-import {
-  MOCK_UNITS,
-  formatPropertyType,
-  type MockUnit,
-} from "@/lib/mock/data";
+import type { UnitListItem } from "@/lib/data/unit-types";
+import { formatPropertyType } from "@/lib/mock/data";
 import { formatNaira } from "@/lib/auth/roles";
 import { Plus } from "lucide-react";
 
@@ -27,13 +24,18 @@ function statusVariant(status: string) {
 export function UnitsList({
   orgSlug,
   canAdd,
+  units,
+  demoMode = false,
 }: {
   orgSlug: string;
   canAdd: boolean;
+  units: UnitListItem[];
+  demoMode?: boolean;
 }) {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const q = searchParams.toString() ? `?${searchParams.toString()}` : "";
+  const q =
+    demoMode && searchParams.toString() ? `?${searchParams.toString()}` : "";
 
   const [view, setView] = useState<ViewMode>("table");
   const [search, setSearch] = useState("");
@@ -41,7 +43,7 @@ export function UnitsList({
   const [typeFilter, setTypeFilter] = useState("all");
 
   const filtered = useMemo(() => {
-    return MOCK_UNITS.filter((u) => {
+    return units.filter((u) => {
       const q = search.toLowerCase();
       const matchSearch =
         !q ||
@@ -51,14 +53,14 @@ export function UnitsList({
       const matchType = typeFilter === "all" || u.propertyType === typeFilter;
       return matchSearch && matchStatus && matchType;
     });
-  }, [search, statusFilter, typeFilter]);
+  }, [units, search, statusFilter, typeFilter]);
 
   const { page, setPage, totalPages, slice, pageSize } = usePagination(
     filtered,
     8
   );
 
-  const columns: Column<MockUnit>[] = [
+  const columns: Column<UnitListItem>[] = [
     {
       key: "unit",
       header: "Unit",
@@ -94,7 +96,9 @@ export function UnitsList({
       key: "rent",
       header: "Annual rent",
       render: (u) => (
-        <span className="text-cell font-medium">{formatNaira(u.annualRent)}</span>
+        <span className="text-cell font-medium">
+          {u.annualRent > 0 ? formatNaira(u.annualRent) : "—"}
+        </span>
       ),
     },
     {
@@ -196,7 +200,9 @@ export function UnitsList({
                 </div>
                 <p className="mt-1.5 truncate text-cell-muted">{unit.tenantName ?? "Vacant"}</p>
                 <div className="mt-1.5 flex items-center justify-between text-xs">
-                  <span className="font-medium">{formatNaira(unit.annualRent)}</span>
+                  <span className="font-medium">
+                    {unit.annualRent > 0 ? formatNaira(unit.annualRent) : "—"}
+                  </span>
                   {unit.arrears > 0 && (
                     <span className="text-red-600">{formatNaira(unit.arrears)} due</span>
                   )}
