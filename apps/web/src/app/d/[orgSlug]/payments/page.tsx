@@ -1,4 +1,5 @@
 import { Suspense } from "react";
+import { ListLoadingFallback } from "@/components/ui/list-loading-fallback";
 import { PageHeader } from "@/components/ui/page-header";
 import { PaymentsList } from "@/components/payments/payments-list";
 
@@ -17,7 +18,7 @@ export default async function PaymentsPage({
         title="Payments"
         description="Verify receipts and record cash"
       />
-      <Suspense fallback={<div className="px-3 py-8 text-cell-muted">Loading…</div>}>
+      <Suspense fallback={<ListLoadingFallback />}>
         <PaymentsList canVerify={canVerify} />
       </Suspense>
     </div>
