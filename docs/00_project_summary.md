@@ -137,7 +137,7 @@ Counts toward “tenants self-serving” when tenant account has:
 | Sprint | Deliverable |
 |--------|-------------|
 | 0 | Supabase schema v1, RLS, enums, seed |
-| 1 | Auth (email+phone), org, plaza, unit CRUD, composite unit codes |
+| 1 | Auth (email+phone), org, plaza, unit CRUD, composite unit codes | **In progress** — see `08_sprint1_auth_setup.md` |
 | 2 | Leases + renewals, charge engine, annual/quarterly/monthly ledger |
 | 3 | Arrears + partial payment allocation, cash + transfer flows |
 | 4 | Tenant portal, letters, PDF statements, receipt upload |
@@ -169,4 +169,4 @@ choprent/
 
 ## Next step
 
-Scaffold Next.js + Supabase migrations from `01_architecture.md` → deploy Vercel preview → onboard pilot landlord plaza.
+Sprint 1: follow [`docs/08_sprint1_auth_setup.md`](08_sprint1_auth_setup.md) → push migrations → create landlord membership → onboard pilot plaza units live.
