@@ -1,4 +1,5 @@
 import { Suspense } from "react";
+import { ListLoadingFallback } from "@/components/ui/list-loading-fallback";
 import { PageHeader } from "@/components/ui/page-header";
 import { DocumentsList } from "@/components/documents/documents-list";
 
@@ -14,7 +15,7 @@ export default function DocumentsPage() {
           </button>
         }
       />
-      <Suspense fallback={<div className="px-3 py-8 text-cell-muted">Loading…</div>}>
+      <Suspense fallback={<ListLoadingFallback />}>
         <DocumentsList />
       </Suspense>
     </div>
