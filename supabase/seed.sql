@@ -5,7 +5,7 @@ insert into organizations (id, name, slug, settings)
 values (
   '11111111-1111-1111-1111-111111111111',
   'Pilot Landlord Org',
-  'pilot-landlord',
+  'pilot-plaza',
   '{"payments":{"dva_enabled":false,"fee_bearer":"undecided"}}'::jsonb
 );
 
