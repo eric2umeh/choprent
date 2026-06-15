@@ -138,9 +138,9 @@ function MobileRow<T>({
       {open && detailCols.length > 0 && (
         <div className="mt-2 space-y-2 border-t border-border pt-2">
           {detailCols.map((col) => (
-            <div key={col.key} className="flex justify-between gap-3">
-              <span className="text-table-head shrink-0">{col.header}</span>
-              <div className="text-right text-table-cell">{col.render(row)}</div>
+            <div key={col.key} className="flex items-start justify-between gap-3">
+              <span className="text-table-head shrink-0 pt-0.5">{col.header}</span>
+              <div className="min-w-0 flex-1 text-right text-table-cell">{col.render(row)}</div>
             </div>
           ))}
         </div>

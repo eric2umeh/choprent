@@ -56,8 +56,9 @@ export function LeasesList({ canManage }: { canManage: boolean }) {
     {
       key: "period",
       header: "Lease period",
+      className: "w-[11.5rem]",
       render: (l) => (
-        <span className="text-table-cell-muted tabular-nums">
+        <span className="text-period-compact">
           {l.startDate} → {l.endDate}
         </span>
       ),

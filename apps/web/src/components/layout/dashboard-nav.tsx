@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
+import { useEffect, useState } from "react";
 import {
   Building2,
   CreditCard,
@@ -117,6 +118,23 @@ export function DashboardSidebar({
   onToggleCollapse: () => void;
 }) {
   const base = `/d/${orgSlug}`;
+  const [isDesktop, setIsDesktop] = useState(false);
+
+  useEffect(() => {
+    const media = window.matchMedia("(min-width: 1024px)");
+    const sync = () => setIsDesktop(media.matches);
+    sync();
+    media.addEventListener("change", sync);
+    return () => media.removeEventListener("change", sync);
+  }, []);
+
+  const handleHeaderClose = () => {
+    if (isDesktop) {
+      onToggleCollapse();
+      return;
+    }
+    onCloseMobile();
+  };
 
   return (
     <>
@@ -149,9 +167,15 @@ export function DashboardSidebar({
           )}
           <button
             type="button"
-            onClick={onCloseMobile}
-            className="btn-icon lg:hidden"
-            aria-label="Close sidebar"
+            onClick={handleHeaderClose}
+            className="btn-icon shrink-0"
+            aria-label={
+              isDesktop
+                ? collapsed
+                  ? "Expand sidebar"
+                  : "Collapse sidebar"
+                : "Close menu"
+            }
           >
             <X className="h-4 w-4" />
           </button>
