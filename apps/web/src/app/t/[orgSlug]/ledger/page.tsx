@@ -2,29 +2,36 @@ import { Suspense } from "react";
 import { ListLoadingFallback } from "@/components/ui/list-loading-fallback";
 import { PageHeader } from "@/components/ui/page-header";
 import { TenantLedgerList } from "@/components/tenant/tenant-ledger-list";
-import { MOCK_TENANT_LEDGER } from "@/lib/mock/data";
-import { Download } from "lucide-react";
+import { requireTenantContext } from "@/lib/auth/session";
+import { getTenantLedger } from "@/lib/data/ledger";
+import { listUnitsForOrg } from "@/lib/data/units";
 
-export default function TenantLedgerPage() {
-  const balance = MOCK_TENANT_LEDGER.reduce((s, l) => s + l.amount, 0);
+export default async function TenantLedgerPage({
+  params,
+}: {
+  params: Promise<{ orgSlug: string }>;
+}) {
+  const { orgSlug } = await params;
+  const ctx = await requireTenantContext(orgSlug);
+
+  const units = await listUnitsForOrg(ctx.org.id, ctx.demoMode);
+  const unit = units.find((u) => u.unitCode === ctx.unitCode);
+  const unitId = unit?.id ?? "demo-unit";
+
+  const { lines, balance } = await getTenantLedger(
+    ctx.org.id,
+    unitId,
+    ctx.demoMode
+  );
 
   return (
     <div>
       <PageHeader
         title="Ledger"
         description="Charges, payments, and running balance"
-        action={
-          <button
-            type="button"
-            className="btn-ghost inline-flex gap-1.5 px-2.5 py-1.5"
-          >
-            <Download className="h-3.5 w-3.5" />
-            Statement
-          </button>
-        }
       />
       <Suspense fallback={<ListLoadingFallback />}>
-        <TenantLedgerList balance={balance} />
+        <TenantLedgerList balance={balance} lines={lines} />
       </Suspense>
     </div>
   );
