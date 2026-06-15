@@ -33,7 +33,7 @@ See **[docs/07_supabase_setup.md](docs/07_supabase_setup.md)** — you do **not*
 | [docs/07_supabase_setup.md](docs/07_supabase_setup.md) | Cloud setup; how migrations work |
 | [docs/08_sprint1_auth_setup.md](docs/08_sprint1_auth_setup.md) | Sprint 1 auth, roles, password login |
 | [docs/09_web_app_setup.md](docs/09_web_app_setup.md) | Web app local dev |
-| [docs/11_security_env_and_git.md](docs/11_security_env_and_git.md) | Env files, leaked keys, git cleanup |
+| [docs/12_sprint3_payments_arrears.md](docs/12_sprint3_payments_arrears.md) | Sprint 3 payments, allocation, arrears |
 
 ## Repo
 
