@@ -20,9 +20,6 @@ export async function verifyPayment(
   if (!canVerifyPayments(ctx.role)) {
     return { error: "You don't have permission to verify payments." };
   }
-  if (ctx.demoMode) {
-    return { error: "Demo mode — connect Supabase to verify real payments." };
-  }
 
   const supabase = await createClient();
   const admin = createAdminClient();
@@ -82,9 +79,6 @@ export async function rejectPayment(
   if (!canVerifyPayments(ctx.role)) {
     return { error: "You don't have permission to reject payments." };
   }
-  if (ctx.demoMode) {
-    return { error: "Demo mode — connect Supabase to reject real payments." };
-  }
 
   const supabase = await createClient();
   const { error } = await supabase
@@ -124,9 +118,6 @@ export async function recordCashPayment(
   const ctx = await requireStaffContext(orgSlug);
   if (!canVerifyPayments(ctx.role)) {
     return { error: "You don't have permission to record cash." };
-  }
-  if (ctx.demoMode) {
-    return { error: "Demo mode — connect Supabase to record cash." };
   }
 
   const unitId = String(formData.get("unit_id") ?? "");
