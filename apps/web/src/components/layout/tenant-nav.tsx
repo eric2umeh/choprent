@@ -52,17 +52,19 @@ export function TenantHeader({
   orgSlug,
   tenantName,
   unitCode,
+  orgDisplayName,
 }: {
   orgSlug: string;
   tenantName: string;
   unitCode: string;
+  orgDisplayName: string;
 }) {
   return (
     <header className="sticky top-0 z-20 border-b border-border bg-white/90 backdrop-blur-md">
       <div className="mx-auto flex h-12 max-w-lg items-center justify-between px-3">
-        <div className="animate-fade-in">
-          <p className="text-sm font-semibold text-foreground">ChopRent</p>
-          <p className="text-[11px] text-muted">
+        <div className="animate-fade-in min-w-0">
+          <p className="truncate text-sm font-semibold text-foreground">{orgDisplayName}</p>
+          <p className="truncate text-[11px] text-muted">
             Shop {unitCode} · {tenantName}
           </p>
         </div>

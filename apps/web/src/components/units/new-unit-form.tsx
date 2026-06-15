@@ -2,13 +2,10 @@
 
 import { useActionState, useEffect, useRef } from "react";
 import Link from "next/link";
+import { createUnit, type UnitActionState } from "@/lib/actions/units";
 import {
-  createUnit,
-  type UnitActionState,
-} from "@/lib/actions/units";
-import { PROPERTY_TYPES } from "@/lib/mock/data";
-import type { PropertySummary } from "@/lib/data/property-types";
-import { formatSiteType } from "@/lib/data/property-types";
+  PROPERTY_TYPE_OPTIONS,
+} from "@/lib/data/unit-types";
 import { LoadingButton } from "@/components/ui/loading-button";
 import { toast } from "@/components/ui/toast";
 
@@ -16,10 +13,12 @@ const initialState: UnitActionState = {};
 
 export function NewUnitForm({
   orgSlug,
-  properties,
+  propertyId,
+  propertyName,
 }: {
   orgSlug: string;
-  properties: PropertySummary[];
+  propertyId: string;
+  propertyName: string;
 }) {
   const [state, formAction, pending] = useActionState(
     createUnit.bind(null, orgSlug),
@@ -36,29 +35,10 @@ export function NewUnitForm({
 
   return (
     <form action={formAction} className="space-y-4">
-      {properties.length > 1 && (
-        <div>
-          <label className="text-label normal-case">Property</label>
-          <select name="site_id" className="input-field mt-1" required disabled={pending}>
-            <option value="">Select property…</option>
-            {properties.map((property) => (
-              <option key={property.id} value={property.id}>
-                {property.name} ({formatSiteType(property.siteType)})
-              </option>
-            ))}
-          </select>
-        </div>
-      )}
-
-      {properties.length === 1 && (
-        <input type="hidden" name="site_id" value={properties[0].id} />
-      )}
-
-      {properties.length === 1 && (
-        <p className="rounded-lg border border-border bg-surface-subtle px-3 py-2 text-xs text-muted">
-          Adding to <span className="font-semibold text-foreground">{properties[0].name}</span>
-        </p>
-      )}
+      <input type="hidden" name="site_id" value={propertyId} />
+      <p className="rounded-lg border border-border bg-surface-subtle px-3 py-2 text-xs text-muted">
+        Adding to <span className="font-semibold text-foreground">{propertyName}</span>
+      </p>
 
       <div>
         <label className="text-label normal-case">Unit code</label>
@@ -75,16 +55,16 @@ export function NewUnitForm({
       </div>
 
       <div>
-        <label className="text-label normal-case">Property type</label>
+        <label className="text-label normal-case">Unit type</label>
         <select
           name="property_type"
           className="input-field mt-1"
           defaultValue="shop"
           disabled={pending}
         >
-          {PROPERTY_TYPES.map((t) => (
-            <option key={t} value={t}>
-              {t.charAt(0).toUpperCase() + t.slice(1)}
+          {PROPERTY_TYPE_OPTIONS.map((t) => (
+            <option key={t.value} value={t.value}>
+              {t.label}
             </option>
           ))}
         </select>
@@ -124,7 +104,7 @@ export function NewUnitForm({
           Save unit
         </LoadingButton>
         <Link
-          href={`/d/${orgSlug}/units`}
+          href={`/d/${orgSlug}/properties/${propertyId}`}
           className={`btn-ghost flex-1 py-2.5 text-center ${pending ? "pointer-events-none opacity-50" : ""}`}
           aria-disabled={pending}
         >

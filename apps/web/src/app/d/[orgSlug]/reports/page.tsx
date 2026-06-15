@@ -1,10 +1,23 @@
 import { PageHeader } from "@/components/ui/page-header";
 import { StatCard, Card } from "@/components/ui/card";
-import { MOCK_STATS } from "@/lib/mock/data";
+import { requireStaffContext } from "@/lib/auth/session";
+import { getDashboardStats } from "@/lib/data/dashboard-stats";
 import { formatNaira } from "@/lib/auth/roles";
 import { Download } from "lucide-react";
 
-export default function ReportsPage() {
+export default async function ReportsPage({
+  params,
+}: {
+  params: Promise<{ orgSlug: string }>;
+}) {
+  const { orgSlug } = await params;
+  const ctx = await requireStaffContext(orgSlug);
+  const stats = await getDashboardStats(ctx.org.id);
+  const collectionRate =
+    stats.expectedThisYear > 0
+      ? Math.round((stats.collectedThisYear / stats.expectedThisYear) * 100)
+      : 0;
+
   return (
     <div>
       <PageHeader
@@ -24,17 +37,17 @@ export default function ReportsPage() {
       <div className="grid grid-cols-2 gap-2.5 border-b border-border bg-white px-3 py-3 xl:grid-cols-3">
         <StatCard
           label="Collection rate"
-          value={`${MOCK_STATS.collectionRate}%`}
-          hint="This month"
+          value={`${collectionRate}%`}
+          hint={`${stats.year} to date`}
         />
         <StatCard
           label="Verified total"
-          value={formatNaira(MOCK_STATS.collected)}
+          value={formatNaira(stats.collectedThisYear)}
           hint="Payments confirmed"
         />
         <StatCard
           label="Arrears"
-          value={formatNaira(MOCK_STATS.arrears)}
+          value={formatNaira(stats.pastYearsArrears)}
           hint="Prior-year balances"
         />
       </div>
@@ -47,9 +60,6 @@ export default function ReportsPage() {
           <li>✓ Collection rate chart screenshot</li>
           <li>✓ Dashboard screenshot</li>
         </ul>
-        <p className="mt-3 text-[11px] text-muted-foreground">
-          Exports align with docs/02_metrics_tracking_checklist.md
-        </p>
       </Card>
     </div>
   );

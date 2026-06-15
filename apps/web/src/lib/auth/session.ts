@@ -1,8 +1,6 @@
 import { redirect, notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { isDemoMode } from "@/lib/env";
-import { getMockUser, MOCK_ORG, type MockRole } from "@/lib/mock/data";
 import type { MembershipRole } from "@/types/database";
 
 export type AuthUser = {
@@ -29,6 +27,8 @@ export type StaffContext = {
 export type TenantContext = {
   user: AuthUser;
   org: OrgContext;
+  unitId: string;
+  leaseId: string;
   unitCode: string;
   tenantDisplayName: string;
   demoMode: boolean;
@@ -220,27 +220,7 @@ export async function resolvePostLoginPath(): Promise<string> {
   return "/access-pending";
 }
 
-export async function requireStaffContext(
-  orgSlug: string,
-  demoRole?: MockRole | null
-): Promise<StaffContext> {
-  if (isDemoMode()) {
-    const role = (demoRole ?? "owner") as MembershipRole;
-    const mock = getMockUser(role as MockRole);
-    return {
-      demoMode: true,
-      org: { id: "demo", name: MOCK_ORG.name, slug: MOCK_ORG.slug },
-      role,
-      user: {
-        id: mock.id,
-        email: mock.email,
-        phone: null,
-        displayName: mock.name,
-        initials: mock.initials,
-      },
-    };
-  }
-
+export async function requireStaffContext(orgSlug: string): Promise<StaffContext> {
   const user = await getSessionUser();
   if (!user) redirect(`/login?next=/d/${orgSlug}`);
 
@@ -257,23 +237,6 @@ export async function requireStaffContext(
 export async function requireTenantContext(
   orgSlug: string
 ): Promise<TenantContext> {
-  if (isDemoMode()) {
-    const mock = getMockUser("tenant");
-    return {
-      demoMode: true,
-      org: { id: "demo", name: MOCK_ORG.name, slug: MOCK_ORG.slug },
-      unitCode: "14",
-      tenantDisplayName: mock.name,
-      user: {
-        id: mock.id,
-        email: mock.email,
-        phone: null,
-        displayName: mock.name,
-        initials: mock.initials,
-      },
-    };
-  }
-
   const user = await getSessionUser();
   if (!user) redirect(`/login?next=/t/${orgSlug}`);
 
@@ -284,7 +247,7 @@ export async function requireTenantContext(
   const supabase = await createClient();
   const { data: lease } = await supabase
     .from("leases")
-    .select("tenant_display_name, units!inner(unit_code, organization_id)")
+    .select("id, tenant_display_name, units!inner(id, unit_code, organization_id)")
     .eq("tenant_user_id", user.id)
     .eq("status", "active")
     .eq("units.organization_id", org.id)
@@ -301,10 +264,19 @@ export async function requireTenantContext(
     "unit_code" in unitsPayload
       ? (unitsPayload as { unit_code: string }).unit_code
       : "—";
+  const unitId =
+    unitsPayload &&
+    typeof unitsPayload === "object" &&
+    !Array.isArray(unitsPayload) &&
+    "id" in unitsPayload
+      ? (unitsPayload as { id: string }).id
+      : "";
 
   return {
     user,
     org,
+    unitId,
+    leaseId: lease.id,
     unitCode,
     tenantDisplayName: lease.tenant_display_name,
     demoMode: false,

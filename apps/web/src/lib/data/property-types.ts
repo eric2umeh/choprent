@@ -7,6 +7,7 @@ export type PropertySummary = {
   addressLine1: string;
   city: string;
   state: string;
+  unitCount: number;
 };
 
 export const SITE_TYPE_OPTIONS: {

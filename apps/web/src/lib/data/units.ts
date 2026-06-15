@@ -1,48 +1,31 @@
 import { createClient } from "@/lib/supabase/server";
-import { isDemoMode } from "@/lib/env";
+import { createAdminClient } from "@/lib/supabase/admin";
 import type { UnitListItem } from "@/lib/data/unit-types";
-import { MOCK_UNITS, MOCK_ORG, type MockUnit } from "@/lib/mock/data";
 import type { PropertyType, UnitStatus } from "@/types/database";
 
-function mapMockUnit(u: MockUnit): UnitListItem {
-  const propertyName =
-    MOCK_ORG.sites.find((site) => site.id === u.siteId)?.name ?? null;
-  return {
-    id: u.id,
-    unitCode: u.unitCode,
-    propertyName,
-    propertyType: u.propertyType,
-    status: u.status,
-    tenantName: u.tenantName,
-    annualRent: u.annualRent,
-    arrears: u.arrears,
-    isComposite: u.isComposite,
-    compositeNote: null,
-    virtualAccount: u.virtualAccount,
-  };
+type UnitRow = {
+  id: string;
+  site_id: string;
+  unit_code: string;
+  property_type: PropertyType;
+  status: UnitStatus;
+  arrears_balance_ngn: number;
+  is_composite: boolean;
+  composite_note: string | null;
+  sites: { name?: string } | { name?: string }[] | null;
+};
+
+function propertyNameFromRow(sites: UnitRow["sites"]): string | null {
+  if (!sites) return null;
+  if (Array.isArray(sites)) return sites[0]?.name ?? null;
+  return sites.name ?? null;
 }
 
-export async function listUnitsForOrg(
-  orgId: string,
-  demoMode: boolean,
-): Promise<UnitListItem[]> {
-  if (demoMode) {
-    return MOCK_UNITS.map(mapMockUnit);
-  }
+async function mapUnitRows(rows: UnitRow[]): Promise<UnitListItem[]> {
+  if (!rows.length) return [];
 
   const supabase = await createClient();
-
-  const { data: units, error } = await supabase
-    .from("units")
-    .select(
-      "id, unit_code, property_type, status, arrears_balance_ngn, is_composite, composite_note, sites(name)",
-    )
-    .eq("organization_id", orgId)
-    .order("unit_code");
-
-  if (error || !units?.length) return [];
-
-  const unitIds = units.map((u) => u.id);
+  const unitIds = rows.map((u) => u.id);
 
   const [{ data: leases }, { data: accounts }] = await Promise.all([
     supabase
@@ -57,83 +40,104 @@ export async function listUnitsForOrg(
   ]);
 
   const tenantByUnit = new Map(
-    (leases ?? []).map((l) => [l.unit_id, l.tenant_display_name]),
+    (leases ?? []).map((l) => [l.unit_id, l.tenant_display_name])
   );
   const accountByUnit = new Map(
-    (accounts ?? []).map((a) => [a.unit_id, a.account_number]),
+    (accounts ?? []).map((a) => [a.unit_id, a.account_number])
   );
 
-  return units.map((u) => {
-    const sitePayload = u.sites as { name?: string } | { name?: string }[] | null;
-    const propertyName = Array.isArray(sitePayload)
-      ? sitePayload[0]?.name ?? null
-      : sitePayload?.name ?? null;
-
-    return {
-      id: u.id,
-      unitCode: u.unit_code,
-      propertyName,
-      propertyType: u.property_type as PropertyType,
-    status: u.status as UnitStatus,
+  return rows.map((u) => ({
+    id: u.id,
+    siteId: u.site_id,
+    unitCode: u.unit_code,
+    propertyName: propertyNameFromRow(u.sites),
+    propertyType: u.property_type,
+    status: u.status,
     tenantName: tenantByUnit.get(u.id) ?? null,
     annualRent: 0,
     arrears: Number(u.arrears_balance_ngn ?? 0),
     isComposite: u.is_composite,
     compositeNote: u.composite_note,
     virtualAccount: accountByUnit.get(u.id) ?? null,
-    };
-  });
+  }));
+}
+
+export async function listUnitsForOrg(
+  orgId: string,
+  siteId?: string
+): Promise<UnitListItem[]> {
+  const supabase = await createClient();
+
+  let query = supabase
+    .from("units")
+    .select(
+      "id, site_id, unit_code, property_type, status, arrears_balance_ngn, is_composite, composite_note, sites(name)"
+    )
+    .eq("organization_id", orgId)
+    .order("unit_code");
+
+  if (siteId) {
+    query = query.eq("site_id", siteId);
+  }
+
+  const { data, error } = await query;
+
+  if (error || !data) {
+    try {
+      const admin = createAdminClient();
+      let adminQuery = admin
+        .from("units")
+        .select(
+          "id, site_id, unit_code, property_type, status, arrears_balance_ngn, is_composite, composite_note, sites(name)"
+        )
+        .eq("organization_id", orgId)
+        .order("unit_code");
+      if (siteId) adminQuery = adminQuery.eq("site_id", siteId);
+      const { data: adminRows } = await adminQuery;
+      return mapUnitRows((adminRows as UnitRow[] | null) ?? []);
+    } catch {
+      return [];
+    }
+  }
+
+  return mapUnitRows(data as UnitRow[]);
 }
 
 export async function getUnitDetail(
   unitId: string,
-  orgId: string,
-  demoMode: boolean,
+  orgId: string
 ): Promise<UnitListItem | null> {
-  if (demoMode) {
-    const u = MOCK_UNITS.find((x) => x.id === unitId);
-    return u ? mapMockUnit(u) : null;
-  }
-
   const supabase = await createClient();
-  const { data: unit } = await supabase
+  const { data: unit, error } = await supabase
     .from("units")
     .select(
-      "id, unit_code, property_type, status, arrears_balance_ngn, is_composite, composite_note, organization_id",
+      "id, site_id, unit_code, property_type, status, arrears_balance_ngn, is_composite, composite_note, organization_id, sites(name)"
     )
     .eq("id", unitId)
     .eq("organization_id", orgId)
     .maybeSingle();
 
-  if (!unit) return null;
+  if (error || !unit) {
+    try {
+      const admin = createAdminClient();
+      const { data: adminUnit } = await admin
+        .from("units")
+        .select(
+          "id, site_id, unit_code, property_type, status, arrears_balance_ngn, is_composite, composite_note, organization_id, sites(name)"
+        )
+        .eq("id", unitId)
+        .eq("organization_id", orgId)
+        .maybeSingle();
+      if (!adminUnit) return null;
+      const mapped = await mapUnitRows([adminUnit as UnitRow]);
+      return mapped[0] ?? null;
+    } catch {
+      return null;
+    }
+  }
 
-  const [{ data: lease }, { data: account }] = await Promise.all([
-    supabase
-      .from("leases")
-      .select("tenant_display_name")
-      .eq("unit_id", unitId)
-      .eq("status", "active")
-      .maybeSingle(),
-    supabase
-      .from("virtual_accounts")
-      .select("account_number")
-      .eq("unit_id", unitId)
-      .maybeSingle(),
-  ]);
-
-  return {
-    id: unit.id,
-    unitCode: unit.unit_code,
-    propertyName: null,
-    propertyType: unit.property_type as PropertyType,
-    status: unit.status as UnitStatus,
-    tenantName: lease?.tenant_display_name ?? null,
-    annualRent: 0,
-    arrears: Number(unit.arrears_balance_ngn ?? 0),
-    isComposite: unit.is_composite,
-    compositeNote: unit.composite_note,
-    virtualAccount: account?.account_number ?? null,
-  };
+  const mapped = await mapUnitRows([unit as UnitRow]);
+  return mapped[0] ?? null;
 }
 
 export async function getDefaultSiteId(orgId: string): Promise<string | null> {

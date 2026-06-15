@@ -1,37 +1,58 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useState, useTransition } from "react";
+import { useRouter } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
 import { CompactCard } from "@/components/ui/card";
 import { FilterBar, FilterSelect } from "@/components/ui/filter-bar";
 import { ListPanel, ListToolbar } from "@/components/ui/page-header";
 import { Pagination, usePagination } from "@/components/ui/pagination";
-import { ResponsiveDataTable, type Column } from "@/components/ui/responsive-table";
+import {
+  ResponsiveDataTable,
+  type Column,
+} from "@/components/ui/responsive-table";
 import { ViewToggle, type ViewMode } from "@/components/ui/view-toggle";
-import { MOCK_DOCUMENTS, type MockDocument } from "@/lib/mock/data";
+import { IssueDocumentForm } from "@/components/documents/issue-document-form";
+import {
+  generateStatement,
+  getDocumentDownloadUrl,
+} from "@/lib/actions/documents";
+import type { DocumentListItem, DocumentType } from "@/lib/data/documents";
+import { toast } from "@/components/ui/toast";
+import { Spinner } from "@/components/ui/spinner";
 import { Download, FileText } from "lucide-react";
 
-function docTypeVariant(type: MockDocument["docType"]) {
+function docTypeVariant(type: DocumentType) {
   if (type === "notice") return "warning" as const;
   if (type === "receipt") return "success" as const;
   return "muted" as const;
 }
 
-export function DocumentsList({ tenantOnly }: { tenantOnly?: boolean }) {
+export function DocumentsList({
+  orgSlug,
+  documents,
+  units = [],
+  canManage = false,
+  tenantOnly = false,
+}: {
+  orgSlug: string;
+  documents: DocumentListItem[];
+  units?: { id: string; unitCode: string }[];
+  canManage?: boolean;
+  tenantOnly?: boolean;
+}) {
+  const router = useRouter();
   const [view, setView] = useState<ViewMode>("table");
   const [search, setSearch] = useState("");
   const [typeFilter, setTypeFilter] = useState("all");
   const [scopeFilter, setScopeFilter] = useState("all");
-
-  const source = useMemo(() => {
-    if (!tenantOnly) return MOCK_DOCUMENTS;
-    return MOCK_DOCUMENTS.filter(
-      (d) => d.unitCode === "14" || d.unitCode === null
-    );
-  }, [tenantOnly]);
+  const [showIssueForm, setShowIssueForm] = useState(false);
+  const [downloadingId, setDownloadingId] = useState<string | null>(null);
+  const [generatingUnitId, setGeneratingUnitId] = useState<string | null>(null);
+  const [, startTransition] = useTransition();
 
   const filtered = useMemo(() => {
-    return source.filter((d) => {
+    return documents.filter((d) => {
       const q = search.toLowerCase();
       const matchSearch =
         !q ||
@@ -44,28 +65,49 @@ export function DocumentsList({ tenantOnly }: { tenantOnly?: boolean }) {
         (scopeFilter === "unit" && !!d.unitCode);
       return matchSearch && matchType && matchScope;
     });
-  }, [source, search, typeFilter, scopeFilter]);
+  }, [documents, search, typeFilter, scopeFilter]);
 
   const { page, setPage, totalPages, slice, pageSize } = usePagination(
     filtered,
-    8
+    8,
   );
 
-  const columns: Column<MockDocument>[] = [
+  function handleDownload(docId: string) {
+    setDownloadingId(docId);
+    startTransition(async () => {
+      const result = await getDocumentDownloadUrl(orgSlug, docId, tenantOnly);
+      setDownloadingId(null);
+      if (result.error) toast.error(result.error);
+      else if (result.downloadUrl) window.open(result.downloadUrl, "_blank");
+    });
+  }
+
+  function handleGenerateStatement(unitId: string) {
+    setGeneratingUnitId(unitId);
+    startTransition(async () => {
+      const result = await generateStatement(orgSlug, unitId);
+      setGeneratingUnitId(null);
+      if (result.error) toast.error(result.error);
+      else {
+        toast.success("Statement generated.");
+        router.refresh();
+      }
+    });
+  }
+
+  const columns: Column<DocumentListItem>[] = [
     {
       key: "title",
       header: "Document",
       mobilePrimary: true,
-      render: (d) => (
-        <span className="text-sm font-medium text-foreground">{d.title}</span>
-      ),
+      render: (d) => <span className="text-table-cell-strong">{d.title}</span>,
     },
     {
       key: "unit",
       header: "Unit",
       mobilePrimary: true,
       render: (d) => (
-        <span className="text-cell-muted">
+        <span className="text-table-cell-muted">
           {d.unitCode ? `Unit ${d.unitCode}` : "Plaza-wide"}
         </span>
       ),
@@ -83,18 +125,28 @@ export function DocumentsList({ tenantOnly }: { tenantOnly?: boolean }) {
     {
       key: "issued",
       header: "Issued",
-      render: (d) => <span className="text-cell-muted">{d.issuedAt}</span>,
+      render: (d) => (
+        <span className="text-table-cell-muted tabular-nums">{d.issuedAt}</span>
+      ),
     },
     {
       key: "action",
       header: "",
-      render: () => (
+      render: (d) => (
         <button
           type="button"
           className="btn-ghost inline-flex gap-1 px-2 py-1"
-          onClick={(e) => e.stopPropagation()}
+          disabled={!d.filePath || downloadingId === d.id}
+          onClick={(e) => {
+            e.stopPropagation();
+            handleDownload(d.id);
+          }}
         >
-          <Download className="h-3.5 w-3.5" />
+          {downloadingId === d.id ? (
+            <Spinner className="h-3.5 w-3.5" />
+          ) : (
+            <Download className="h-3.5 w-3.5" />
+          )}
           <span className="hidden sm:inline">Download</span>
         </button>
       ),
@@ -143,8 +195,36 @@ export function DocumentsList({ tenantOnly }: { tenantOnly?: boolean }) {
             />
           )}
         </FilterBar>
-        <div className="flex items-center gap-2 px-3 lg:px-0">
+        <div className="flex flex-wrap items-center gap-2 px-3 lg:px-0">
           <ViewToggle value={view} onChange={setView} />
+          {canManage && units.length > 0 && (
+            <select
+              className="input-field max-w-[9rem] py-1.5 text-xs"
+              defaultValue=""
+              disabled={!!generatingUnitId}
+              onChange={(e) => {
+                const unitId = e.target.value;
+                e.target.value = "";
+                if (unitId) handleGenerateStatement(unitId);
+              }}
+            >
+              <option value="">Generate statement…</option>
+              {units.map((u) => (
+                <option key={u.id} value={u.id}>
+                  Unit {u.unitCode}
+                </option>
+              ))}
+            </select>
+          )}
+          {canManage && (
+            <button
+              type="button"
+              className="btn-primary px-3 py-1.5"
+              onClick={() => setShowIssueForm(true)}
+            >
+              Issue document
+            </button>
+          )}
         </div>
       </ListToolbar>
 
@@ -164,18 +244,30 @@ export function DocumentsList({ tenantOnly }: { tenantOnly?: boolean }) {
                     <FileText className="h-4 w-4" />
                   </div>
                   <div className="min-w-0 flex-1">
-                    <p className="truncate text-sm font-medium">{doc.title}</p>
-                    <p className="text-cell-muted">
+                    <p className="truncate text-list-primary">{doc.title}</p>
+                    <p className="text-list-meta">
                       {doc.unitCode ? `Unit ${doc.unitCode}` : "Plaza-wide"} ·{" "}
                       {doc.issuedAt}
                     </p>
                   </div>
-                  <Badge variant={docTypeVariant(doc.docType)} className="capitalize shrink-0">
+                  <Badge
+                    variant={docTypeVariant(doc.docType)}
+                    className="capitalize shrink-0"
+                  >
                     {doc.docType}
                   </Badge>
                 </div>
-                <button type="button" className="btn-ghost mt-2 w-full py-1.5 text-xs">
-                  <Download className="mr-1 inline h-3.5 w-3.5" />
+                <button
+                  type="button"
+                  className="btn-ghost mt-2 w-full py-1.5 text-xs"
+                  disabled={!doc.filePath || downloadingId === doc.id}
+                  onClick={() => handleDownload(doc.id)}
+                >
+                  {downloadingId === doc.id ? (
+                    <Spinner className="mr-1 inline h-3.5 w-3.5" />
+                  ) : (
+                    <Download className="mr-1 inline h-3.5 w-3.5" />
+                  )}
                   Download
                 </button>
               </CompactCard>
@@ -190,6 +282,15 @@ export function DocumentsList({ tenantOnly }: { tenantOnly?: boolean }) {
           pageSize={pageSize}
         />
       </ListPanel>
+
+      {canManage && (
+        <IssueDocumentForm
+          orgSlug={orgSlug}
+          units={units}
+          open={showIssueForm}
+          onClose={() => setShowIssueForm(false)}
+        />
+      )}
     </>
   );
 }

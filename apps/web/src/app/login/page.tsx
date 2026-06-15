@@ -4,39 +4,8 @@ import { Logo } from "@/components/logo";
 import { LoginForm } from "@/components/auth/login-form";
 import { LoginAuthAlerts } from "@/components/auth/login-auth-alerts";
 import { LoadingState } from "@/components/ui/loading-state";
-import { isDemoMode } from "@/lib/env";
-import { MOCK_ORG } from "@/lib/mock/data";
 
-const demoRoles = [
-  {
-    label: "Landlord",
-    desc: "Full access · add units",
-    href: `/d/${MOCK_ORG.slug}`,
-  },
-  {
-    label: "Manager",
-    desc: "Leases · verify · no add units",
-    href: `/d/${MOCK_ORG.slug}?role=manager`,
-  },
-  {
-    label: "Agent",
-    desc: "Verify payments · assigned site",
-    href: `/d/${MOCK_ORG.slug}?role=agent`,
-  },
-  {
-    label: "Tenant",
-    desc: "Shop 14 · pay · ledger · docs",
-    href: `/t/${MOCK_ORG.slug}`,
-  },
-];
-
-export default function LoginPage({
-  searchParams,
-}: {
-  searchParams: Promise<{ error?: string; next?: string }>;
-}) {
-  const demoMode = isDemoMode();
-
+export default function LoginPage() {
   return (
     <div className="flex min-h-screen bg-white">
       <div className="relative hidden w-1/2 flex-col justify-between overflow-hidden border-r border-border bg-green-50 bg-grid-light p-10 lg:flex">
@@ -46,7 +15,7 @@ export default function LoginPage({
         </div>
         <div className="relative animate-fade-up" style={{ animationDelay: "80ms" }}>
           <h1 className="max-w-md text-4xl font-bold leading-tight text-foreground">
-            Manage your plaza{" "}
+            Manage your properties{" "}
             <span className="text-green-700">with confidence.</span>
           </h1>
           <p className="mt-4 max-w-sm text-sm leading-relaxed text-muted">
@@ -55,7 +24,7 @@ export default function LoginPage({
           </p>
         </div>
         <p className="relative text-xs text-muted-foreground">
-          Sprint 1 · Supabase Auth
+          ChopRent · Nigerian rent collection
         </p>
       </div>
 
@@ -78,29 +47,6 @@ export default function LoginPage({
             </Suspense>
             <LoginForm />
           </div>
-
-          {demoMode && (
-            <div className="mt-10 border-t border-border pt-8">
-              <p className="text-xs font-semibold uppercase tracking-wider text-muted">
-                Demo mode (mock data)
-              </p>
-              <div className="mt-3 space-y-2">
-                {demoRoles.map((role) => (
-                  <Link
-                    key={role.label}
-                    href={role.href}
-                    className="flex items-center justify-between rounded-lg border border-border px-3 py-2.5 text-sm transition hover:border-green-300 hover:bg-green-50/50"
-                  >
-                    <div>
-                      <p className="font-medium text-foreground">{role.label}</p>
-                      <p className="text-xs text-muted">{role.desc}</p>
-                    </div>
-                    <span className="text-green-600">→</span>
-                  </Link>
-                ))}
-              </div>
-            </div>
-          )}
 
           <Link
             href="/"

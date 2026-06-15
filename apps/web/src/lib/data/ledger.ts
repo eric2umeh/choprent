@@ -11,29 +11,8 @@ export type LedgerLineItem = {
 
 export async function getTenantLedger(
   orgId: string,
-  unitId: string,
-  demoMode: boolean
+  unitId: string
 ): Promise<{ lines: LedgerLineItem[]; balance: number }> {
-  if (demoMode) {
-    const { MOCK_TENANT_LEDGER } = await import("@/lib/mock/data");
-    const balance = MOCK_TENANT_LEDGER.reduce((s, l) => s + l.amount, 0);
-    return {
-      balance,
-      lines: MOCK_TENANT_LEDGER.map((l) => ({
-        id: l.id,
-        date: l.date,
-        description: l.description,
-        amount: Math.abs(l.amount),
-        kind:
-          l.kind === "payment"
-            ? ("payment" as const)
-            : l.kind === "arrears"
-              ? ("adjustment" as const)
-              : ("charge" as const),
-      })),
-    };
-  }
-
   const supabase = await createClient();
 
   const { data: periods } = await supabase
@@ -43,7 +22,6 @@ export async function getTenantLedger(
     .order("period_start", { ascending: false });
 
   const periodIds = (periods ?? []).map((p) => p.id);
-
   let ledgerLines: LedgerLineItem[] = [];
 
   if (periodIds.length > 0) {

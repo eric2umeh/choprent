@@ -9,15 +9,21 @@ export type TenantPaymentActionState = {
   success?: boolean;
 };
 
+const ALLOWED_RECEIPT_MIME = new Set([
+  "image/jpeg",
+  "image/png",
+  "image/webp",
+  "application/pdf",
+]);
+
+const MAX_RECEIPT_BYTES = 10 * 1024 * 1024;
+
 export async function submitTransferPayment(
   orgSlug: string,
   _prev: TenantPaymentActionState,
   formData: FormData
 ): Promise<TenantPaymentActionState> {
   const ctx = await requireTenantContext(orgSlug);
-  if (ctx.demoMode) {
-    return { error: "Demo mode — sign in with a real tenant lease to submit." };
-  }
 
   const amount = Number(formData.get("amount_ngn"));
   const bankReference = String(formData.get("bank_reference") ?? "").trim() || null;
@@ -26,6 +32,16 @@ export async function submitTransferPayment(
 
   if (!Number.isFinite(amount) || amount <= 0) {
     return { error: "Enter a valid amount." };
+  }
+
+  if (!(receipt instanceof File) || receipt.size === 0) {
+    return { error: "Upload your bank transfer receipt." };
+  }
+  if (receipt.size > MAX_RECEIPT_BYTES) {
+    return { error: "Receipt must be 10MB or less." };
+  }
+  if (!ALLOWED_RECEIPT_MIME.has(receipt.type)) {
+    return { error: "Use JPG, PNG, WebP, or PDF for the receipt." };
   }
 
   const supabase = await createClient();
@@ -40,19 +56,18 @@ export async function submitTransferPayment(
 
   if (!lease) return { error: "No active lease found for your account." };
 
-  let receiptPath: string | null = null;
+  const ext = receipt.name.split(".").pop()?.toLowerCase() ?? "jpg";
+  const path = `${ctx.org.id}/${lease.unit_id}/${crypto.randomUUID()}.${ext}`;
 
-  if (receipt instanceof File && receipt.size > 0) {
-    const ext = receipt.name.split(".").pop()?.toLowerCase() ?? "jpg";
-    const path = `${ctx.org.id}/${lease.unit_id}/${crypto.randomUUID()}.${ext}`;
-    const { error: uploadError } = await supabase.storage
-      .from("receipts")
-      .upload(path, receipt, { upsert: false });
+  const { error: uploadError } = await supabase.storage
+    .from("receipts")
+    .upload(path, receipt, {
+      upsert: false,
+      contentType: receipt.type,
+    });
 
-    if (uploadError) {
-      return { error: `Receipt upload failed: ${uploadError.message}` };
-    }
-    receiptPath = path;
+  if (uploadError) {
+    return { error: `Receipt upload failed: ${uploadError.message}` };
   }
 
   const { error: insertError } = await supabase.from("payments").insert({
@@ -62,16 +77,18 @@ export async function submitTransferPayment(
     amount_ngn: amount,
     period_label: periodLabel,
     bank_reference: bankReference,
-    receipt_file_url: receiptPath,
+    receipt_file_url: path,
     payment_method: "bank_transfer",
     status: "pending",
     payment_date: new Date().toISOString().slice(0, 10),
   });
 
   if (insertError) {
+    await supabase.storage.from("receipts").remove([path]);
     return { error: insertError.message };
   }
 
+  revalidatePath(`/t/${orgSlug}`);
   revalidatePath(`/t/${orgSlug}/pay`);
   revalidatePath(`/t/${orgSlug}/ledger`);
   return { success: true };

@@ -25,10 +25,6 @@ export async function saveProperty(
     return { error: "Only the landlord can add or edit properties." };
   }
 
-  if (ctx.demoMode) {
-    return { error: "Demo mode — sign in with Supabase to save properties." };
-  }
-
   const propertyId = String(formData.get("property_id") ?? "").trim() || null;
   const name = String(formData.get("name") ?? "").trim();
   const siteType = String(formData.get("site_type") ?? "plaza") as Site["site_type"];
@@ -54,7 +50,7 @@ export async function saveProperty(
   const supabase = await createClient();
 
   if (propertyId) {
-    const existing = await getPropertyForOrg(ctx.org.id, propertyId, false);
+    const existing = await getPropertyForOrg(ctx.org.id, propertyId);
     if (!existing) {
       return { error: "Property not found." };
     }
@@ -81,12 +77,13 @@ export async function saveProperty(
     if (error) return { error: error.message };
   }
 
-  revalidatePath(`/d/${orgSlug}/settings`);
-  revalidatePath(`/d/${orgSlug}/units`);
-  revalidatePath(`/d/${orgSlug}/units/new`);
+  revalidatePath(`/d/${orgSlug}/properties`);
+  revalidatePath(`/d/${orgSlug}/account`);
 
   return { success: true };
 }
+
+export type PlazaActionState = PropertyActionState;
 
 /** @deprecated Use saveProperty */
 export async function savePlaza(
@@ -96,5 +93,3 @@ export async function savePlaza(
 ): Promise<PropertyActionState> {
   return saveProperty(orgSlug, prev, formData);
 }
-
-export type PlazaActionState = PropertyActionState;

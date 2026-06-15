@@ -11,11 +11,12 @@ import { ResponsiveDataTable, type Column } from "@/components/ui/responsive-tab
 import { ViewToggle, type ViewMode } from "@/components/ui/view-toggle";
 import { RecordCashForm } from "@/components/payments/record-cash-form";
 import { rejectPayment, verifyPayment } from "@/lib/actions/payments";
+import { getReceiptDownloadUrl } from "@/lib/actions/documents";
 import type { PaymentListItem } from "@/lib/data/payments";
 import { formatNaira } from "@/lib/auth/roles";
 import { toast } from "@/components/ui/toast";
 import { Spinner } from "@/components/ui/spinner";
-import { Check, X } from "lucide-react";
+import { Check, X, FileImage } from "lucide-react";
 
 function methodLabel(m: string) {
   const map: Record<string, string> = {
@@ -50,6 +51,7 @@ export function PaymentsList({
   const [showCashForm, setShowCashForm] = useState(false);
   const [actingId, setActingId] = useState<string | null>(null);
   const [actingType, setActingType] = useState<"verify" | "reject" | null>(null);
+  const [receiptLoadingId, setReceiptLoadingId] = useState<string | null>(null);
   const [, startTransition] = useTransition();
 
   const filtered = useMemo(() => {
@@ -97,6 +99,16 @@ export function PaymentsList({
         toast.info("Payment rejected.");
         router.refresh();
       }
+    });
+  }
+
+  function handleViewReceipt(paymentId: string) {
+    setReceiptLoadingId(paymentId);
+    startTransition(async () => {
+      const result = await getReceiptDownloadUrl(orgSlug, paymentId);
+      setReceiptLoadingId(null);
+      if (result.error) toast.error(result.error);
+      else if (result.downloadUrl) window.open(result.downloadUrl, "_blank");
     });
   }
 
@@ -149,6 +161,31 @@ export function PaymentsList({
       render: (p) => (
         <Badge variant={statusBadge(p.status)}>{p.status}</Badge>
       ),
+    },
+    {
+      key: "receipt",
+      header: "Receipt",
+      render: (p) =>
+        p.receiptFileUrl ? (
+          <button
+            type="button"
+            className="btn-ghost inline-flex gap-1 px-2 py-1 text-xs"
+            disabled={receiptLoadingId === p.id}
+            onClick={(e) => {
+              e.stopPropagation();
+              handleViewReceipt(p.id);
+            }}
+          >
+            {receiptLoadingId === p.id ? (
+              <Spinner size="sm" />
+            ) : (
+              <FileImage className="h-3.5 w-3.5" />
+            )}
+            View
+          </button>
+        ) : (
+          <span className="text-table-cell-muted">—</span>
+        ),
     },
     {
       key: "actions",

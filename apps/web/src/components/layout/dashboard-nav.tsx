@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname, useSearchParams } from "next/navigation";
+import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 import {
   Building2,
@@ -14,6 +14,7 @@ import {
   PanelLeftClose,
   PanelLeft,
   X,
+  Landmark,
 } from "lucide-react";
 import { Logo } from "@/components/logo";
 import { cn } from "@/lib/utils";
@@ -23,11 +24,12 @@ import { signOutAction } from "@/lib/actions/auth";
 
 const navItems = [
   { href: "", label: "Dashboard", icon: LayoutDashboard },
-  { href: "/units", label: "Units", icon: Building2 },
-  { href: "/leases", label: "Leases", icon: Users },
+  { href: "/properties", label: "Properties", icon: Building2 },
+  { href: "/tenants", label: "Tenants", icon: Users },
   { href: "/payments", label: "Payments", icon: CreditCard, badge: true },
   { href: "/documents", label: "Documents", icon: FileText },
   { href: "/reports", label: "Reports", icon: BarChart3 },
+  { href: "/account", label: "Account", icon: Landmark },
   { href: "/settings", label: "Settings", icon: Settings },
 ];
 
@@ -36,24 +38,20 @@ function NavLinks({
   role,
   pendingCount,
   collapsed,
-  demoMode,
   onNavigate,
 }: {
   orgSlug: string;
   role: MembershipRole;
   pendingCount: number;
   collapsed?: boolean;
-  demoMode?: boolean;
   onNavigate?: () => void;
 }) {
   const pathname = usePathname();
-  const searchParams = useSearchParams();
   const base = `/d/${orgSlug}`;
-  const q =
-    demoMode && searchParams.toString() ? `?${searchParams.toString()}` : "";
 
   const filteredNav = navItems.filter((item) => {
     if (item.href === "/settings" && role === "agent") return false;
+    if (item.href === "/account" && role === "agent") return false;
     if (item.href === "/reports" && role === "agent") return false;
     return true;
   });
@@ -64,7 +62,7 @@ function NavLinks({
         const path = `${base}${href}`;
         const active =
           href === "" ? pathname === base : pathname.startsWith(path);
-        const hrefWithQuery = `${path}${q}`;
+        const hrefWithQuery = path;
 
         return (
           <Link
@@ -102,7 +100,6 @@ export function DashboardSidebar({
   pendingCount = 0,
   collapsed,
   mobileOpen,
-  demoMode = false,
   onCloseMobile,
   onToggleCollapse,
 }: {
@@ -113,7 +110,6 @@ export function DashboardSidebar({
   pendingCount?: number;
   collapsed: boolean;
   mobileOpen: boolean;
-  demoMode?: boolean;
   onCloseMobile: () => void;
   onToggleCollapse: () => void;
 }) {
@@ -186,7 +182,6 @@ export function DashboardSidebar({
           role={role}
           pendingCount={pendingCount}
           collapsed={collapsed}
-          demoMode={demoMode}
           onNavigate={onCloseMobile}
         />
 
@@ -211,7 +206,7 @@ export function DashboardSidebar({
               Manager — cannot add units
             </p>
           )}
-          {!demoMode && !collapsed && (
+          {!collapsed && (
             <form action={signOutAction} className="mb-2">
               <button type="submit" className="btn-ghost w-full py-1.5 text-xs">
                 Sign out
@@ -244,11 +239,9 @@ export function DashboardSidebar({
 export function DashboardTopBar({
   onOpenSidebar,
   title,
-  demoMode = false,
 }: {
   onOpenSidebar: () => void;
   title?: string;
-  demoMode?: boolean;
 }) {
   return (
     <header className="sticky top-0 z-30 flex h-11 items-center gap-2 border-b border-border bg-white/90 px-3 backdrop-blur-md transition-shadow lg:hidden">
@@ -261,13 +254,11 @@ export function DashboardTopBar({
         <PanelLeft className="h-4 w-4" />
       </button>
       {title && <span className="truncate text-sm font-semibold">{title}</span>}
-      {!demoMode && (
-        <form action={signOutAction} className="ml-auto">
-          <button type="submit" className="text-xs font-medium text-muted">
-            Sign out
-          </button>
-        </form>
-      )}
+      <form action={signOutAction} className="ml-auto">
+        <button type="submit" className="text-xs font-medium text-muted">
+          Sign out
+        </button>
+      </form>
     </header>
   );
 }
@@ -275,23 +266,18 @@ export function DashboardTopBar({
 export function DashboardMobileNav({
   orgSlug,
   pendingCount = 0,
-  demoMode = false,
 }: {
   orgSlug: string;
   pendingCount?: number;
-  demoMode?: boolean;
 }) {
   const pathname = usePathname();
-  const searchParams = useSearchParams();
   const base = `/d/${orgSlug}`;
-  const q =
-    demoMode && searchParams.toString() ? `?${searchParams.toString()}` : "";
 
   const items = [
     { href: "", label: "Home", icon: LayoutDashboard },
-    { href: "/units", label: "Units", icon: Building2 },
+    { href: "/properties", label: "Properties", icon: Building2 },
     { href: "/payments", label: "Pay", icon: CreditCard, badge: pendingCount },
-    { href: "/documents", label: "Docs", icon: FileText },
+    { href: "/tenants", label: "Tenants", icon: Users },
   ];
 
   return (
@@ -305,7 +291,7 @@ export function DashboardMobileNav({
           return (
             <Link
               key={href}
-              href={`${path}${q}`}
+              href={path}
               className={cn(
                 "relative flex flex-1 flex-col items-center justify-center gap-0.5 text-[10px] font-medium transition-all duration-200",
                 active ? "text-green-700" : "text-muted hover:text-foreground"

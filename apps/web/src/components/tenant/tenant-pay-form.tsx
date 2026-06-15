@@ -37,14 +37,26 @@ export function TenantPayForm({ orgSlug }: { orgSlug: string }) {
         <p className="mt-2 text-sm font-medium text-foreground">
           {fileName ?? "Tap to upload receipt"}
         </p>
-        <p className="mt-0.5 text-cell-muted">JPG, PNG or PDF · max 10MB</p>
+        <p className="mt-0.5 text-cell-muted">
+          JPG, PNG or PDF · max 10MB · required
+        </p>
         <input
           type="file"
           name="receipt"
           accept="image/jpeg,image/png,image/webp,application/pdf"
           className="sr-only"
+          required
           disabled={loading}
-          onChange={(ev) => setFileName(ev.target.files?.[0]?.name ?? null)}
+          onChange={(ev) => {
+            const file = ev.target.files?.[0];
+            if (file && file.size > 10 * 1024 * 1024) {
+              toast.error("Receipt must be 10MB or less.");
+              ev.target.value = "";
+              setFileName(null);
+              return;
+            }
+            setFileName(file?.name ?? null);
+          }}
         />
       </label>
 

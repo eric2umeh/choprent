@@ -1,23 +1,40 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useState, useTransition } from "react";
 import { Badge } from "@/components/ui/badge";
 import { CompactCard } from "@/components/ui/card";
 import { FilterBar, FilterSelect } from "@/components/ui/filter-bar";
 import { ListPanel, ListToolbar } from "@/components/ui/page-header";
 import { Pagination, usePagination } from "@/components/ui/pagination";
-import { ResponsiveDataTable, type Column } from "@/components/ui/responsive-table";
+import {
+  ResponsiveDataTable,
+  type Column,
+} from "@/components/ui/responsive-table";
 import { ViewToggle, type ViewMode } from "@/components/ui/view-toggle";
-import { MOCK_LEASES, type MockLease } from "@/lib/mock/data";
+import { LeaseForm } from "@/components/leases/lease-form";
+import type { LeaseListItem } from "@/lib/data/leases";
 import { formatNaira } from "@/lib/auth/roles";
 
-export function LeasesList({ canManage }: { canManage: boolean }) {
+export function LeasesList({
+  orgSlug,
+  leases,
+  vacantUnits,
+  canManage,
+}: {
+  orgSlug: string;
+  leases: LeaseListItem[];
+  vacantUnits: { id: string; unitCode: string }[];
+  canManage: boolean;
+}) {
   const [view, setView] = useState<ViewMode>("table");
   const [search, setSearch] = useState("");
   const [cadenceFilter, setCadenceFilter] = useState("all");
+  const [formMode, setFormMode] = useState<"create" | "renew" | null>(null);
+  const [renewLease, setRenewLease] = useState<LeaseListItem | null>(null);
+  const [, startTransition] = useTransition();
 
   const filtered = useMemo(() => {
-    return MOCK_LEASES.filter((l) => {
+    return leases.filter((l) => {
       const q = search.toLowerCase();
       const matchSearch =
         !q ||
@@ -27,19 +44,21 @@ export function LeasesList({ canManage }: { canManage: boolean }) {
         cadenceFilter === "all" || l.billingCadence === cadenceFilter;
       return matchSearch && matchCadence;
     });
-  }, [search, cadenceFilter]);
+  }, [leases, search, cadenceFilter]);
 
   const { page, setPage, totalPages, slice, pageSize } = usePagination(
     filtered,
-    8
+    8,
   );
 
-  const columns: Column<MockLease>[] = [
+  const columns: Column<LeaseListItem>[] = [
     {
       key: "unit",
       header: "Unit",
       mobilePrimary: true,
-      render: (l) => <span className="text-table-cell-strong">{l.unitCode}</span>,
+      render: (l) => (
+        <span className="text-table-cell-strong">{l.unitCode}</span>
+      ),
     },
     {
       key: "tenant",
@@ -51,7 +70,9 @@ export function LeasesList({ canManage }: { canManage: boolean }) {
       key: "total",
       header: "Annual total",
       mobilePrimary: true,
-      render: (l) => <span className="text-money">{formatNaira(l.annualTotal)}</span>,
+      render: (l) => (
+        <span className="text-money">{formatNaira(l.annualTotal)}</span>
+      ),
     },
     {
       key: "period",
@@ -73,13 +94,43 @@ export function LeasesList({ canManage }: { canManage: boolean }) {
     {
       key: "status",
       header: "Status",
-      render: (l) => <Badge variant="success">{l.status}</Badge>,
+      render: (l) => (
+        <Badge variant={l.status === "active" ? "success" : "muted"}>
+          {l.status}
+        </Badge>
+      ),
     },
     {
       key: "phone",
       header: "Phone",
-      render: (l) => <span className="text-table-cell-muted">{l.tenantPhone}</span>,
+      render: (l) => (
+        <span className="text-table-cell-muted">{l.tenantPhone ?? "—"}</span>
+      ),
     },
+    ...(canManage
+      ? [
+          {
+            key: "actions",
+            header: "",
+            render: (l: LeaseListItem) =>
+              l.status === "active" ? (
+                <button
+                  type="button"
+                  className="btn-ghost px-2 py-1 text-xs"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    startTransition(() => {
+                      setRenewLease(l);
+                      setFormMode("renew");
+                    });
+                  }}
+                >
+                  Renew
+                </button>
+              ) : null,
+          } satisfies Column<LeaseListItem>,
+        ]
+      : []),
   ];
 
   return (
@@ -111,7 +162,11 @@ export function LeasesList({ canManage }: { canManage: boolean }) {
         <div className="flex items-center gap-2 px-3 lg:px-0">
           <ViewToggle value={view} onChange={setView} />
           {canManage && (
-            <button type="button" className="btn-primary px-3 py-1.5">
+            <button
+              type="button"
+              className="btn-primary px-3 py-1.5"
+              onClick={() => setFormMode("create")}
+            >
               Assign tenant
             </button>
           )}
@@ -134,7 +189,12 @@ export function LeasesList({ canManage }: { canManage: boolean }) {
                     <p className="text-sm font-semibold">
                       {l.unitCode} · {l.tenantName}
                     </p>
-                    <p className="text-cell-muted capitalize">{l.billingCadence}</p>
+                    <p className="text-period-compact mt-0.5">
+                      {l.startDate} → {l.endDate}
+                    </p>
+                    <p className="text-cell-muted capitalize">
+                      {l.billingCadence}
+                    </p>
                   </div>
                   <span className="text-xs font-semibold">
                     {formatNaira(l.annualTotal)}
@@ -152,6 +212,20 @@ export function LeasesList({ canManage }: { canManage: boolean }) {
           pageSize={pageSize}
         />
       </ListPanel>
+
+      {canManage && formMode && (
+        <LeaseForm
+          orgSlug={orgSlug}
+          mode={formMode}
+          lease={formMode === "renew" ? (renewLease ?? undefined) : undefined}
+          vacantUnits={vacantUnits}
+          open={!!formMode}
+          onClose={() => {
+            setFormMode(null);
+            setRenewLease(null);
+          }}
+        />
+      )}
     </>
   );
 }

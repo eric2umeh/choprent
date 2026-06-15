@@ -1,11 +1,11 @@
 import { createClient } from "@/lib/supabase/server";
-import { MOCK_ORG } from "@/lib/mock/data";
+import { createAdminClient } from "@/lib/supabase/admin";
 import type { PropertySummary } from "@/lib/data/property-types";
 import type { Site } from "@/types/database";
 
 export type { PropertySummary } from "@/lib/data/property-types";
 
-function mapSite(row: Site): PropertySummary {
+function mapSite(row: Site, unitCount = 0): PropertySummary {
   const address = (row.address ?? {}) as Record<string, string>;
   return {
     id: row.id,
@@ -14,48 +14,70 @@ function mapSite(row: Site): PropertySummary {
     addressLine1: address.line1 ?? "",
     city: address.city ?? "",
     state: address.state ?? "",
+    unitCount,
   };
 }
 
-export async function listPropertiesForOrg(
-  orgId: string,
-  demoMode: boolean
-): Promise<PropertySummary[]> {
-  if (demoMode) {
-    return MOCK_ORG.sites.map((site) => ({
-      id: site.id,
-      name: site.name,
-      siteType: site.siteType,
-      addressLine1: site.address.split(",")[0]?.trim() ?? site.address,
-      city: site.city,
-      state: site.state,
-    }));
-  }
-
+async function fetchProperties(orgId: string): Promise<PropertySummary[]> {
   const supabase = await createClient();
-  const { data } = await supabase
+  const { data, error } = await supabase
     .from("sites")
     .select("id, name, site_type, address")
     .eq("organization_id", orgId)
     .order("created_at");
 
-  return (data ?? []).map((row) => mapSite(row as Site));
+  if (error || !data) {
+    try {
+      const admin = createAdminClient();
+      const { data: adminRows } = await admin
+        .from("sites")
+        .select("id, name, site_type, address")
+        .eq("organization_id", orgId)
+        .order("created_at");
+      if (!adminRows?.length) return [];
+      return attachUnitCounts(adminRows as Site[], admin);
+    } catch {
+      return [];
+    }
+  }
+
+  if (!data.length) return [];
+  return attachUnitCounts(data as Site[], supabase);
 }
 
-/** Returns the first property when callers only need a default. */
+async function attachUnitCounts(
+  sites: Site[],
+  client: Awaited<ReturnType<typeof createClient>> | ReturnType<typeof createAdminClient>
+): Promise<PropertySummary[]> {
+  const siteIds = sites.map((s) => s.id);
+  const { data: unitRows } = await client
+    .from("units")
+    .select("site_id")
+    .in("site_id", siteIds);
+
+  const counts = new Map<string, number>();
+  for (const row of unitRows ?? []) {
+    counts.set(row.site_id, (counts.get(row.site_id) ?? 0) + 1);
+  }
+
+  return sites.map((site) => mapSite(site, counts.get(site.id) ?? 0));
+}
+
+export async function listPropertiesForOrg(orgId: string): Promise<PropertySummary[]> {
+  return fetchProperties(orgId);
+}
+
 export async function getPrimarySiteForOrg(
-  orgId: string,
-  demoMode: boolean
+  orgId: string
 ): Promise<PropertySummary | null> {
-  const properties = await listPropertiesForOrg(orgId, demoMode);
+  const properties = await listPropertiesForOrg(orgId);
   return properties[0] ?? null;
 }
 
 export async function getPropertyForOrg(
   orgId: string,
-  propertyId: string,
-  demoMode: boolean
+  propertyId: string
 ): Promise<PropertySummary | null> {
-  const properties = await listPropertiesForOrg(orgId, demoMode);
+  const properties = await listPropertiesForOrg(orgId);
   return properties.find((property) => property.id === propertyId) ?? null;
 }
