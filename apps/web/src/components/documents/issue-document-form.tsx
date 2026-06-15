@@ -24,7 +24,11 @@ export function IssueDocumentForm({
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     setLoading(true);
-    const result = await issueDocument(orgSlug, {}, new FormData(e.currentTarget));
+    const result = await issueDocument(
+      orgSlug,
+      {},
+      new FormData(e.currentTarget),
+    );
     setLoading(false);
 
     if (result.error) {
@@ -59,7 +63,11 @@ export function IssueDocumentForm({
         <div className="grid gap-3 sm:grid-cols-2">
           <div>
             <label className="text-label normal-case">Type</label>
-            <select name="doc_type" className="input-field mt-1" disabled={loading}>
+            <select
+              name="doc_type"
+              className="input-field mt-1"
+              disabled={loading}
+            >
               <option value="letter">Letter</option>
               <option value="notice">Notice</option>
               <option value="receipt">Receipt</option>
@@ -67,7 +75,11 @@ export function IssueDocumentForm({
           </div>
           <div>
             <label className="text-label normal-case">Unit (optional)</label>
-            <select name="unit_id" className="input-field mt-1" disabled={loading}>
+            <select
+              name="unit_id"
+              className="input-field mt-1"
+              disabled={loading}
+            >
               <option value="">Plaza-wide</option>
               {units.map((u) => (
                 <option key={u.id} value={u.id}>
@@ -88,7 +100,11 @@ export function IssueDocumentForm({
             className="input-field mt-1 file:mr-2 file:rounded file:border-0 file:bg-green-50 file:px-2 file:py-1 file:text-xs file:font-medium file:text-green-800"
           />
         </div>
-        <LoadingButton type="submit" loading={loading} className="btn-primary w-full">
+        <LoadingButton
+          type="submit"
+          loading={loading}
+          className="btn-primary w-full"
+        >
           Issue document
         </LoadingButton>
       </form>
