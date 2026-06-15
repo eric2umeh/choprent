@@ -1,6 +1,6 @@
-/** UI preview without Supabase auth — set NEXT_PUBLIC_DEMO_MODE=true */
+/** Always use real Supabase data when authenticated. */
 export function isDemoMode(): boolean {
-  return process.env.NEXT_PUBLIC_DEMO_MODE === "true";
+  return false;
 }
 
 export function appUrl(): string {
