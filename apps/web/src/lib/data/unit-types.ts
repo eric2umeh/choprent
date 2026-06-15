@@ -3,6 +3,7 @@ import type { PropertyType, UnitStatus } from "@/types/database";
 export type UnitListItem = {
   id: string;
   unitCode: string;
+  propertyName: string | null;
   propertyType: PropertyType;
   status: UnitStatus;
   tenantName: string | null;
