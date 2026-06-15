@@ -7,12 +7,20 @@ import {
   type UnitActionState,
 } from "@/lib/actions/units";
 import { PROPERTY_TYPES } from "@/lib/mock/data";
+import type { PropertySummary } from "@/lib/data/property-types";
+import { formatSiteType } from "@/lib/data/property-types";
 import { LoadingButton } from "@/components/ui/loading-button";
 import { toast } from "@/components/ui/toast";
 
 const initialState: UnitActionState = {};
 
-export function NewUnitForm({ orgSlug }: { orgSlug: string }) {
+export function NewUnitForm({
+  orgSlug,
+  properties,
+}: {
+  orgSlug: string;
+  properties: PropertySummary[];
+}) {
   const [state, formAction, pending] = useActionState(
     createUnit.bind(null, orgSlug),
     initialState
@@ -28,6 +36,30 @@ export function NewUnitForm({ orgSlug }: { orgSlug: string }) {
 
   return (
     <form action={formAction} className="space-y-4">
+      {properties.length > 1 && (
+        <div>
+          <label className="text-label normal-case">Property</label>
+          <select name="site_id" className="input-field mt-1" required disabled={pending}>
+            <option value="">Select property…</option>
+            {properties.map((property) => (
+              <option key={property.id} value={property.id}>
+                {property.name} ({formatSiteType(property.siteType)})
+              </option>
+            ))}
+          </select>
+        </div>
+      )}
+
+      {properties.length === 1 && (
+        <input type="hidden" name="site_id" value={properties[0].id} />
+      )}
+
+      {properties.length === 1 && (
+        <p className="rounded-lg border border-border bg-surface-subtle px-3 py-2 text-xs text-muted">
+          Adding to <span className="font-semibold text-foreground">{properties[0].name}</span>
+        </p>
+      )}
+
       <div>
         <label className="text-label normal-case">Unit code</label>
         <input
