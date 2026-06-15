@@ -11,17 +11,17 @@ const ROLES: { value: MembershipRole; label: string; hint: string }[] = [
   {
     value: "owner",
     label: "Landlord",
-    hint: "Owns the plaza — full access, can add shops",
+    hint: "Create your own workspace — add plazas, estates, and units",
   },
   {
     value: "manager",
     label: "Manager",
-    hint: "Runs day-to-day — leases, payments, letters",
+    hint: "Join a landlord's team (demo: pilot plaza until invites ship)",
   },
   {
     value: "agent",
     label: "Agent",
-    hint: "Verifies receipts at assigned plaza only",
+    hint: "Verify receipts on site (demo: pilot plaza until invites ship)",
   },
 ];
 
@@ -55,7 +55,7 @@ export function CompleteSetupForm({ email }: { email: string }) {
     <form onSubmit={handleSubmit} className="space-y-4">
       <p className="text-sm text-muted">
         Signed in as <strong className="text-foreground">{email}</strong>. Choose
-        how you use ChopRent at this plaza:
+        how you use ChopRent:
       </p>
 
       <div className="space-y-2">
