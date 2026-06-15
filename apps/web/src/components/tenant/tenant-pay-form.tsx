@@ -37,7 +37,9 @@ export function TenantPayForm({ orgSlug }: { orgSlug: string }) {
         <p className="mt-2 text-sm font-medium text-foreground">
           {fileName ?? "Tap to upload receipt"}
         </p>
-        <p className="mt-0.5 text-cell-muted">JPG, PNG or PDF · max 10MB · required</p>
+        <p className="mt-0.5 text-cell-muted">
+          JPG, PNG or PDF · max 10MB · required
+        </p>
         <input
           type="file"
           name="receipt"
