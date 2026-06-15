@@ -21,8 +21,8 @@ type LoginMethod = "password" | "magic_link" | "phone";
 type PasswordMode = "sign_in" | "sign_up" | "forgot_password";
 
 const SIGNUP_ROLES: { value: MembershipRole; label: string }[] = [
-  { value: "owner", label: "Landlord — I own this plaza" },
-  { value: "manager", label: "Manager — I run day-to-day operations" },
+  { value: "owner", label: "Landlord — I manage my own properties" },
+  { value: "manager", label: "Manager — I run day-to-day for a landlord" },
   { value: "agent", label: "Agent — I verify payments on site" },
 ];
 

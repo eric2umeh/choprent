@@ -74,9 +74,7 @@ export function UnitsList({
       header: "Unit",
       mobilePrimary: true,
       render: (u) => (
-        <span className="text-sm font-semibold text-foreground">
-          {u.unitCode}
-        </span>
+        <span className="text-table-cell-strong">{u.unitCode}</span>
       ),
     },
     ...(showPropertyColumn
@@ -85,7 +83,7 @@ export function UnitsList({
             key: "property",
             header: "Property",
             render: (u: UnitListItem) => (
-              <span className="text-cell-muted">{u.propertyName ?? "—"}</span>
+              <span className="text-table-cell-muted">{u.propertyName ?? "—"}</span>
             ),
           } satisfies Column<UnitListItem>,
         ]
@@ -95,7 +93,7 @@ export function UnitsList({
       header: "Type",
       mobilePrimary: true,
       render: (u) => (
-        <span className="text-cell-muted capitalize">
+        <span className="text-table-cell-muted capitalize">
           {formatPropertyType(u.propertyType)}
         </span>
       ),
@@ -104,7 +102,9 @@ export function UnitsList({
       key: "tenant",
       header: "Tenant",
       mobilePrimary: true,
-      render: (u) => <span className="text-cell">{u.tenantName ?? "—"}</span>,
+      render: (u) => (
+        <span className="text-table-cell">{u.tenantName ?? "—"}</span>
+      ),
     },
     {
       key: "status",
@@ -117,7 +117,7 @@ export function UnitsList({
       key: "rent",
       header: "Annual rent",
       render: (u) => (
-        <span className="text-cell font-medium">
+        <span className="text-money">
           {u.annualRent > 0 ? formatNaira(u.annualRent) : "—"}
         </span>
       ),
@@ -126,13 +126,7 @@ export function UnitsList({
       key: "arrears",
       header: "Arrears",
       render: (u) => (
-        <span
-          className={
-            u.arrears > 0
-              ? "text-sm font-medium text-red-600"
-              : "text-cell-muted"
-          }
-        >
+        <span className={u.arrears > 0 ? "text-money-negative" : "text-table-cell-muted"}>
           {u.arrears > 0 ? formatNaira(u.arrears) : "—"}
         </span>
       ),
@@ -141,7 +135,7 @@ export function UnitsList({
       key: "dva",
       header: "Shop account",
       render: (u) => (
-        <span className="text-cell-muted font-mono text-[11px]">
+        <span className="font-mono text-[11px] text-table-cell-muted">
           {u.virtualAccount ?? "—"}
         </span>
       ),
@@ -222,27 +216,27 @@ export function UnitsList({
               >
                 <div className="flex items-start justify-between gap-2">
                   <div>
-                    <p className="text-sm font-semibold">{unit.unitCode}</p>
-                    <p className="text-cell-muted capitalize">
+                    <p className="text-list-primary">{unit.unitCode}</p>
+                    <p className="mt-0.5 text-list-secondary capitalize">
                       {formatPropertyType(unit.propertyType)}
                     </p>
                     {showPropertyColumn && unit.propertyName && (
-                      <p className="mt-0.5 text-[11px] text-muted">{unit.propertyName}</p>
+                      <p className="mt-0.5 text-list-meta">{unit.propertyName}</p>
                     )}
                   </div>
                   <Badge variant={statusVariant(unit.status)}>
                     {unit.status}
                   </Badge>
                 </div>
-                <p className="mt-1.5 truncate text-cell-muted">
+                <p className="mt-2 truncate text-list-secondary">
                   {unit.tenantName ?? "Vacant"}
                 </p>
-                <div className="mt-1.5 flex items-center justify-between text-xs">
-                  <span className="font-medium">
+                <div className="mt-2 flex items-center justify-between">
+                  <span className="text-money">
                     {unit.annualRent > 0 ? formatNaira(unit.annualRent) : "—"}
                   </span>
                   {unit.arrears > 0 && (
-                    <span className="text-red-600">
+                    <span className="text-money-negative">
                       {formatNaira(unit.arrears)} due
                     </span>
                   )}
