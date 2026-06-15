@@ -29,7 +29,7 @@ export function ResponsiveDataTable<T extends { id: string }>({
 
   if (rows.length === 0) {
     return (
-      <div className="px-3 py-10 text-center text-cell-muted">{emptyMessage}</div>
+      <div className="px-3 py-10 text-center text-empty-state">{emptyMessage}</div>
     );
   }
 
@@ -39,16 +39,13 @@ export function ResponsiveDataTable<T extends { id: string }>({
       <div className="hidden md:block">
         <table className="w-full table-fixed text-left">
           <thead>
-            <tr className="border-b border-border bg-surface-subtle">
+            <tr className="border-b border-border bg-surface-subtle/80">
               {columns.map((col) => (
                 <th
                   key={col.key}
-                  className={cn(
-                    "px-3 py-2 text-label font-semibold normal-case tracking-normal",
-                    col.className
-                  )}
+                  className={cn("px-3 py-2.5 text-left", col.className)}
                 >
-                  {col.header}
+                  <span className="text-table-head">{col.header}</span>
                 </th>
               ))}
             </tr>
@@ -66,7 +63,7 @@ export function ResponsiveDataTable<T extends { id: string }>({
                 {columns.map((col) => (
                   <td
                     key={col.key}
-                    className={cn("px-3 py-2.5 align-middle", col.className)}
+                    className={cn("px-3 py-3 align-middle", col.className)}
                   >
                     {col.render(row)}
                   </td>
@@ -142,8 +139,8 @@ function MobileRow<T>({
         <div className="mt-2 space-y-2 border-t border-border pt-2">
           {detailCols.map((col) => (
             <div key={col.key} className="flex justify-between gap-3">
-              <span className="text-label shrink-0 normal-case">{col.header}</span>
-              <div className="text-right text-cell">{col.render(row)}</div>
+              <span className="text-table-head shrink-0">{col.header}</span>
+              <div className="text-right text-table-cell">{col.render(row)}</div>
             </div>
           ))}
         </div>
