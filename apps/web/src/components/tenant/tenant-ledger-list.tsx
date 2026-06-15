@@ -8,36 +8,42 @@ import { ListPanel, ListToolbar } from "@/components/ui/page-header";
 import { Pagination, usePagination } from "@/components/ui/pagination";
 import { ResponsiveDataTable, type Column } from "@/components/ui/responsive-table";
 import { ViewToggle, type ViewMode } from "@/components/ui/view-toggle";
-import { MOCK_TENANT_LEDGER, type MockLedgerLine } from "@/lib/mock/data";
+import type { LedgerLineItem } from "@/lib/data/ledger";
 import { formatNaira } from "@/lib/auth/roles";
 
-function kindVariant(kind: MockLedgerLine["kind"]) {
+function kindVariant(kind: LedgerLineItem["kind"]) {
   if (kind === "payment") return "success" as const;
-  if (kind === "arrears") return "warning" as const;
+  if (kind === "adjustment") return "warning" as const;
   return "muted" as const;
 }
 
-export function TenantLedgerList({ balance }: { balance: number }) {
+export function TenantLedgerList({
+  balance,
+  lines,
+}: {
+  balance: number;
+  lines: LedgerLineItem[];
+}) {
   const [view, setView] = useState<ViewMode>("table");
   const [search, setSearch] = useState("");
   const [kindFilter, setKindFilter] = useState("all");
 
   const filtered = useMemo(() => {
-    return MOCK_TENANT_LEDGER.filter((line) => {
+    return lines.filter((line) => {
       const q = search.toLowerCase();
       const matchSearch =
         !q || line.description.toLowerCase().includes(q);
       const matchKind = kindFilter === "all" || line.kind === kindFilter;
       return matchSearch && matchKind;
     });
-  }, [search, kindFilter]);
+  }, [lines, search, kindFilter]);
 
   const { page, setPage, totalPages, slice, pageSize } = usePagination(
     filtered,
     6
   );
 
-  const columns: Column<MockLedgerLine>[] = [
+  const columns: Column<LedgerLineItem>[] = [
     {
       key: "desc",
       header: "Description",
@@ -53,10 +59,10 @@ export function TenantLedgerList({ balance }: { balance: number }) {
       render: (l) => (
         <span
           className={`text-sm font-semibold ${
-            l.amount < 0 ? "text-green-700" : "text-foreground"
+            l.kind === "payment" ? "text-green-700" : "text-foreground"
           }`}
         >
-          {l.amount < 0 ? "−" : ""}
+          {l.kind === "payment" ? "+" : "−"}
           {formatNaira(Math.abs(l.amount))}
         </span>
       ),
@@ -81,7 +87,7 @@ export function TenantLedgerList({ balance }: { balance: number }) {
   return (
     <>
       <div className="border-b border-border bg-white px-3 py-2.5">
-        <p className="text-label normal-case">Current balance</p>
+        <p className="text-label normal-case">Outstanding balance</p>
         <p className="text-lg font-bold text-foreground">{formatNaira(balance)}</p>
       </div>
 
@@ -105,7 +111,7 @@ export function TenantLedgerList({ balance }: { balance: number }) {
               { value: "all", label: "All types" },
               { value: "charge", label: "Charge" },
               { value: "payment", label: "Payment" },
-              { value: "arrears", label: "Arrears" },
+              { value: "adjustment", label: "Adjustment" },
             ]}
           />
         </FilterBar>
@@ -133,10 +139,10 @@ export function TenantLedgerList({ balance }: { balance: number }) {
                   <div className="shrink-0 text-right">
                     <p
                       className={`text-sm font-semibold ${
-                        line.amount < 0 ? "text-green-700" : "text-foreground"
+                        line.kind === "payment" ? "text-green-700" : "text-foreground"
                       }`}
                     >
-                      {line.amount < 0 ? "−" : ""}
+                      {line.kind === "payment" ? "+" : "−"}
                       {formatNaira(Math.abs(line.amount))}
                     </p>
                     <Badge variant={kindVariant(line.kind)} className="mt-1 capitalize">
