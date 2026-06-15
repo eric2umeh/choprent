@@ -1,11 +1,11 @@
 import Link from "next/link";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { MOCK_TENANT_LEDGER } from "@/lib/mock/data";
+import { CopyAccountButton } from "@/components/tenant/copy-account-button";
+import { requireTenantContext } from "@/lib/auth/session";
+import { getTenantHomeSummary } from "@/lib/data/tenant-home";
 import { formatNaira } from "@/lib/auth/roles";
-import { Copy, Upload } from "lucide-react";
-
-const balance = MOCK_TENANT_LEDGER.reduce((sum, l) => sum + l.amount, 0);
+import { Upload } from "lucide-react";
 
 export default async function TenantHomePage({
   params,
@@ -13,29 +13,42 @@ export default async function TenantHomePage({
   params: Promise<{ orgSlug: string }>;
 }) {
   const { orgSlug } = await params;
+  const ctx = await requireTenantContext(orgSlug);
+  const summary = await getTenantHomeSummary(
+    ctx.org.id,
+    ctx.unitId,
+    ctx.leaseId
+  );
 
   return (
     <div className="space-y-0">
       <div className="border-b border-green-200 bg-green-50 px-3 py-3">
-        <p className="text-label normal-case text-green-800">Balance due</p>
-        <p className="text-xl font-bold text-foreground">{formatNaira(balance)}</p>
-        <p className="text-cell-muted">Shop 14 · H2 2025</p>
+        <p className="text-stat-label text-green-800">Balance due</p>
+        <p className="text-stat-value">{formatNaira(summary.balance)}</p>
+        <p className="text-list-meta">
+          Shop {ctx.unitCode}
+          {summary.periodLabel ? ` · ${summary.periodLabel}` : ""}
+        </p>
       </div>
 
-      <Card className="rounded-none border-x-0 border-t-0 shadow-none">
-        <p className="text-label normal-case">Pay to shop account</p>
-        <p className="mt-1 font-mono text-lg font-bold tracking-wide text-foreground">
-          9876543210
-        </p>
-        <p className="text-cell-muted">GTBank · Chidi Traders Ltd</p>
-        <button
-          type="button"
-          className="mt-2 inline-flex items-center gap-1.5 text-xs font-medium text-green-700"
-        >
-          <Copy className="h-3.5 w-3.5" />
-          Copy account number
-        </button>
-      </Card>
+      {summary.settlement ? (
+        <Card className="rounded-none border-x-0 border-t-0 shadow-none">
+          <p className="text-stat-label">Pay to shop account</p>
+          <p className="mt-1 font-mono text-lg font-bold tracking-wide text-foreground">
+            {summary.settlement.accountNumber}
+          </p>
+          <p className="text-list-meta">
+            {summary.settlement.bankName} · {summary.settlement.accountName}
+          </p>
+          <CopyAccountButton accountNumber={summary.settlement.accountNumber} />
+        </Card>
+      ) : (
+        <Card className="rounded-none border-x-0 border-t-0 shadow-none">
+          <p className="text-list-meta">
+            Settlement account not configured — contact management.
+          </p>
+        </Card>
+      )}
 
       <div className="grid grid-cols-2 gap-2 border-b border-border bg-white px-3 py-3">
         <Link
@@ -54,24 +67,34 @@ export default async function TenantHomePage({
       </div>
 
       <div className="bg-white px-3 py-3">
-        <h2 className="text-sm font-semibold text-foreground">Recent activity</h2>
+        <h2 className="text-section-title">Recent activity</h2>
         <div className="mt-2 divide-y divide-border">
-          <div className="flex justify-between py-2 text-sm">
-            <span className="text-cell-muted">Mar payment verified</span>
-            <span className="font-medium text-green-700">
-              −{formatNaira(690000)}
-            </span>
-          </div>
-          <div className="flex justify-between py-2 text-sm">
-            <span className="text-cell-muted">Annual charges</span>
-            <span className="font-medium text-foreground">
-              {formatNaira(1370000)}
-            </span>
-          </div>
+          {summary.recentLines.length === 0 ? (
+            <p className="py-2 text-empty-state">No activity yet.</p>
+          ) : (
+            summary.recentLines.map((line) => (
+              <div key={line.id} className="flex justify-between gap-2 py-2">
+                <span className="min-w-0 truncate text-list-secondary">{line.label}</span>
+                <span
+                  className={
+                    line.kind === "payment"
+                      ? "text-money shrink-0 text-green-700"
+                      : "text-money shrink-0"
+                  }
+                >
+                  {line.kind === "payment" ? "−" : "+"}
+                  {formatNaira(Math.abs(line.amount))}
+                </span>
+              </div>
+            ))
+          )}
         </div>
-        <Badge variant="warning" className="mt-2">
-          1 receipt pending review
-        </Badge>
+        {summary.pendingPayments > 0 && (
+          <Badge variant="warning" className="mt-2">
+            {summary.pendingPayments} receipt
+            {summary.pendingPayments === 1 ? "" : "s"} pending review
+          </Badge>
+        )}
       </div>
     </div>
   );
