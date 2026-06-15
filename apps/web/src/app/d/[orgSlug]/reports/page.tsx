@@ -21,7 +21,7 @@ export default function ReportsPage() {
         }
       />
 
-      <div className="grid grid-cols-2 gap-2 border-b border-border bg-white px-3 py-3 xl:grid-cols-3">
+      <div className="grid grid-cols-2 gap-2.5 border-b border-border bg-white px-3 py-3 xl:grid-cols-3">
         <StatCard
           label="Collection rate"
           value={`${MOCK_STATS.collectionRate}%`}
@@ -30,18 +30,18 @@ export default function ReportsPage() {
         <StatCard
           label="Verified total"
           value={formatNaira(MOCK_STATS.collected)}
+          hint="Payments confirmed"
         />
         <StatCard
           label="Arrears"
           value={formatNaira(MOCK_STATS.arrears)}
+          hint="Prior-year balances"
         />
       </div>
 
       <Card className="rounded-none border-x-0 border-t-0 shadow-none">
-        <h2 className="text-sm font-semibold text-foreground">
-          Monthly metrics checklist
-        </h2>
-        <ul className="mt-2 space-y-1.5 text-cell-muted">
+        <h2 className="text-section-title">Monthly metrics checklist</h2>
+        <ul className="mt-3 space-y-2 text-list-secondary">
           <li>✓ units_export.csv</li>
           <li>✓ payments_export.csv</li>
           <li>✓ Collection rate chart screenshot</li>
