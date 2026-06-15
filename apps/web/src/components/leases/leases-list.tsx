@@ -39,29 +39,25 @@ export function LeasesList({ canManage }: { canManage: boolean }) {
       key: "unit",
       header: "Unit",
       mobilePrimary: true,
-      render: (l) => (
-        <span className="text-sm font-semibold">{l.unitCode}</span>
-      ),
+      render: (l) => <span className="text-table-cell-strong">{l.unitCode}</span>,
     },
     {
       key: "tenant",
       header: "Tenant",
       mobilePrimary: true,
-      render: (l) => <span className="text-cell">{l.tenantName}</span>,
+      render: (l) => <span className="text-table-cell">{l.tenantName}</span>,
     },
     {
       key: "total",
       header: "Annual total",
       mobilePrimary: true,
-      render: (l) => (
-        <span className="text-sm font-semibold">{formatNaira(l.annualTotal)}</span>
-      ),
+      render: (l) => <span className="text-money">{formatNaira(l.annualTotal)}</span>,
     },
     {
       key: "period",
       header: "Lease period",
       render: (l) => (
-        <span className="text-cell-muted">
+        <span className="text-table-cell-muted tabular-nums">
           {l.startDate} → {l.endDate}
         </span>
       ),
@@ -70,7 +66,7 @@ export function LeasesList({ canManage }: { canManage: boolean }) {
       key: "cadence",
       header: "Billing",
       render: (l) => (
-        <span className="text-cell-muted capitalize">{l.billingCadence}</span>
+        <span className="text-meta-pill capitalize">{l.billingCadence}</span>
       ),
     },
     {
@@ -81,7 +77,7 @@ export function LeasesList({ canManage }: { canManage: boolean }) {
     {
       key: "phone",
       header: "Phone",
-      render: (l) => <span className="text-cell-muted">{l.tenantPhone}</span>,
+      render: (l) => <span className="text-table-cell-muted">{l.tenantPhone}</span>,
     },
   ];
 
