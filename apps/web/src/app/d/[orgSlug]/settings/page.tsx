@@ -1,32 +1,43 @@
 import { PageHeader } from "@/components/ui/page-header";
 import { Card } from "@/components/ui/card";
-import { MOCK_ORG } from "@/lib/mock/data";
+import { PropertiesPanel } from "@/components/settings/properties-panel";
+import { requireStaffContext } from "@/lib/auth/session";
+import { listPropertiesForOrg } from "@/lib/data/sites";
+import type { MockRole } from "@/lib/mock/data";
 
-export default function SettingsPage() {
-  const site = MOCK_ORG.sites[0];
+export default async function SettingsPage({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ orgSlug: string }>;
+  searchParams: Promise<{ role?: string }>;
+}) {
+  const { orgSlug } = await params;
+  const { role: roleParam } = await searchParams;
+  const ctx = await requireStaffContext(orgSlug, roleParam as MockRole | undefined);
+  const properties = await listPropertiesForOrg(ctx.org.id, ctx.demoMode);
 
   return (
     <div>
       <PageHeader
         title="Settings"
-        description="Organization and plaza configuration"
+        description="Properties, settlement accounts, and integrations"
       />
 
       <div className="space-y-0">
         <Card className="rounded-none border-x-0 border-t-0 shadow-none">
-          <h2 className="text-sm font-semibold text-foreground">Plaza</h2>
-          <div className="mt-3 space-y-3">
-            <div>
-              <label className="text-label normal-case">Plaza name</label>
-              <input className="input-field mt-1" defaultValue={site.name} />
-            </div>
-            <div>
-              <label className="text-label normal-case">Address</label>
-              <input className="input-field mt-1" defaultValue={site.address} />
-            </div>
-            <button type="button" className="btn-primary px-3 py-1.5">
-              Save (mock)
-            </button>
+          <h2 className="text-sm font-semibold text-foreground">Your properties</h2>
+          <p className="mt-1 text-cell-muted">
+            Landlords can manage multiple plazas, estates, houses, and other sites.
+            Units (shops, flats, rooms) are added inside each property.
+          </p>
+
+          <div className="mt-4">
+            <PropertiesPanel
+              orgSlug={orgSlug}
+              properties={properties}
+              canManage={ctx.role === "owner"}
+            />
           </div>
         </Card>
 
@@ -34,26 +45,16 @@ export default function SettingsPage() {
           <h2 className="text-sm font-semibold text-foreground">
             Settlement accounts
           </h2>
-          <div className="mt-3 rounded-md border border-border bg-surface-subtle px-3 py-2.5">
-            <p className="text-sm font-medium text-foreground">GTBank · Main rent</p>
-            <p className="text-cell-muted">0123456789 · Pilot Plaza Collections</p>
-            <span className="mt-1.5 inline-flex rounded-md bg-green-100 px-2 py-0.5 text-[11px] font-medium text-green-800">
-              Default
-            </span>
-          </div>
-          <button type="button" className="btn-ghost mt-3 px-3 py-1.5">
-            Add account (mock)
-          </button>
+          <p className="mt-1 text-cell-muted">
+            Bank accounts where rent is collected — per property, coming soon.
+          </p>
         </Card>
 
         <Card className="rounded-none border-x-0 border-t-0 shadow-none">
           <h2 className="text-sm font-semibold text-foreground">Paystack DVA</h2>
           <p className="mt-1 text-cell-muted">
-            Phase 1.5 — dedicated virtual accounts per unit. Fee bearer: undecided.
+            Dedicated virtual accounts per shop — Phase 1.5.
           </p>
-          <button type="button" className="btn-primary mt-3 px-3 py-1.5" disabled>
-            Connect Paystack (coming soon)
-          </button>
         </Card>
       </div>
     </div>
