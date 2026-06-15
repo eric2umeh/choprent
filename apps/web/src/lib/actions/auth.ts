@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
+import { provisionLandlordOrganization } from "@/lib/auth/org-provision";
 import { getSessionUser } from "@/lib/auth/session";
 import {
   createAdminClient,
@@ -17,17 +18,6 @@ export type AuthActionState = {
 };
 
 const STAFF_ROLES: MembershipRole[] = ["owner", "manager", "agent"];
-
-async function plazaAlreadyHasLandlord(): Promise<boolean> {
-  const admin = createAdminClient();
-  const { count } = await admin
-    .from("memberships")
-    .select("*", { count: "exact", head: true })
-    .eq("organization_id", PILOT_ORG_ID)
-    .eq("role", "owner");
-
-  return (count ?? 0) > 0;
-}
 
 async function ensurePilotSiteExists(admin: ReturnType<typeof createAdminClient>) {
   const { count } = await admin
@@ -54,7 +44,53 @@ async function ensurePilotSiteExists(admin: ReturnType<typeof createAdminClient>
   }
 }
 
-/** Link the signed-in user to Eri Plaza with a staff role — no SQL required. */
+async function getExistingStaffMembership(userId: string) {
+  const admin = createAdminClient();
+  return admin
+    .from("memberships")
+    .select("role, organization_id, organizations(slug)")
+    .eq("user_id", userId)
+    .in("role", ["owner", "manager", "agent"])
+    .limit(1)
+    .maybeSingle();
+}
+
+async function linkToPilotOrg(
+  userId: string,
+  role: Extract<MembershipRole, "manager" | "agent">
+): Promise<AuthActionState> {
+  const admin = createAdminClient();
+  await ensurePilotSiteExists(admin);
+
+  const { error: membershipError } = await admin.from("memberships").insert({
+    user_id: userId,
+    organization_id: PILOT_ORG_ID,
+    role,
+  });
+
+  if (membershipError) {
+    return { error: membershipError.message };
+  }
+
+  if (role === "agent") {
+    const { error: assignError } = await admin.from("site_assignments").insert({
+      user_id: userId,
+      site_id: PILOT_SITE_ID,
+    });
+    if (assignError && assignError.code !== "23505") {
+      return { error: assignError.message };
+    }
+  }
+
+  revalidatePath("/access-pending");
+  revalidatePath("/d/pilot-plaza");
+  return { success: true };
+}
+
+/**
+ * Link a signed-in user to ChopRent staff access.
+ * Landlords get a new organization. Managers/agents join the demo pilot org until invites ship.
+ */
 export async function linkPlazaAccount(
   role: MembershipRole
 ): Promise<AuthActionState> {
@@ -71,52 +107,30 @@ export async function linkPlazaAccount(
   }
 
   try {
-    const admin = createAdminClient();
-    await ensurePilotSiteExists(admin);
-
-    const { data: existing } = await admin
-      .from("memberships")
-      .select("role")
-      .eq("user_id", user.id)
-      .eq("organization_id", PILOT_ORG_ID)
-      .maybeSingle();
+    const { data: existing } = await getExistingStaffMembership(user.id);
 
     if (existing) {
       revalidatePath("/access-pending");
-      revalidatePath("/d/pilot-plaza");
+      const slug =
+        existing.organizations &&
+        typeof existing.organizations === "object" &&
+        !Array.isArray(existing.organizations) &&
+        "slug" in existing.organizations
+          ? (existing.organizations as { slug: string }).slug
+          : null;
+      if (slug) revalidatePath(`/d/${slug}`);
       return { success: true };
     }
 
-    if (role === "owner" && (await plazaAlreadyHasLandlord())) {
-      return {
-        error:
-          "This plaza already has a landlord account. Choose Manager or Agent, or ask the landlord to add you from their dashboard (coming soon).",
-      };
+    if (role === "owner") {
+      const org = await provisionLandlordOrganization(user);
+      revalidatePath("/access-pending");
+      revalidatePath(`/d/${org.slug}`);
+      revalidatePath(`/d/${org.slug}/settings`);
+      return { success: true };
     }
 
-    const { error: membershipError } = await admin.from("memberships").insert({
-      user_id: user.id,
-      organization_id: PILOT_ORG_ID,
-      role,
-    });
-
-    if (membershipError) {
-      return { error: membershipError.message };
-    }
-
-    if (role === "agent") {
-      const { error: assignError } = await admin.from("site_assignments").insert({
-        user_id: user.id,
-        site_id: PILOT_SITE_ID,
-      });
-      if (assignError && assignError.code !== "23505") {
-        return { error: assignError.message };
-      }
-    }
-
-    revalidatePath("/access-pending");
-    revalidatePath("/d/pilot-plaza");
-    return { success: true };
+    return linkToPilotOrg(user.id, role);
   } catch (err) {
     return {
       error:
