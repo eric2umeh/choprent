@@ -4,7 +4,6 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { canAddUnits } from "@/lib/auth/roles";
 import { requireStaffContext } from "@/lib/auth/session";
-import { getDefaultSiteId } from "@/lib/data/units";
 import { createClient } from "@/lib/supabase/server";
 import type { PropertyType } from "@/types/database";
 
@@ -31,6 +30,7 @@ export async function createUnit(
     return { error: "Demo mode — connect Supabase auth to create real units." };
   }
 
+  const siteId = String(formData.get("site_id") ?? "").trim();
   const unitCode = String(formData.get("unit_code") ?? "").trim();
   const propertyType = String(formData.get("property_type") ?? "shop") as PropertyType;
   const compositeNote = String(formData.get("composite_note") ?? "").trim() || null;
@@ -39,16 +39,30 @@ export async function createUnit(
     | "occupied"
     | "maintenance";
 
+  if (!siteId) {
+    return {
+      error:
+        "Choose which property this unit belongs to. Add a property in Settings if none exist.",
+    };
+  }
+
   if (!unitCode) {
     return { error: "Unit code is required." };
   }
 
-  const siteId = await getDefaultSiteId(ctx.org.id);
-  if (!siteId) {
-    return { error: "No plaza found for this organization." };
+  const supabase = await createClient();
+
+  const { data: site } = await supabase
+    .from("sites")
+    .select("id")
+    .eq("id", siteId)
+    .eq("organization_id", ctx.org.id)
+    .maybeSingle();
+
+  if (!site) {
+    return { error: "Property not found. Refresh and try again." };
   }
 
-  const supabase = await createClient();
   const { data, error } = await supabase
     .from("units")
     .insert({
@@ -66,7 +80,7 @@ export async function createUnit(
 
   if (error) {
     if (error.code === "23505") {
-      return { error: "A unit with this code already exists in the plaza." };
+      return { error: "A unit with this code already exists in that property." };
     }
     return { error: error.message };
   }
