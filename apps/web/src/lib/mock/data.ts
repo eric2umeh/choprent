@@ -13,7 +13,10 @@ export interface MockUser {
 export interface MockSite {
   id: string;
   name: string;
+  siteType: "plaza" | "mall" | "estate" | "compound" | "house";
   address: string;
+  city: string;
+  state: string;
   unitCount: number;
 }
 
@@ -85,8 +88,20 @@ export const MOCK_ORG: MockOrg = {
     {
       id: "site-1",
       name: "Eri Plaza",
+      siteType: "plaza",
       address: "12 Allen Avenue, Ikeja, Lagos",
-      unitCount: 6,
+      city: "Ikeja",
+      state: "Lagos",
+      unitCount: 4,
+    },
+    {
+      id: "site-2",
+      name: "Lekki House 4",
+      siteType: "house",
+      address: "4 Admiralty Way, Lekki Phase 1",
+      city: "Lekki",
+      state: "Lagos",
+      unitCount: 1,
     },
   ],
 };
