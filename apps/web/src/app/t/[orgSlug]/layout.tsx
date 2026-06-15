@@ -1,8 +1,6 @@
 import { TenantHeader, TenantMobileNav } from "@/components/layout/tenant-nav";
 import { requireTenantContext } from "@/lib/auth/session";
-import { isDemoMode } from "@/lib/env";
-import { MOCK_ORG } from "@/lib/mock/data";
-import { notFound } from "next/navigation";
+import { displayOrgName, getOrgBranding } from "@/lib/data/org-profile";
 
 export default async function TenantLayout({
   children,
@@ -12,12 +10,8 @@ export default async function TenantLayout({
   params: Promise<{ orgSlug: string }>;
 }) {
   const { orgSlug } = await params;
-
-  if (isDemoMode() && orgSlug !== MOCK_ORG.slug) {
-    notFound();
-  }
-
   const ctx = await requireTenantContext(orgSlug);
+  const branding = await getOrgBranding(ctx.org.id);
 
   return (
     <div className="min-h-screen bg-surface-subtle pb-20">
@@ -25,6 +19,7 @@ export default async function TenantLayout({
         orgSlug={orgSlug}
         tenantName={ctx.tenantDisplayName}
         unitCode={ctx.unitCode}
+        orgDisplayName={branding ? displayOrgName(branding) : ctx.org.name}
       />
       <main className="animate-page-enter mx-auto max-w-lg pb-20">{children}</main>
       <TenantMobileNav orgSlug={orgSlug} />
