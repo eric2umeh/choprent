@@ -16,7 +16,8 @@ export default async function AccessPendingPage() {
       <div className="w-full max-w-md rounded-xl border border-border bg-white p-6 shadow-sm">
         <h1 className="text-page-title">One more step</h1>
         <p className="text-page-desc mt-1">
-          Tell us your role at the plaza so we can open the right dashboard for you.
+          Landlords get a private workspace for their properties. Managers and agents
+          join a landlord&apos;s team.
         </p>
 
         <div className="mt-5">
