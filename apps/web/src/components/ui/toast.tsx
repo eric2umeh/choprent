@@ -68,7 +68,7 @@ function ToastViewport({ items, onDismiss }: { items: ToastItem[]; onDismiss: (i
         return (
           <div
             key={item.id}
-            className={`pointer-events-auto flex w-full max-w-sm items-start gap-2 rounded-lg border px-3 py-2.5 shadow-md ${styles[item.type]}`}
+            className={`pointer-events-auto flex w-full max-w-sm items-start gap-2 rounded-xl border px-3 py-2.5 shadow-lg backdrop-blur-sm animate-fade-down ${styles[item.type]}`}
             role="status"
           >
             <Icon className={`mt-0.5 size-4 shrink-0 ${iconColors[item.type]}`} aria-hidden />
@@ -76,7 +76,7 @@ function ToastViewport({ items, onDismiss }: { items: ToastItem[]; onDismiss: (i
             <button
               type="button"
               onClick={() => onDismiss(item.id)}
-              className="shrink-0 rounded p-0.5 opacity-60 hover:opacity-100"
+              className="shrink-0 rounded p-0.5 opacity-60 transition-opacity hover:opacity-100"
               aria-label="Dismiss"
             >
               <X className="size-3.5" />
