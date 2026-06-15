@@ -7,25 +7,21 @@ import { requireStaffContext } from "@/lib/auth/session";
 import { getDashboardStats } from "@/lib/data/dashboard-stats";
 import { listPaymentsForOrg } from "@/lib/data/payments";
 import { listUnitsForOrg } from "@/lib/data/units";
+import { formatPropertyType } from "@/lib/data/unit-types";
 import { formatNaira } from "@/lib/auth/roles";
-import type { MockRole } from "@/lib/mock/data";
 
 export default async function DashboardHomePage({
   params,
-  searchParams,
 }: {
   params: Promise<{ orgSlug: string }>;
-  searchParams: Promise<{ role?: string }>;
 }) {
   const { orgSlug } = await params;
-  const { role: roleParam } = await searchParams;
-  const ctx = await requireStaffContext(orgSlug, roleParam as MockRole | undefined);
-  const q = ctx.demoMode && roleParam && roleParam !== "owner" ? `?role=${roleParam}` : "";
+  const ctx = await requireStaffContext(orgSlug);
 
   const [stats, payments, units] = await Promise.all([
-    getDashboardStats(ctx.org.id, ctx.demoMode),
-    listPaymentsForOrg(ctx.org.id, ctx.demoMode),
-    listUnitsForOrg(ctx.org.id, ctx.demoMode),
+    getDashboardStats(ctx.org.id),
+    listPaymentsForOrg(ctx.org.id),
+    listUnitsForOrg(ctx.org.id),
   ]);
 
   const pending = payments.filter((p) => p.status === "pending");
@@ -38,24 +34,20 @@ export default async function DashboardHomePage({
         <StatCard
           label="Collected"
           value={formatNaira(stats.collectedThisYear)}
-          hint={
-            stats.expectedThisYear > 0
-              ? `${formatNaira(stats.expectedThisYear)} expected in ${stats.year}`
-              : `No ${stats.year} charges posted yet`
-          }
+          hint={`${formatNaira(stats.expectedThisYear)} expected in ${stats.year}`}
         />
         <StatCard
           label="Outstanding"
           value={formatNaira(stats.pastYearsArrears)}
-          hint="Prior-year balances · all tenants"
+          hint="Prior-year arrears on units"
         />
         <StatCard
-          label="Occupancy"
+          label="Occupied"
           value={`${stats.occupiedUnits}/${stats.totalUnits}`}
           hint={`${stats.vacantUnits} vacant`}
         />
         <StatCard
-          label="Pending verify"
+          label="Pending"
           value={String(stats.pendingVerifications)}
           hint="Needs action"
         />
@@ -64,7 +56,7 @@ export default async function DashboardHomePage({
       <div className="border-b border-border bg-white px-3 py-4">
         <SectionHeader
           title="Pending verifications"
-          href={`/d/${orgSlug}/payments${q}`}
+          href={`/d/${orgSlug}/payments`}
         />
         <div className="space-y-2">
           {pending.length === 0 ? (
@@ -95,31 +87,46 @@ export default async function DashboardHomePage({
       </div>
 
       <div className="bg-white px-3 py-4">
-        <SectionHeader title="Units" href={`/d/${orgSlug}/units${q}`} />
-        <div className="divide-y divide-border rounded-xl border border-border">
-          {units.slice(0, 4).map((unit) => (
-            <Link
-              key={unit.id}
-              href={`/d/${orgSlug}/units/${unit.id}${q}`}
-              className="flex items-center justify-between gap-3 px-3 py-3 transition hover:bg-green-50/40"
-            >
-              <div className="min-w-0">
-                <p className="text-list-primary">{unit.unitCode}</p>
-                <p className="mt-0.5 text-list-secondary capitalize">
-                  {unit.propertyType}
-                  {unit.tenantName ? ` · ${unit.tenantName}` : ""}
-                </p>
-              </div>
-              {unit.arrears > 0 ? (
-                <span className="text-money-negative shrink-0">
-                  {formatNaira(unit.arrears)}
-                </span>
-              ) : (
-                <Badge variant="success">Current</Badge>
-              )}
-            </Link>
-          ))}
-        </div>
+        <SectionHeader title="Units" href={`/d/${orgSlug}/properties`} />
+        {units.length === 0 ? (
+          <p className="text-empty-state">No units yet — add a property, then add units.</p>
+        ) : (
+          <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-3">
+            {units.slice(0, 6).map((unit) => (
+              <Link
+                key={unit.id}
+                href={`/d/${orgSlug}/properties/${unit.siteId}/units/${unit.id}`}
+                className="interactive-lift rounded-xl border border-border bg-surface-subtle/40 p-3 transition hover:border-green-200 hover:bg-green-50/30"
+              >
+                <div className="flex items-start justify-between gap-2">
+                  <p className="min-w-0 flex-1 truncate text-sm leading-snug">
+                    <span className="text-list-primary">{unit.unitCode}</span>
+                    <span className="text-list-meta"> · </span>
+                    <span className="text-list-secondary capitalize">
+                      {formatPropertyType(unit.propertyType)}
+                    </span>
+                    <span className="text-list-meta"> · </span>
+                    <span className="text-list-secondary">
+                      {unit.tenantName ?? "Vacant"}
+                    </span>
+                  </p>
+                  {unit.arrears > 0 ? (
+                    <span className="text-money-negative shrink-0 text-xs">
+                      {formatNaira(unit.arrears)}
+                    </span>
+                  ) : (
+                    <Badge variant="success" className="shrink-0">
+                      Current
+                    </Badge>
+                  )}
+                </div>
+                {unit.propertyName && (
+                  <p className="mt-1.5 truncate text-list-meta">{unit.propertyName}</p>
+                )}
+              </Link>
+            ))}
+          </div>
+        )}
       </div>
     </div>
   );
