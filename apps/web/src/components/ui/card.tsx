@@ -29,11 +29,11 @@ export function StatCard({
   hint?: string;
 }) {
   return (
-    <Card className="interactive-lift p-3">
-      <p className="text-label normal-case tracking-wide">{label}</p>
-      <p className="mt-1 text-lg font-semibold text-foreground">{value}</p>
-      {hint && <p className="mt-0.5 text-cell-muted">{hint}</p>}
-    </Card>
+    <div className="stat-card interactive-lift">
+      <p className="text-stat-label">{label}</p>
+      <p className="text-stat-value">{value}</p>
+      {hint && <p className="text-stat-hint">{hint}</p>}
+    </div>
   );
 }
 
