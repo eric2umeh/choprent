@@ -14,7 +14,7 @@ export function FilterBar({
   children?: React.ReactNode;
 }) {
   return (
-    <div className="flex flex-col gap-2 border-b border-border bg-white px-3 py-2 sm:flex-row sm:flex-wrap sm:items-center">
+    <div className="filter-toolbar flex flex-col gap-2 border-b border-border px-3 py-2.5 sm:flex-row sm:flex-wrap sm:items-center">
       <div className="relative min-w-0 flex-1 sm:max-w-xs">
         <Search className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
         <input
@@ -49,7 +49,7 @@ export function FilterSelect({
       <select
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        className="select-field min-w-[7rem]"
+        className="select-field min-w-[7rem] font-medium text-foreground"
       >
         {options.map((o) => (
           <option key={o.value} value={o.value}>
