@@ -6,23 +6,19 @@ import { requireStaffContext } from "@/lib/auth/session";
 import { canVerifyPayments } from "@/lib/auth/roles";
 import { listPaymentsForOrg } from "@/lib/data/payments";
 import { listUnitsForOrg } from "@/lib/data/units";
-import type { MockRole } from "@/lib/mock/data";
 
 export default async function PaymentsPage({
   params,
-  searchParams,
 }: {
   params: Promise<{ orgSlug: string }>;
-  searchParams: Promise<{ role?: string }>;
 }) {
   const { orgSlug } = await params;
-  const { role: roleParam } = await searchParams;
-  const ctx = await requireStaffContext(orgSlug, roleParam as MockRole | undefined);
+  const ctx = await requireStaffContext(orgSlug);
   const canVerify = canVerifyPayments(ctx.role);
 
   const [payments, units] = await Promise.all([
-    listPaymentsForOrg(ctx.org.id, ctx.demoMode),
-    listUnitsForOrg(ctx.org.id, ctx.demoMode),
+    listPaymentsForOrg(ctx.org.id),
+    listUnitsForOrg(ctx.org.id),
   ]);
 
   const unitOptions = units.map((u) => ({ id: u.id, unitCode: u.unitCode }));
