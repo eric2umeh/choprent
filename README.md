@@ -34,6 +34,7 @@ See **[docs/07_supabase_setup.md](docs/07_supabase_setup.md)** — you do **not*
 | [docs/08_sprint1_auth_setup.md](docs/08_sprint1_auth_setup.md) | Sprint 1 auth, roles, password login |
 | [docs/09_web_app_setup.md](docs/09_web_app_setup.md) | Web app local dev |
 | [docs/12_sprint3_payments_arrears.md](docs/12_sprint3_payments_arrears.md) | Sprint 3 payments, allocation, arrears |
+| [docs/13_sprint4_tenant_documents.md](docs/13_sprint4_tenant_documents.md) | Sprint 4 tenant portal, documents, leases |
 
 ## Repo
 
