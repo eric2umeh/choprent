@@ -49,26 +49,8 @@ async function tenantNameForUnit(unitId: string): Promise<string> {
 }
 
 export async function listPaymentsForOrg(
-  orgId: string,
-  demoMode: boolean
+  orgId: string
 ): Promise<PaymentListItem[]> {
-  if (demoMode) {
-    const { MOCK_PAYMENTS } = await import("@/lib/mock/data");
-    return MOCK_PAYMENTS.map((p) => ({
-      id: p.id,
-      unitId: p.unitId,
-      unitCode: p.unitCode,
-      tenantName: p.tenantName,
-      amount: p.amount,
-      periodLabel: p.periodLabel,
-      paymentMethod: p.method,
-      status: p.status,
-      bankReference: p.bankReference ?? null,
-      receiptFileUrl: null,
-      createdAt: p.paymentDate,
-    }));
-  }
-
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("payments")
