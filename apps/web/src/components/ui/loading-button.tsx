@@ -25,7 +25,7 @@ export function LoadingButton({
     >
       {loading ? (
         <span className="inline-flex items-center justify-center gap-2">
-          <Spinner size="sm" />
+          <Spinner size="sm" className="text-current shrink-0" />
           <span>{loadingLabel ?? children}</span>
         </span>
       ) : (
