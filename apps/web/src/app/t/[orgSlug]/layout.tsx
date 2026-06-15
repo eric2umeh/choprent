@@ -26,7 +26,7 @@ export default async function TenantLayout({
         tenantName={ctx.tenantDisplayName}
         unitCode={ctx.unitCode}
       />
-      <main className="mx-auto max-w-lg pb-20">{children}</main>
+      <main className="animate-page-enter mx-auto max-w-lg pb-20">{children}</main>
       <TenantMobileNav orgSlug={orgSlug} />
     </div>
   );
