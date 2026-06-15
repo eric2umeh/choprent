@@ -105,41 +105,42 @@ export function PaymentsList({
       key: "unit",
       header: "Unit",
       mobilePrimary: true,
-      render: (p) => <span className="text-sm font-semibold">{p.unitCode}</span>,
+      render: (p) => <span className="text-table-cell-strong">{p.unitCode}</span>,
     },
     {
       key: "tenant",
       header: "Tenant",
       mobilePrimary: true,
-      render: (p) => <span className="text-cell">{p.tenantName}</span>,
+      render: (p) => <span className="text-table-cell">{p.tenantName}</span>,
     },
     {
       key: "amount",
       header: "Amount",
       mobilePrimary: true,
-      render: (p) => (
-        <span className="text-sm font-semibold">{formatNaira(p.amount)}</span>
-      ),
+      render: (p) => <span className="text-money">{formatNaira(p.amount)}</span>,
     },
     {
       key: "period",
       header: "Period",
-      render: (p) => (
-        <span className="text-cell-muted">{p.periodLabel ?? "—"}</span>
-      ),
+      render: (p) =>
+        p.periodLabel ? (
+          <span className="text-meta-pill">{p.periodLabel}</span>
+        ) : (
+          <span className="text-table-cell-muted">—</span>
+        ),
     },
     {
       key: "method",
       header: "Method",
       render: (p) => (
-        <span className="text-cell-muted">{methodLabel(p.paymentMethod)}</span>
+        <span className="text-table-cell-muted">{methodLabel(p.paymentMethod)}</span>
       ),
     },
     {
       key: "date",
       header: "Submitted",
       render: (p) => (
-        <span className="text-cell-muted">{p.createdAt.slice(0, 10)}</span>
+        <span className="text-table-cell-muted tabular-nums">{p.createdAt.slice(0, 10)}</span>
       ),
     },
     {
@@ -242,11 +243,14 @@ export function PaymentsList({
               >
                 <div className="flex justify-between gap-2">
                   <div>
-                    <p className="text-sm font-semibold">
-                      {p.unitCode} · {p.tenantName}
-                    </p>
-                    <p className="text-xs font-semibold">{formatNaira(p.amount)}</p>
-                    <p className="text-cell-muted">{p.periodLabel ?? "—"}</p>
+                    <div className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
+                      <span className="text-list-primary">{p.unitCode}</span>
+                      <span className="text-list-secondary">{p.tenantName}</span>
+                    </div>
+                    <p className="mt-1.5 text-money">{formatNaira(p.amount)}</p>
+                    {p.periodLabel && (
+                      <span className="mt-1 inline-flex text-meta-pill">{p.periodLabel}</span>
+                    )}
                   </div>
                   <Badge variant={statusBadge(p.status)}>{p.status}</Badge>
                 </div>
