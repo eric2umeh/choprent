@@ -1,6 +1,5 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { createServerClient, type CookieOptions } from "@supabase/ssr";
-import { isDemoMode } from "@/lib/env";
 
 const PUBLIC_PREFIXES = ["/", "/login", "/auth", "/access-pending"];
 
@@ -47,14 +46,14 @@ export async function updateSession(request: NextRequest) {
 
   const { pathname } = request.nextUrl;
 
-  if (isProtectedPath(pathname) && !user && !isDemoMode()) {
+  if (isProtectedPath(pathname) && !user) {
     const url = request.nextUrl.clone();
     url.pathname = "/login";
     url.searchParams.set("next", pathname);
     return NextResponse.redirect(url);
   }
 
-  if (pathname === "/login" && user && !isDemoMode()) {
+  if (pathname === "/login" && user) {
     const error = request.nextUrl.searchParams.get("error");
     if (!error) {
       const url = request.nextUrl.clone();
