@@ -26,10 +26,6 @@ export async function createUnit(
     return { error: "Only the landlord can add units." };
   }
 
-  if (ctx.demoMode) {
-    return { error: "Demo mode — connect Supabase auth to create real units." };
-  }
-
   const siteId = String(formData.get("site_id") ?? "").trim();
   const unitCode = String(formData.get("unit_code") ?? "").trim();
   const propertyType = String(formData.get("property_type") ?? "shop") as PropertyType;
@@ -40,10 +36,7 @@ export async function createUnit(
     | "maintenance";
 
   if (!siteId) {
-    return {
-      error:
-        "Choose which property this unit belongs to. Add a property in Settings if none exist.",
-    };
+    return { error: "Property is required." };
   }
 
   if (!unitCode) {
@@ -85,6 +78,7 @@ export async function createUnit(
     return { error: error.message };
   }
 
-  revalidatePath(`/d/${orgSlug}/units`);
-  redirect(`/d/${orgSlug}/units/${data.id}`);
+  revalidatePath(`/d/${orgSlug}/properties/${siteId}`);
+  revalidatePath(`/d/${orgSlug}/properties`);
+  redirect(`/d/${orgSlug}/properties/${siteId}/units/${data.id}`);
 }
