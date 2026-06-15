@@ -24,10 +24,30 @@ export function DashboardPreview() {
           <p className="text-xs text-muted">Plaza collection overview</p>
           <div className="mt-4 grid grid-cols-2 gap-3">
             {[
-              { label: "Collected", value: "₦4.2M", accent: "text-green-700" },
-              { label: "Outstanding", value: "₦890K", accent: "text-amber-600" },
-              { label: "Units", value: "42", accent: "text-foreground" },
-              { label: "Rate", value: "78%", accent: "text-green-700" },
+              {
+                label: "Collected",
+                value: "₦4.2M",
+                hint: "₦5.38M expected in 2026",
+                accent: "text-green-700",
+              },
+              {
+                label: "Outstanding",
+                value: "₦570K",
+                hint: "Prior-year balances",
+                accent: "text-amber-600",
+              },
+              {
+                label: "Units",
+                value: "42",
+                hint: "6 vacant",
+                accent: "text-foreground",
+              },
+              {
+                label: "Pending verify",
+                value: "2",
+                hint: "Needs action",
+                accent: "text-foreground",
+              },
             ].map((stat) => (
               <div
                 key={stat.label}
@@ -39,6 +59,7 @@ export function DashboardPreview() {
                 <p className={`mt-1 text-lg font-semibold ${stat.accent}`}>
                   {stat.value}
                 </p>
+                <p className="mt-0.5 text-[10px] text-muted">{stat.hint}</p>
               </div>
             ))}
           </div>
