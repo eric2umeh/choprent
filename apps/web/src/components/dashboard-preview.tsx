@@ -5,7 +5,7 @@ export function DashboardPreview() {
         <div className="hidden w-44 shrink-0 border-r border-border bg-surface-subtle p-4 sm:block">
           <div className="mb-6 h-8 w-24 rounded-md bg-gray-200" />
           <div className="space-y-2">
-            {["Dashboard", "Units", "Payments", "Documents"].map((item, i) => (
+            {["Dashboard", "Properties", "Payments", "Tenants"].map((item, i) => (
               <div
                 key={item}
                 className={`rounded-lg px-3 py-2 text-xs font-medium ${
