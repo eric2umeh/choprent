@@ -4,7 +4,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 export async function createSignedStorageUrl(
   bucket: "receipts" | "documents",
   path: string,
-  expiresIn = 3600
+  expiresIn = 3600,
 ): Promise<string | null> {
   const supabase = await createClient();
   const { data, error } = await supabase.storage

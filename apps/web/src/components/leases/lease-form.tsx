@@ -65,7 +65,12 @@ export function LeaseForm({
           <>
             <div>
               <label className="text-label normal-case">Unit</label>
-              <select name="unit_id" required className="input-field mt-1" disabled={loading}>
+              <select
+                name="unit_id"
+                required
+                className="input-field mt-1"
+                disabled={loading}
+              >
                 <option value="">Select unit…</option>
                 {vacantUnits.map((u) => (
                   <option key={u.id} value={u.id}>
@@ -95,7 +100,9 @@ export function LeaseForm({
                 />
               </div>
               <div>
-                <label className="text-label normal-case">Email (optional)</label>
+                <label className="text-label normal-case">
+                  Email (optional)
+                </label>
                 <input
                   name="tenant_email"
                   type="email"
@@ -110,7 +117,10 @@ export function LeaseForm({
 
         {mode === "renew" && lease && (
           <p className="text-sm text-muted">
-            Tenant: <span className="font-medium text-foreground">{lease.tenantName}</span>
+            Tenant:{" "}
+            <span className="font-medium text-foreground">
+              {lease.tenantName}
+            </span>
           </p>
         )}
 
@@ -157,7 +167,11 @@ export function LeaseForm({
           </select>
         </div>
 
-        <LoadingButton type="submit" loading={loading} className="btn-primary w-full">
+        <LoadingButton
+          type="submit"
+          loading={loading}
+          className="btn-primary w-full"
+        >
           {mode === "create" ? "Create lease" : "Renew lease"}
         </LoadingButton>
       </form>

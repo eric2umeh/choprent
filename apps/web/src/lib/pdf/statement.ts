@@ -41,7 +41,7 @@ export async function buildStatementPdf(input: {
     const sign = line.kind === "payment" ? "+" : "−";
     draw(
       `${line.date}  ${line.description.slice(0, 42)}  ${sign}${formatNaira(Math.abs(line.amount))}`,
-      10
+      10,
     );
     if (y < 60) break;
   }

@@ -8,14 +8,14 @@
 
 ## Deliverables
 
-| # | Feature | Roles |
-|---|---------|-------|
-| 1 | Tenant home wired to real balance, settlement account, activity | Tenant |
-| 2 | Receipt upload required + staff receipt viewer | Tenant, staff |
-| 3 | Documents from `management_documents` + signed downloads | All |
-| 4 | Staff issue letter/notice (upload to Storage) | Owner, manager |
-| 5 | Staff generate PDF rent statement per unit | Owner, manager |
-| 6 | Leases list from DB + assign tenant + renew | Owner, manager |
+| #   | Feature                                                         | Roles          |
+| --- | --------------------------------------------------------------- | -------------- |
+| 1   | Tenant home wired to real balance, settlement account, activity | Tenant         |
+| 2   | Receipt upload required + staff receipt viewer                  | Tenant, staff  |
+| 3   | Documents from `management_documents` + signed downloads        | All            |
+| 4   | Staff issue letter/notice (upload to Storage)                   | Owner, manager |
+| 5   | Staff generate PDF rent statement per unit                      | Owner, manager |
+| 6   | Leases list from DB + assign tenant + renew                     | Owner, manager |
 
 ---
 
@@ -50,13 +50,13 @@ where unit_id = 'YOUR_UNIT_ID' and status = 'active';
 
 ## Key files
 
-| Area | Path |
-|------|------|
-| Tenant home | `apps/web/src/lib/data/tenant-home.ts`, `app/t/[orgSlug]/page.tsx` |
-| Documents | `lib/data/documents.ts`, `lib/actions/documents.ts`, `components/documents/` |
-| PDF statements | `lib/pdf/statement.ts` |
-| Leases | `lib/data/leases.ts`, `lib/actions/leases.ts`, `components/leases/` |
-| Receipts | `lib/actions/tenant-payments.ts`, `lib/storage/signed-url.ts` |
+| Area           | Path                                                                         |
+| -------------- | ---------------------------------------------------------------------------- |
+| Tenant home    | `apps/web/src/lib/data/tenant-home.ts`, `app/t/[orgSlug]/page.tsx`           |
+| Documents      | `lib/data/documents.ts`, `lib/actions/documents.ts`, `components/documents/` |
+| PDF statements | `lib/pdf/statement.ts`                                                       |
+| Leases         | `lib/data/leases.ts`, `lib/actions/leases.ts`, `components/leases/`          |
+| Receipts       | `lib/actions/tenant-payments.ts`, `lib/storage/signed-url.ts`                |
 
 ---
 

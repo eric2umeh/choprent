@@ -6,7 +6,10 @@ import { CompactCard } from "@/components/ui/card";
 import { FilterBar, FilterSelect } from "@/components/ui/filter-bar";
 import { ListPanel, ListToolbar } from "@/components/ui/page-header";
 import { Pagination, usePagination } from "@/components/ui/pagination";
-import { ResponsiveDataTable, type Column } from "@/components/ui/responsive-table";
+import {
+  ResponsiveDataTable,
+  type Column,
+} from "@/components/ui/responsive-table";
 import { ViewToggle, type ViewMode } from "@/components/ui/view-toggle";
 import { LeaseForm } from "@/components/leases/lease-form";
 import type { LeaseListItem } from "@/lib/data/leases";
@@ -45,7 +48,7 @@ export function LeasesList({
 
   const { page, setPage, totalPages, slice, pageSize } = usePagination(
     filtered,
-    8
+    8,
   );
 
   const columns: Column<LeaseListItem>[] = [
@@ -53,7 +56,9 @@ export function LeasesList({
       key: "unit",
       header: "Unit",
       mobilePrimary: true,
-      render: (l) => <span className="text-table-cell-strong">{l.unitCode}</span>,
+      render: (l) => (
+        <span className="text-table-cell-strong">{l.unitCode}</span>
+      ),
     },
     {
       key: "tenant",
@@ -65,7 +70,9 @@ export function LeasesList({
       key: "total",
       header: "Annual total",
       mobilePrimary: true,
-      render: (l) => <span className="text-money">{formatNaira(l.annualTotal)}</span>,
+      render: (l) => (
+        <span className="text-money">{formatNaira(l.annualTotal)}</span>
+      ),
     },
     {
       key: "period",
@@ -88,7 +95,9 @@ export function LeasesList({
       key: "status",
       header: "Status",
       render: (l) => (
-        <Badge variant={l.status === "active" ? "success" : "muted"}>{l.status}</Badge>
+        <Badge variant={l.status === "active" ? "success" : "muted"}>
+          {l.status}
+        </Badge>
       ),
     },
     {
@@ -183,7 +192,9 @@ export function LeasesList({
                     <p className="text-period-compact mt-0.5">
                       {l.startDate} → {l.endDate}
                     </p>
-                    <p className="text-cell-muted capitalize">{l.billingCadence}</p>
+                    <p className="text-cell-muted capitalize">
+                      {l.billingCadence}
+                    </p>
                   </div>
                   <span className="text-xs font-semibold">
                     {formatNaira(l.annualTotal)}
@@ -206,7 +217,7 @@ export function LeasesList({
         <LeaseForm
           orgSlug={orgSlug}
           mode={formMode}
-          lease={formMode === "renew" ? renewLease ?? undefined : undefined}
+          lease={formMode === "renew" ? (renewLease ?? undefined) : undefined}
           vacantUnits={vacantUnits}
           open={!!formMode}
           onClose={() => {

@@ -7,7 +7,10 @@ import { CompactCard } from "@/components/ui/card";
 import { FilterBar, FilterSelect } from "@/components/ui/filter-bar";
 import { ListPanel, ListToolbar } from "@/components/ui/page-header";
 import { Pagination, usePagination } from "@/components/ui/pagination";
-import { ResponsiveDataTable, type Column } from "@/components/ui/responsive-table";
+import {
+  ResponsiveDataTable,
+  type Column,
+} from "@/components/ui/responsive-table";
 import { ViewToggle, type ViewMode } from "@/components/ui/view-toggle";
 import { IssueDocumentForm } from "@/components/documents/issue-document-form";
 import {
@@ -66,7 +69,7 @@ export function DocumentsList({
 
   const { page, setPage, totalPages, slice, pageSize } = usePagination(
     filtered,
-    8
+    8,
   );
 
   function handleDownload(docId: string) {
@@ -97,9 +100,7 @@ export function DocumentsList({
       key: "title",
       header: "Document",
       mobilePrimary: true,
-      render: (d) => (
-        <span className="text-table-cell-strong">{d.title}</span>
-      ),
+      render: (d) => <span className="text-table-cell-strong">{d.title}</span>,
     },
     {
       key: "unit",
@@ -249,7 +250,10 @@ export function DocumentsList({
                       {doc.issuedAt}
                     </p>
                   </div>
-                  <Badge variant={docTypeVariant(doc.docType)} className="capitalize shrink-0">
+                  <Badge
+                    variant={docTypeVariant(doc.docType)}
+                    className="capitalize shrink-0"
+                  >
                     {doc.docType}
                   </Badge>
                 </div>

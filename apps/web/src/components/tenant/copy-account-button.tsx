@@ -4,7 +4,11 @@ import { useState } from "react";
 import { Copy } from "lucide-react";
 import { toast } from "@/components/ui/toast";
 
-export function CopyAccountButton({ accountNumber }: { accountNumber: string }) {
+export function CopyAccountButton({
+  accountNumber,
+}: {
+  accountNumber: string;
+}) {
   const [copied, setCopied] = useState(false);
 
   async function handleCopy() {
