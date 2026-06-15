@@ -49,7 +49,7 @@ export function TenantLedgerList({
       header: "Description",
       mobilePrimary: true,
       render: (l) => (
-        <span className="text-sm font-medium text-foreground">{l.description}</span>
+        <span className="text-table-cell-strong">{l.description}</span>
       ),
     },
     {
@@ -58,9 +58,9 @@ export function TenantLedgerList({
       mobilePrimary: true,
       render: (l) => (
         <span
-          className={`text-sm font-semibold ${
-            l.kind === "payment" ? "text-green-700" : "text-foreground"
-          }`}
+          className={
+            l.kind === "payment" ? "text-money text-green-700" : "text-money"
+          }
         >
           {l.kind === "payment" ? "+" : "−"}
           {formatNaira(Math.abs(l.amount))}
@@ -71,7 +71,9 @@ export function TenantLedgerList({
       key: "date",
       header: "Date",
       mobilePrimary: true,
-      render: (l) => <span className="text-cell-muted">{l.date}</span>,
+      render: (l) => (
+        <span className="text-table-cell-muted tabular-nums">{l.date}</span>
+      ),
     },
     {
       key: "kind",
@@ -86,9 +88,9 @@ export function TenantLedgerList({
 
   return (
     <>
-      <div className="border-b border-border bg-white px-3 py-2.5">
-        <p className="text-label normal-case">Outstanding balance</p>
-        <p className="text-lg font-bold text-foreground">{formatNaira(balance)}</p>
+      <div className="stat-card mx-3 mt-3 border-b-0">
+        <p className="text-stat-label">Outstanding balance</p>
+        <p className="text-stat-value">{formatNaira(balance)}</p>
       </div>
 
       <ListToolbar>
@@ -133,14 +135,16 @@ export function TenantLedgerList({
               <CompactCard key={line.id}>
                 <div className="flex items-start justify-between gap-2">
                   <div className="min-w-0">
-                    <p className="text-sm font-medium">{line.description}</p>
-                    <p className="text-cell-muted">{line.date}</p>
+                    <p className="text-list-primary">{line.description}</p>
+                    <p className="mt-0.5 text-list-meta tabular-nums">{line.date}</p>
                   </div>
                   <div className="shrink-0 text-right">
                     <p
-                      className={`text-sm font-semibold ${
-                        line.kind === "payment" ? "text-green-700" : "text-foreground"
-                      }`}
+                      className={
+                        line.kind === "payment"
+                          ? "text-money text-green-700"
+                          : "text-money"
+                      }
                     >
                       {line.kind === "payment" ? "+" : "−"}
                       {formatNaira(Math.abs(line.amount))}
