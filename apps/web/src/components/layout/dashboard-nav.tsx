@@ -72,11 +72,11 @@ function NavLinks({
             onClick={onNavigate}
             title={collapsed ? label : undefined}
             className={cn(
-              "flex items-center gap-2.5 rounded-md px-2.5 py-2 text-xs font-medium transition",
+              "flex items-center gap-2.5 rounded-lg px-2.5 py-2 text-xs font-medium transition-all duration-200",
               active
-                ? "bg-green-100 text-green-800"
-                : "text-muted hover:bg-surface-subtle hover:text-foreground",
-              collapsed && "justify-center px-2"
+                ? "bg-green-100 text-green-800 shadow-sm"
+                : "text-muted hover:translate-x-0.5 hover:bg-surface-subtle hover:text-foreground",
+              collapsed && "justify-center px-2 hover:translate-x-0"
             )}
           >
             <Icon className="h-4 w-4 shrink-0" />
@@ -123,7 +123,7 @@ export function DashboardSidebar({
       {mobileOpen && (
         <button
           type="button"
-          className="fixed inset-0 z-40 bg-black/30 lg:hidden"
+          className="fixed inset-0 z-40 bg-black/30 backdrop-blur-[1px] transition-opacity duration-300 animate-fade-in lg:hidden"
           onClick={onCloseMobile}
           aria-label="Close menu"
         />
@@ -131,7 +131,7 @@ export function DashboardSidebar({
 
       <aside
         className={cn(
-          "fixed inset-y-0 left-0 z-50 flex flex-col border-r border-border bg-white transition-all duration-200 lg:sticky lg:top-0 lg:z-auto lg:h-screen",
+          "fixed inset-y-0 left-0 z-50 flex flex-col border-r border-border bg-white shadow-xl transition-all duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] lg:sticky lg:top-0 lg:z-auto lg:h-screen lg:shadow-none",
           collapsed ? "w-[4.25rem]" : "w-56",
           mobileOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"
         )}
@@ -227,7 +227,7 @@ export function DashboardTopBar({
   demoMode?: boolean;
 }) {
   return (
-    <header className="sticky top-0 z-30 flex h-11 items-center gap-2 border-b border-border bg-white px-3 lg:hidden">
+    <header className="sticky top-0 z-30 flex h-11 items-center gap-2 border-b border-border bg-white/90 px-3 backdrop-blur-md transition-shadow lg:hidden">
       <button
         type="button"
         onClick={onOpenSidebar}
@@ -271,7 +271,7 @@ export function DashboardMobileNav({
   ];
 
   return (
-    <nav className="fixed bottom-0 left-0 right-0 z-30 border-t border-border bg-white lg:hidden">
+    <nav className="fixed bottom-0 left-0 right-0 z-30 border-t border-border bg-white/95 backdrop-blur-md lg:hidden">
       <div className="flex h-14 items-stretch">
         {items.map(({ href, label, icon: Icon, badge }) => {
           const path = `${base}${href}`;
@@ -283,11 +283,16 @@ export function DashboardMobileNav({
               key={href}
               href={`${path}${q}`}
               className={cn(
-                "relative flex flex-1 flex-col items-center justify-center gap-0.5 text-[10px] font-medium",
-                active ? "text-green-700" : "text-muted"
+                "relative flex flex-1 flex-col items-center justify-center gap-0.5 text-[10px] font-medium transition-all duration-200",
+                active ? "text-green-700" : "text-muted hover:text-foreground"
               )}
             >
-              <Icon className="h-4 w-4" />
+              <Icon
+                className={cn(
+                  "h-4 w-4 transition-transform duration-200",
+                  active && "scale-110"
+                )}
+              />
               {label}
               {badge ? (
                 <span className="absolute right-[18%] top-1 flex h-3.5 min-w-3.5 items-center justify-center rounded-full bg-amber-500 px-0.5 text-[8px] font-bold text-white">

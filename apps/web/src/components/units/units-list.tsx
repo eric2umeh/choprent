@@ -63,6 +63,11 @@ export function UnitsList({
     8,
   );
 
+  const showPropertyColumn = useMemo(
+    () => new Set(units.map((unit) => unit.propertyName).filter(Boolean)).size > 1,
+    [units]
+  );
+
   const columns: Column<UnitListItem>[] = [
     {
       key: "unit",
@@ -74,6 +79,17 @@ export function UnitsList({
         </span>
       ),
     },
+    ...(showPropertyColumn
+      ? [
+          {
+            key: "property",
+            header: "Property",
+            render: (u: UnitListItem) => (
+              <span className="text-cell-muted">{u.propertyName ?? "—"}</span>
+            ),
+          } satisfies Column<UnitListItem>,
+        ]
+      : []),
     {
       key: "type",
       header: "Type",
@@ -210,6 +226,9 @@ export function UnitsList({
                     <p className="text-cell-muted capitalize">
                       {formatPropertyType(unit.propertyType)}
                     </p>
+                    {showPropertyColumn && unit.propertyName && (
+                      <p className="mt-0.5 text-[11px] text-muted">{unit.propertyName}</p>
+                    )}
                   </div>
                   <Badge variant={statusVariant(unit.status)}>
                     {unit.status}

@@ -1,13 +1,16 @@
 import { createClient } from "@/lib/supabase/server";
 import { isDemoMode } from "@/lib/env";
 import type { UnitListItem } from "@/lib/data/unit-types";
-import { MOCK_UNITS, type MockUnit } from "@/lib/mock/data";
+import { MOCK_UNITS, MOCK_ORG, type MockUnit } from "@/lib/mock/data";
 import type { PropertyType, UnitStatus } from "@/types/database";
 
 function mapMockUnit(u: MockUnit): UnitListItem {
+  const propertyName =
+    MOCK_ORG.sites.find((site) => site.id === u.siteId)?.name ?? null;
   return {
     id: u.id,
     unitCode: u.unitCode,
+    propertyName,
     propertyType: u.propertyType,
     status: u.status,
     tenantName: u.tenantName,
@@ -32,7 +35,7 @@ export async function listUnitsForOrg(
   const { data: units, error } = await supabase
     .from("units")
     .select(
-      "id, unit_code, property_type, status, arrears_balance_ngn, is_composite, composite_note",
+      "id, unit_code, property_type, status, arrears_balance_ngn, is_composite, composite_note, sites(name)",
     )
     .eq("organization_id", orgId)
     .order("unit_code");
@@ -60,10 +63,17 @@ export async function listUnitsForOrg(
     (accounts ?? []).map((a) => [a.unit_id, a.account_number]),
   );
 
-  return units.map((u) => ({
-    id: u.id,
-    unitCode: u.unit_code,
-    propertyType: u.property_type as PropertyType,
+  return units.map((u) => {
+    const sitePayload = u.sites as { name?: string } | { name?: string }[] | null;
+    const propertyName = Array.isArray(sitePayload)
+      ? sitePayload[0]?.name ?? null
+      : sitePayload?.name ?? null;
+
+    return {
+      id: u.id,
+      unitCode: u.unit_code,
+      propertyName,
+      propertyType: u.property_type as PropertyType,
     status: u.status as UnitStatus,
     tenantName: tenantByUnit.get(u.id) ?? null,
     annualRent: 0,
@@ -71,7 +81,8 @@ export async function listUnitsForOrg(
     isComposite: u.is_composite,
     compositeNote: u.composite_note,
     virtualAccount: accountByUnit.get(u.id) ?? null,
-  }));
+    };
+  });
 }
 
 export async function getUnitDetail(
@@ -113,6 +124,7 @@ export async function getUnitDetail(
   return {
     id: unit.id,
     unitCode: unit.unit_code,
+    propertyName: null,
     propertyType: unit.property_type as PropertyType,
     status: unit.status as UnitStatus,
     tenantName: lease?.tenant_display_name ?? null,

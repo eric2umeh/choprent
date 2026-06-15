@@ -29,6 +29,31 @@ async function plazaAlreadyHasLandlord(): Promise<boolean> {
   return (count ?? 0) > 0;
 }
 
+async function ensurePilotSiteExists(admin: ReturnType<typeof createAdminClient>) {
+  const { count } = await admin
+    .from("sites")
+    .select("*", { count: "exact", head: true })
+    .eq("organization_id", PILOT_ORG_ID);
+
+  if ((count ?? 0) > 0) return;
+
+  const { error } = await admin.from("sites").insert({
+    organization_id: PILOT_ORG_ID,
+    name: "Eri Plaza",
+    site_type: "plaza",
+    address: {
+      line1: "12 Allen Avenue",
+      city: "Ikeja",
+      state: "Lagos",
+      country: "NG",
+    },
+  });
+
+  if (error && error.code !== "23505") {
+    throw new Error(error.message);
+  }
+}
+
 /** Link the signed-in user to Eri Plaza with a staff role — no SQL required. */
 export async function linkPlazaAccount(
   role: MembershipRole
@@ -47,6 +72,7 @@ export async function linkPlazaAccount(
 
   try {
     const admin = createAdminClient();
+    await ensurePilotSiteExists(admin);
 
     const { data: existing } = await admin
       .from("memberships")

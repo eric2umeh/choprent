@@ -23,7 +23,7 @@ export default async function UnitsPage({
     <div>
       <PageHeader
         title="Units"
-        description="Shops, flats, and offices in your plaza"
+        description="Shops, flats, and offices across your properties"
       />
       <Suspense fallback={<ListLoadingFallback />}>
         <UnitsList

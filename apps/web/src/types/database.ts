@@ -31,7 +31,7 @@ export interface Site {
   id: string;
   organization_id: string;
   name: string;
-  site_type: "plaza" | "mall" | "estate" | "compound";
+  site_type: "plaza" | "mall" | "estate" | "compound" | "house";
   address: Record<string, unknown>;
 }
 

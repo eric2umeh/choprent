@@ -1,6 +1,7 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useState, useTransition } from "react";
+import { useRouter } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
 import { CompactCard } from "@/components/ui/card";
 import { FilterBar, FilterSelect } from "@/components/ui/filter-bar";
@@ -8,8 +9,12 @@ import { ListPanel, ListToolbar } from "@/components/ui/page-header";
 import { Pagination, usePagination } from "@/components/ui/pagination";
 import { ResponsiveDataTable, type Column } from "@/components/ui/responsive-table";
 import { ViewToggle, type ViewMode } from "@/components/ui/view-toggle";
-import { MOCK_PAYMENTS, type MockPayment } from "@/lib/mock/data";
+import { RecordCashForm } from "@/components/payments/record-cash-form";
+import { rejectPayment, verifyPayment } from "@/lib/actions/payments";
+import type { PaymentListItem } from "@/lib/data/payments";
 import { formatNaira } from "@/lib/auth/roles";
+import { toast } from "@/components/ui/toast";
+import { Spinner } from "@/components/ui/spinner";
 import { Check, X } from "lucide-react";
 
 function methodLabel(m: string) {
@@ -22,18 +27,33 @@ function methodLabel(m: string) {
 }
 
 function statusBadge(status: string) {
-  if (status === "verified") return "success" as const;
+  if (status === "verified" || status === "auto_matched") return "success" as const;
   if (status === "pending") return "warning" as const;
   return "danger" as const;
 }
 
-export function PaymentsList({ canVerify }: { canVerify: boolean }) {
+export function PaymentsList({
+  orgSlug,
+  canVerify,
+  payments,
+  units,
+}: {
+  orgSlug: string;
+  canVerify: boolean;
+  payments: PaymentListItem[];
+  units: { id: string; unitCode: string }[];
+}) {
+  const router = useRouter();
   const [view, setView] = useState<ViewMode>("table");
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
+  const [showCashForm, setShowCashForm] = useState(false);
+  const [actingId, setActingId] = useState<string | null>(null);
+  const [actingType, setActingType] = useState<"verify" | "reject" | null>(null);
+  const [, startTransition] = useTransition();
 
   const filtered = useMemo(() => {
-    return MOCK_PAYMENTS.filter((p) => {
+    return payments.filter((p) => {
       const q = search.toLowerCase();
       const matchSearch =
         !q ||
@@ -43,14 +63,44 @@ export function PaymentsList({ canVerify }: { canVerify: boolean }) {
       const matchStatus = statusFilter === "all" || p.status === statusFilter;
       return matchSearch && matchStatus;
     });
-  }, [search, statusFilter]);
+  }, [payments, search, statusFilter]);
 
   const { page, setPage, totalPages, slice, pageSize } = usePagination(
     filtered,
     8
   );
 
-  const columns: Column<MockPayment>[] = [
+  function handleVerify(paymentId: string) {
+    setActingId(paymentId);
+    setActingType("verify");
+    startTransition(async () => {
+      const result = await verifyPayment(orgSlug, paymentId);
+      setActingId(null);
+      setActingType(null);
+      if (result.error) toast.error(result.error);
+      else {
+        toast.success("Payment verified and allocated.");
+        router.refresh();
+      }
+    });
+  }
+
+  function handleReject(paymentId: string) {
+    setActingId(paymentId);
+    setActingType("reject");
+    startTransition(async () => {
+      const result = await rejectPayment(orgSlug, paymentId);
+      setActingId(null);
+      setActingType(null);
+      if (result.error) toast.error(result.error);
+      else {
+        toast.info("Payment rejected.");
+        router.refresh();
+      }
+    });
+  }
+
+  const columns: Column<PaymentListItem>[] = [
     {
       key: "unit",
       header: "Unit",
@@ -74,19 +124,23 @@ export function PaymentsList({ canVerify }: { canVerify: boolean }) {
     {
       key: "period",
       header: "Period",
-      render: (p) => <span className="text-cell-muted">{p.periodLabel}</span>,
+      render: (p) => (
+        <span className="text-cell-muted">{p.periodLabel ?? "—"}</span>
+      ),
     },
     {
       key: "method",
       header: "Method",
       render: (p) => (
-        <span className="text-cell-muted">{methodLabel(p.method)}</span>
+        <span className="text-cell-muted">{methodLabel(p.paymentMethod)}</span>
       ),
     },
     {
       key: "date",
-      header: "Date",
-      render: (p) => <span className="text-cell-muted">{p.paymentDate}</span>,
+      header: "Submitted",
+      render: (p) => (
+        <span className="text-cell-muted">{p.createdAt.slice(0, 10)}</span>
+      ),
     },
     {
       key: "status",
@@ -103,16 +157,28 @@ export function PaymentsList({ canVerify }: { canVerify: boolean }) {
           <div className="flex gap-1">
             <button
               type="button"
-              className="inline-flex items-center gap-1 rounded-md bg-green-600 px-2 py-1 text-[11px] font-semibold text-white"
+              disabled={actingId !== null}
+              onClick={() => handleVerify(p.id)}
+              className="inline-flex items-center gap-1 rounded-lg bg-green-600 px-2 py-1 text-[11px] font-semibold text-white transition-all duration-200 hover:bg-green-700 active:scale-95 disabled:opacity-60"
             >
-              <Check className="h-3 w-3" />
+              {actingId === p.id && actingType === "verify" ? (
+                <Spinner size="sm" className="text-white" />
+              ) : (
+                <Check className="h-3 w-3" />
+              )}
               Verify
             </button>
             <button
               type="button"
-              className="inline-flex items-center gap-1 rounded-md border border-red-200 px-2 py-1 text-[11px] font-semibold text-red-600"
+              disabled={actingId !== null}
+              onClick={() => handleReject(p.id)}
+              className="inline-flex items-center gap-1 rounded-lg border border-red-200 px-2 py-1 text-[11px] font-semibold text-red-600 transition-all duration-200 hover:bg-red-50 active:scale-95 disabled:opacity-60"
             >
-              <X className="h-3 w-3" />
+              {actingId === p.id && actingType === "reject" ? (
+                <Spinner size="sm" className="text-red-600" />
+              ) : (
+                <X className="h-3 w-3" />
+              )}
             </button>
           </div>
         ) : null,
@@ -141,13 +207,18 @@ export function PaymentsList({ canVerify }: { canVerify: boolean }) {
               { value: "all", label: "All" },
               { value: "pending", label: "Pending" },
               { value: "verified", label: "Verified" },
+              { value: "rejected", label: "Rejected" },
             ]}
           />
         </FilterBar>
         <div className="flex items-center gap-2 px-3 lg:px-0">
           <ViewToggle value={view} onChange={setView} />
           {canVerify && (
-            <button type="button" className="btn-primary px-3 py-1.5">
+            <button
+              type="button"
+              className="btn-primary px-3 py-1.5"
+              onClick={() => setShowCashForm(true)}
+            >
               Record cash
             </button>
           )}
@@ -163,15 +234,19 @@ export function PaymentsList({ canVerify }: { canVerify: boolean }) {
           />
         ) : (
           <div className="grid gap-2 p-3 sm:grid-cols-2">
-            {slice.map((p) => (
-              <CompactCard key={p.id}>
+            {slice.map((p, index) => (
+              <CompactCard
+                key={p.id}
+                className="animate-stagger-item"
+                style={{ ["--stagger" as string]: index }}
+              >
                 <div className="flex justify-between gap-2">
                   <div>
                     <p className="text-sm font-semibold">
                       {p.unitCode} · {p.tenantName}
                     </p>
                     <p className="text-xs font-semibold">{formatNaira(p.amount)}</p>
-                    <p className="text-cell-muted">{p.periodLabel}</p>
+                    <p className="text-cell-muted">{p.periodLabel ?? "—"}</p>
                   </div>
                   <Badge variant={statusBadge(p.status)}>{p.status}</Badge>
                 </div>
@@ -187,6 +262,13 @@ export function PaymentsList({ canVerify }: { canVerify: boolean }) {
           pageSize={pageSize}
         />
       </ListPanel>
+
+      <RecordCashForm
+        orgSlug={orgSlug}
+        units={units}
+        open={showCashForm}
+        onClose={() => setShowCashForm(false)}
+      />
     </>
   );
 }
