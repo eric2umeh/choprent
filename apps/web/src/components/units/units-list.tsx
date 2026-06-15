@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react";
 import Link from "next/link";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useRouter } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
 import { CompactCard } from "@/components/ui/card";
 import { FilterBar, FilterSelect } from "@/components/ui/filter-bar";
@@ -14,7 +14,7 @@ import {
 } from "@/components/ui/responsive-table";
 import { ViewToggle, type ViewMode } from "@/components/ui/view-toggle";
 import type { UnitListItem } from "@/lib/data/unit-types";
-import { formatPropertyType } from "@/lib/mock/data";
+import { formatPropertyType } from "@/lib/data/unit-types";
 import { formatNaira } from "@/lib/auth/roles";
 import { Plus } from "lucide-react";
 
@@ -26,19 +26,16 @@ function statusVariant(status: string) {
 
 export function UnitsList({
   orgSlug,
+  propertyId,
   canAdd,
   units,
-  demoMode = false,
 }: {
   orgSlug: string;
+  propertyId: string;
   canAdd: boolean;
   units: UnitListItem[];
-  demoMode?: boolean;
 }) {
   const router = useRouter();
-  const searchParams = useSearchParams();
-  const q =
-    demoMode && searchParams.toString() ? `?${searchParams.toString()}` : "";
 
   const [view, setView] = useState<ViewMode>("table");
   const [search, setSearch] = useState("");
@@ -187,11 +184,11 @@ export function UnitsList({
           <ViewToggle value={view} onChange={setView} />
           {canAdd && (
             <Link
-              href={`/d/${orgSlug}/units/new${q}`}
+              href={`/d/${orgSlug}/properties/${propertyId}/units/new`}
               className="btn-primary inline-flex gap-1.5 px-3 py-1.5"
             >
               <Plus className="h-3.5 w-3.5" />
-              Add
+              Add unit
             </Link>
           )}
         </div>
@@ -202,7 +199,11 @@ export function UnitsList({
           <ResponsiveDataTable
             rows={slice}
             columns={columns}
-            onRowClick={(u) => router.push(`/d/${orgSlug}/units/${u.id}${q}`)}
+            onRowClick={(u) =>
+              router.push(
+                `/d/${orgSlug}/properties/${propertyId}/units/${u.id}`
+              )
+            }
             emptyMessage="No units match your filters"
           />
         ) : (
@@ -211,7 +212,9 @@ export function UnitsList({
               <CompactCard
                 key={unit.id}
                 onClick={() =>
-                  router.push(`/d/${orgSlug}/units/${unit.id}${q}`)
+                  router.push(
+                    `/d/${orgSlug}/properties/${propertyId}/units/${unit.id}`
+                  )
                 }
               >
                 <div className="flex items-start justify-between gap-2">
