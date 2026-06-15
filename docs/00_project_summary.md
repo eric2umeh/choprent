@@ -139,8 +139,8 @@ Counts toward “tenants self-serving” when tenant account has:
 | 0      | Supabase schema v1, RLS, enums, seed                              |
 | 1      | Auth (email+phone), org, plaza, unit CRUD, composite unit codes   | ✓ See `08_sprint1_auth_setup.md` |
 | 2      | Leases + renewals, charge engine, annual/quarterly/monthly ledger | Partial (seed in Sprint 3) |
-| 3      | Arrears + partial payment allocation, cash + transfer flows       | **In progress** — see `12_sprint3_payments_arrears.md` |
-| 4      | Tenant portal, letters, PDF statements, receipt upload            |
+| 3      | Arrears + partial payment allocation, cash + transfer flows       | ✓ See `12_sprint3_payments_arrears.md` |
+| 4      | Tenant portal, letters, PDF statements, receipt upload            | **In progress** — see `13_sprint4_tenant_documents.md` |
 | 5      | Verification queue (landlord/manager/agent), multi bank accounts  |
 | 6      | Dashboards, Realtime, metrics CSV export                          |
 | 7      | Client OCR + reminder rules + mobile polish                       |
