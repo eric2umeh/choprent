@@ -6,6 +6,11 @@ import { useRouter } from "next/navigation";
 import { linkPlazaAccount } from "@/lib/actions/auth";
 import { createClient } from "@/lib/supabase/client";
 import { formatAuthError, MAGIC_LINK_COOLDOWN_SEC } from "@/lib/auth/messages";
+import {
+  clearLoginDraft,
+  readLoginDraft,
+  writeLoginDraft,
+} from "@/lib/auth/login-draft";
 import { appUrl } from "@/lib/env";
 import { PasswordInput } from "@/components/ui/password-input";
 import { LoadingButton } from "@/components/ui/loading-button";
@@ -31,6 +36,20 @@ export function LoginForm() {
   const [phone, setPhone] = useState("");
   const [loading, setLoading] = useState(false);
   const [cooldown, setCooldown] = useState(0);
+  const [draftReady, setDraftReady] = useState(false);
+
+  useEffect(() => {
+    const draft = readLoginDraft();
+    setEmail(draft.email);
+    setPassword(draft.password);
+    setPhone(draft.phone);
+    setDraftReady(true);
+  }, []);
+
+  useEffect(() => {
+    if (!draftReady) return;
+    writeLoginDraft({ email, password, phone });
+  }, [email, password, phone, draftReady]);
 
   useEffect(() => {
     if (cooldown <= 0) return;
@@ -40,12 +59,29 @@ export function LoginForm() {
     return () => window.clearInterval(timer);
   }, [cooldown]);
 
+  function preserveDraft(next: {
+    email?: string;
+    password?: string;
+    phone?: string;
+  }) {
+    const preserved = {
+      email: next.email ?? email,
+      password: next.password ?? password,
+      phone: next.phone ?? phone,
+    };
+    setEmail(preserved.email);
+    setPassword(preserved.password);
+    setPhone(preserved.phone);
+    writeLoginDraft(preserved);
+  }
+
   async function handlePasswordSubmit(e: React.FormEvent) {
     e.preventDefault();
     setLoading(true);
 
     const supabase = createClient();
     const trimmedEmail = email.trim();
+    const submittedPassword = password;
 
     try {
       if (mode === "forgot_password") {
@@ -59,33 +95,43 @@ export function LoginForm() {
         toast.success(
           "If we have that email on file, you'll receive a link to choose a new password. Check your inbox (and spam)."
         );
+        preserveDraft({ email: trimmedEmail });
         return;
       }
 
       if (mode === "sign_up") {
         const { error: signUpError } = await supabase.auth.signUp({
           email: trimmedEmail,
-          password,
+          password: submittedPassword,
         });
         if (signUpError) throw signUpError;
 
         const { error: signInError } = await supabase.auth.signInWithPassword({
           email: trimmedEmail,
-          password,
+          password: submittedPassword,
         });
         if (signInError) {
           toast.info(
             "Your account was created. Sign in with your email and password to finish."
           );
           setMode("sign_in");
+          preserveDraft({
+            email: trimmedEmail,
+            password: submittedPassword,
+          });
           return;
         }
 
         const linkResult = await linkPlazaAccount(signupRole);
         if (linkResult?.error) {
           toast.error(linkResult.error);
+          preserveDraft({
+            email: trimmedEmail,
+            password: submittedPassword,
+          });
           return;
         }
+        clearLoginDraft();
         toast.success("Account created — opening your dashboard…");
         router.push("/auth/redirect");
         router.refresh();
@@ -94,15 +140,20 @@ export function LoginForm() {
 
       const { error: signInError } = await supabase.auth.signInWithPassword({
         email: trimmedEmail,
-        password,
+        password: submittedPassword,
       });
       if (signInError) throw signInError;
 
+      clearLoginDraft();
       toast.success("Signed in — opening your dashboard…");
       router.push("/auth/redirect");
       router.refresh();
     } catch (err) {
       const raw = err instanceof Error ? err.message : "Sign-in failed.";
+      preserveDraft({
+        email: trimmedEmail,
+        password: submittedPassword,
+      });
       toast.error(formatAuthError(raw));
     } finally {
       setLoading(false);
@@ -116,11 +167,13 @@ export function LoginForm() {
     setLoading(true);
 
     const supabase = createClient();
+    const trimmedEmail = email.trim();
+    const trimmedPhone = phone.trim();
 
     try {
       if (method === "magic_link") {
         const { error: authError } = await supabase.auth.signInWithOtp({
-          email: email.trim(),
+          email: trimmedEmail,
           options: {
             emailRedirectTo: `${appUrl()}/auth/callback`,
           },
@@ -128,10 +181,11 @@ export function LoginForm() {
         if (authError) throw authError;
         toast.success("Check your email for a sign-in link.");
         setCooldown(MAGIC_LINK_COOLDOWN_SEC);
+        preserveDraft({ email: trimmedEmail });
       } else {
-        const normalized = phone.trim().startsWith("+")
-          ? phone.trim()
-          : `+234${phone.trim().replace(/^0/, "")}`;
+        const normalized = trimmedPhone.startsWith("+")
+          ? trimmedPhone
+          : `+234${trimmedPhone.replace(/^0/, "")}`;
 
         const { error: authError } = await supabase.auth.signInWithOtp({
           phone: normalized,
@@ -139,9 +193,15 @@ export function LoginForm() {
         if (authError) throw authError;
         toast.success("Check your phone for a verification code.");
         setCooldown(MAGIC_LINK_COOLDOWN_SEC);
+        preserveDraft({ phone: trimmedPhone });
       }
     } catch (err) {
       const raw = err instanceof Error ? err.message : "Sign-in failed.";
+      preserveDraft(
+        method === "magic_link"
+          ? { email: trimmedEmail }
+          : { phone: trimmedPhone }
+      );
       toast.error(formatAuthError(raw));
     } finally {
       setLoading(false);
@@ -189,11 +249,13 @@ export function LoginForm() {
             <input
               className="input-field mt-1"
               type="email"
+              name="email"
               required
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               placeholder="you@company.ng"
-              autoComplete="email"
+              autoComplete="username email"
+              disabled={loading}
             />
           </div>
           {mode !== "forgot_password" && (
@@ -202,10 +264,12 @@ export function LoginForm() {
               <PasswordInput
                 required
                 minLength={6}
+                name="password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="At least 6 characters"
                 autoComplete={mode === "sign_up" ? "new-password" : "current-password"}
+                disabled={loading}
               />
             </div>
           )}
@@ -317,11 +381,13 @@ export function LoginForm() {
               <input
                 className="input-field mt-1"
                 type="email"
+                name="email"
                 required
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="you@company.ng"
-                autoComplete="email"
+                autoComplete="username email"
+                disabled={loading}
               />
             </div>
           ) : (
@@ -330,11 +396,13 @@ export function LoginForm() {
               <input
                 className="input-field mt-1"
                 type="tel"
+                name="phone"
                 required
                 value={phone}
                 onChange={(e) => setPhone(e.target.value)}
                 placeholder="08012345678"
                 autoComplete="tel"
+                disabled={loading}
               />
             </div>
           )}
