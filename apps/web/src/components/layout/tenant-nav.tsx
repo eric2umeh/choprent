@@ -17,7 +17,7 @@ export function TenantMobileNav({ orgSlug }: { orgSlug: string }) {
   ];
 
   return (
-    <nav className="fixed bottom-0 left-0 right-0 z-30 border-t border-border bg-white">
+    <nav className="fixed bottom-0 left-0 right-0 z-30 border-t border-border bg-white/95 backdrop-blur-md">
       <div className="flex h-16 items-stretch">
         {items.map(({ href, label, icon: Icon }) => {
           const path = `${base}${href}`;
@@ -29,11 +29,16 @@ export function TenantMobileNav({ orgSlug }: { orgSlug: string }) {
               key={href}
               href={path}
               className={cn(
-                "flex flex-1 flex-col items-center justify-center gap-1 text-[10px] font-medium",
-                active ? "text-green-700" : "text-muted"
+                "flex flex-1 flex-col items-center justify-center gap-1 text-[10px] font-medium transition-all duration-200",
+                active ? "text-green-700" : "text-muted hover:text-foreground"
               )}
             >
-              <Icon className="h-5 w-5" />
+              <Icon
+                className={cn(
+                  "h-5 w-5 transition-transform duration-200",
+                  active && "scale-110"
+                )}
+              />
               {label}
             </Link>
           );
@@ -53,9 +58,9 @@ export function TenantHeader({
   unitCode: string;
 }) {
   return (
-    <header className="sticky top-0 z-20 border-b border-border bg-white/95 backdrop-blur-sm">
+    <header className="sticky top-0 z-20 border-b border-border bg-white/90 backdrop-blur-md">
       <div className="mx-auto flex h-12 max-w-lg items-center justify-between px-3">
-        <div>
+        <div className="animate-fade-in">
           <p className="text-sm font-semibold text-foreground">ChopRent</p>
           <p className="text-[11px] text-muted">
             Shop {unitCode} · {tenantName}
@@ -63,7 +68,7 @@ export function TenantHeader({
         </div>
         <Link
           href={`/t/${orgSlug}/documents`}
-          className="rounded-lg bg-green-50 px-3 py-1.5 text-xs font-medium text-green-700"
+          className="interactive-lift rounded-lg bg-green-50 px-3 py-1.5 text-xs font-medium text-green-700 hover:bg-green-100"
         >
           Letters
         </Link>
