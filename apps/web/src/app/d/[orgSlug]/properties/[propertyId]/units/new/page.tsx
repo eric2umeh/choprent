@@ -1,12 +1,10 @@
-import Link from "next/link";
-import { notFound, redirect } from "next/navigation";
-import { PageHeader } from "@/components/ui/page-header";
-import { Card } from "@/components/ui/card";
-import { NewUnitForm } from "@/components/units/new-unit-form";
+import { redirect } from "next/navigation";
 import { requireStaffContext } from "@/lib/auth/session";
 import { canAddUnits } from "@/lib/auth/roles";
 import { getPropertyForOrg } from "@/lib/data/sites";
+import { notFound } from "next/navigation";
 
+/** Add unit is handled via modal on the property page. */
 export default async function NewPropertyUnitPage({
   params,
 }: {
@@ -22,27 +20,5 @@ export default async function NewPropertyUnitPage({
   const property = await getPropertyForOrg(ctx.org.id, propertyId);
   if (!property) notFound();
 
-  return (
-    <div>
-      <PageHeader
-        title="Add unit"
-        description={`New shop, flat, or office in ${property.name}`}
-        action={
-          <Link
-            href={`/d/${orgSlug}/properties/${propertyId}`}
-            className="btn-ghost px-3 py-1.5"
-          >
-            ← Back
-          </Link>
-        }
-      />
-      <Card className="rounded-none border-x-0 border-t-0 shadow-none">
-        <NewUnitForm
-          orgSlug={orgSlug}
-          propertyId={propertyId}
-          propertyName={property.name}
-        />
-      </Card>
-    </div>
-  );
+  redirect(`/d/${orgSlug}/properties/${propertyId}`);
 }

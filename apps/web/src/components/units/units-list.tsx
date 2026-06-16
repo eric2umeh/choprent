@@ -29,11 +29,13 @@ export function UnitsList({
   propertyId,
   canAdd,
   units,
+  onAddUnit,
 }: {
   orgSlug: string;
   propertyId: string;
   canAdd: boolean;
   units: UnitListItem[];
+  onAddUnit?: () => void;
 }) {
   const router = useRouter();
 
@@ -182,7 +184,17 @@ export function UnitsList({
         </FilterBar>
         <div className="flex items-center gap-2 px-3 lg:px-0">
           <ViewToggle value={view} onChange={setView} />
-          {canAdd && (
+          {canAdd && onAddUnit && (
+            <button
+              type="button"
+              onClick={onAddUnit}
+              className="btn-primary inline-flex gap-1.5 px-3 py-1.5"
+            >
+              <Plus className="h-3.5 w-3.5" />
+              Add unit
+            </button>
+          )}
+          {canAdd && !onAddUnit && (
             <Link
               href={`/d/${orgSlug}/properties/${propertyId}/units/new`}
               className="btn-primary inline-flex gap-1.5 px-3 py-1.5"
