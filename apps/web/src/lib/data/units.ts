@@ -1,6 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
-import type { UnitListItem } from "@/lib/data/unit-types";
+import type { UnitListItem, UnitDetail } from "@/lib/data/unit-types";
 import type { PropertyType, UnitStatus } from "@/types/database";
 
 type UnitRow = {
@@ -24,19 +24,24 @@ function propertyNameFromRow(sites: UnitRow["sites"]): string | null {
 async function mapUnitRows(rows: UnitRow[]): Promise<UnitListItem[]> {
   if (!rows.length) return [];
 
-  const supabase = await createClient();
+  const admin = createAdminClient();
   const unitIds = rows.map((u) => u.id);
 
-  const [{ data: leases }, { data: accounts }] = await Promise.all([
-    supabase
+  const [{ data: leases }, { data: accounts }, { data: periods }] = await Promise.all([
+    admin
       .from("leases")
       .select("unit_id, tenant_display_name")
       .in("unit_id", unitIds)
       .eq("status", "active"),
-    supabase
+    admin
       .from("virtual_accounts")
       .select("unit_id, account_number")
       .in("unit_id", unitIds),
+    admin
+      .from("ledger_periods")
+      .select("unit_id, expected_total_ngn, status")
+      .in("unit_id", unitIds)
+      .eq("status", "open"),
   ]);
 
   const tenantByUnit = new Map(
@@ -45,6 +50,10 @@ async function mapUnitRows(rows: UnitRow[]): Promise<UnitListItem[]> {
   const accountByUnit = new Map(
     (accounts ?? []).map((a) => [a.unit_id, a.account_number])
   );
+  const rentByUnit = new Map<string, number>();
+  for (const period of periods ?? []) {
+    rentByUnit.set(period.unit_id, Number(period.expected_total_ngn ?? 0));
+  }
 
   return rows.map((u) => ({
     id: u.id,
@@ -54,7 +63,7 @@ async function mapUnitRows(rows: UnitRow[]): Promise<UnitListItem[]> {
     propertyType: u.property_type,
     status: u.status,
     tenantName: tenantByUnit.get(u.id) ?? null,
-    annualRent: 0,
+    annualRent: rentByUnit.get(u.id) ?? 0,
     arrears: Number(u.arrears_balance_ngn ?? 0),
     isComposite: u.is_composite,
     compositeNote: u.composite_note,
@@ -106,7 +115,7 @@ export async function listUnitsForOrg(
 export async function getUnitDetail(
   unitId: string,
   orgId: string
-): Promise<UnitListItem | null> {
+): Promise<UnitDetail | null> {
   const supabase = await createClient();
   const { data: unit, error } = await supabase
     .from("units")
@@ -116,6 +125,8 @@ export async function getUnitDetail(
     .eq("id", unitId)
     .eq("organization_id", orgId)
     .maybeSingle();
+
+  let row = unit as UnitRow | null;
 
   if (error || !unit) {
     try {
@@ -128,16 +139,32 @@ export async function getUnitDetail(
         .eq("id", unitId)
         .eq("organization_id", orgId)
         .maybeSingle();
-      if (!adminUnit) return null;
-      const mapped = await mapUnitRows([adminUnit as UnitRow]);
-      return mapped[0] ?? null;
+      row = (adminUnit as UnitRow | null) ?? null;
     } catch {
       return null;
     }
   }
 
-  const mapped = await mapUnitRows([unit as UnitRow]);
-  return mapped[0] ?? null;
+  if (!row) return null;
+
+  const mapped = await mapUnitRows([row]);
+  const base = mapped[0];
+  if (!base) return null;
+
+  const admin = createAdminClient();
+  const { data: lease } = await admin
+    .from("leases")
+    .select("id, tenant_phone, tenant_email")
+    .eq("unit_id", unitId)
+    .eq("status", "active")
+    .maybeSingle();
+
+  return {
+    ...base,
+    leaseId: lease?.id ?? null,
+    tenantPhone: lease?.tenant_phone ?? null,
+    tenantEmail: lease?.tenant_email ?? null,
+  };
 }
 
 export async function getDefaultSiteId(orgId: string): Promise<string | null> {

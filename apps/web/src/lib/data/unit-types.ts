@@ -15,6 +15,12 @@ export type UnitListItem = {
   virtualAccount: string | null;
 };
 
+export type UnitDetail = UnitListItem & {
+  leaseId: string | null;
+  tenantPhone: string | null;
+  tenantEmail: string | null;
+};
+
 export const PROPERTY_TYPE_OPTIONS: { value: PropertyType; label: string }[] = [
   { value: "shop", label: "Shop" },
   { value: "flat", label: "Flat / apartment" },

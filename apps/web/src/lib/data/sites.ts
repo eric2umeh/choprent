@@ -14,6 +14,7 @@ function mapSite(row: Site, unitCount = 0): PropertySummary {
     addressLine1: address.line1 ?? "",
     city: address.city ?? "",
     state: address.state ?? "",
+    logoPath: address.logo_path ?? null,
     unitCount,
   };
 }
@@ -80,4 +81,29 @@ export async function getPropertyForOrg(
 ): Promise<PropertySummary | null> {
   const properties = await listPropertiesForOrg(orgId);
   return properties.find((property) => property.id === propertyId) ?? null;
+}
+
+export async function getSiteBrandingForUnit(
+  unitId: string
+): Promise<{ propertyName: string; logoPath: string | null } | null> {
+  try {
+    const admin = createAdminClient();
+    const { data } = await admin
+      .from("units")
+      .select("sites(name, address)")
+      .eq("id", unitId)
+      .maybeSingle();
+    if (!data?.sites) return null;
+    const sites = data.sites as
+      | { name: string; address?: Record<string, string> }
+      | { name: string; address?: Record<string, string> }[];
+    const site = Array.isArray(sites) ? sites[0] : sites;
+    if (!site) return null;
+    return {
+      propertyName: site.name,
+      logoPath: site.address?.logo_path ?? null,
+    };
+  } catch {
+    return null;
+  }
 }
