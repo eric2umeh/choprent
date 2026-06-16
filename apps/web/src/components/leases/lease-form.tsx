@@ -1,30 +1,48 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { createLease, renewLease } from "@/lib/actions/leases";
 import { LoadingButton } from "@/components/ui/loading-button";
 import { Modal } from "@/components/ui/modal";
 import { toast } from "@/components/ui/toast";
 import type { LeaseListItem } from "@/lib/data/leases";
+import type { SettlementAccountItem } from "@/lib/data/settlement-accounts";
 
 export function LeaseForm({
   orgSlug,
   mode,
   lease,
   vacantUnits,
+  settlementAccounts,
   open,
   onClose,
 }: {
   orgSlug: string;
   mode: "create" | "renew";
   lease?: LeaseListItem;
-  vacantUnits: { id: string; unitCode: string }[];
+  vacantUnits: { id: string; unitCode: string; siteId: string }[];
+  settlementAccounts: SettlementAccountItem[];
   open: boolean;
   onClose: () => void;
 }) {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
+  const [selectedUnitId, setSelectedUnitId] = useState("");
+
+  const selectedSiteId = useMemo(() => {
+    return vacantUnits.find((u) => u.id === selectedUnitId)?.siteId ?? null;
+  }, [vacantUnits, selectedUnitId]);
+
+  const accountsForUnit = useMemo(() => {
+    if (!selectedSiteId) return [];
+    return settlementAccounts.filter((a) => a.siteId === selectedSiteId);
+  }, [settlementAccounts, selectedSiteId]);
+
+  const defaultAccountId =
+    accountsForUnit.find((a) => a.isDefault)?.id ??
+    accountsForUnit[0]?.id ??
+    "";
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -70,6 +88,8 @@ export function LeaseForm({
                 required
                 className="input-field mt-1"
                 disabled={loading}
+                value={selectedUnitId}
+                onChange={(e) => setSelectedUnitId(e.target.value)}
               >
                 <option value="">Select unit…</option>
                 {vacantUnits.map((u) => (
@@ -79,6 +99,24 @@ export function LeaseForm({
                 ))}
               </select>
             </div>
+            {accountsForUnit.length > 0 && (
+              <div>
+                <label className="text-label normal-case">Rent collection account</label>
+                <select
+                  name="settlement_account_id"
+                  className="input-field mt-1"
+                  defaultValue={defaultAccountId}
+                  disabled={loading}
+                >
+                  {accountsForUnit.map((a) => (
+                    <option key={a.id} value={a.id}>
+                      {a.label} · {a.accountNumber}
+                      {a.isDefault ? " (default)" : ""}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
             <div>
               <label className="text-label normal-case">Tenant name</label>
               <input

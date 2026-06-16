@@ -13,17 +13,20 @@ import {
 import { ViewToggle, type ViewMode } from "@/components/ui/view-toggle";
 import { LeaseForm } from "@/components/leases/lease-form";
 import type { LeaseListItem } from "@/lib/data/leases";
+import type { SettlementAccountItem } from "@/lib/data/settlement-accounts";
 import { formatNaira } from "@/lib/auth/roles";
 
 export function LeasesList({
   orgSlug,
   leases,
   vacantUnits,
+  settlementAccounts,
   canManage,
 }: {
   orgSlug: string;
   leases: LeaseListItem[];
-  vacantUnits: { id: string; unitCode: string }[];
+  vacantUnits: { id: string; unitCode: string; siteId: string }[];
+  settlementAccounts: SettlementAccountItem[];
   canManage: boolean;
 }) {
   const [view, setView] = useState<ViewMode>("table");
@@ -219,6 +222,7 @@ export function LeasesList({
           mode={formMode}
           lease={formMode === "renew" ? (renewLease ?? undefined) : undefined}
           vacantUnits={vacantUnits}
+          settlementAccounts={settlementAccounts}
           open={!!formMode}
           onClose={() => {
             setFormMode(null);

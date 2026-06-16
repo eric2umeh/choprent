@@ -107,14 +107,27 @@ export async function listLeasesForOrg(orgId: string): Promise<LeaseListItem[]> 
 
 export async function listVacantUnitsForLease(
   orgId: string
-): Promise<{ id: string; unitCode: string }[]> {
-  const supabase = await createClient();
-  const { data } = await supabase
-    .from("units")
-    .select("id, unit_code, status")
-    .eq("organization_id", orgId)
-    .in("status", ["vacant"])
-    .order("unit_code");
+): Promise<{ id: string; unitCode: string; siteId: string }[]> {
+  try {
+    const admin = createAdminClient();
+    const [{ data: units }, { data: activeLeases }] = await Promise.all([
+      admin
+        .from("units")
+        .select("id, unit_code, site_id")
+        .eq("organization_id", orgId)
+        .order("unit_code"),
+      admin.from("leases").select("unit_id").eq("status", "active"),
+    ]);
 
-  return (data ?? []).map((u) => ({ id: u.id, unitCode: u.unit_code }));
+    const leasedIds = new Set((activeLeases ?? []).map((l) => l.unit_id));
+    return (units ?? [])
+      .filter((u) => !leasedIds.has(u.id))
+      .map((u) => ({
+        id: u.id,
+        unitCode: u.unit_code,
+        siteId: u.site_id,
+      }));
+  } catch {
+    return [];
+  }
 }
