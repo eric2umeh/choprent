@@ -1,24 +1,23 @@
-import Link from "next/link";
+"use client";
+
 import { Plus, Store } from "lucide-react";
 
 export function AddUnitsInfoBanner({
-  orgSlug,
   propertyId,
   canManage,
   unitCount,
   compact,
+  onAddUnit,
 }: {
-  orgSlug: string;
   propertyId?: string;
   canManage: boolean;
   unitCount?: number;
   compact?: boolean;
+  onAddUnit?: () => void;
 }) {
   if (!canManage) return null;
 
-  const addHref = propertyId
-    ? `/d/${orgSlug}/properties/${propertyId}/units/new`
-    : null;
+  const showAdd = Boolean(propertyId && onAddUnit);
 
   return (
     <div
@@ -33,7 +32,7 @@ export function AddUnitsInfoBanner({
           <Store className="h-4 w-4" />
         </span>
         <div className="min-w-0 flex-1">
-          <p className="text-sm font-medium text-green-900">
+          <p className="text-sm font-semibold text-green-900">
             {unitCount === 0
               ? "Add your first shop or unit"
               : "Shops and units live inside each property"}
@@ -43,14 +42,15 @@ export function AddUnitsInfoBanner({
               ? "Create unit codes like 14, Flat 3B, or 14/16 for combined shops."
               : "Use Add unit to register shops, flats, offices, and kiosks under this property."}
           </p>
-          {addHref && (
-            <Link
-              href={addHref}
-              className="mt-2 inline-flex items-center gap-1.5 text-sm font-semibold text-green-800 hover:text-green-900"
+          {showAdd && (
+            <button
+              type="button"
+              onClick={onAddUnit}
+              className="mt-2 inline-flex items-center gap-1.5 text-sm font-bold text-green-800 hover:text-green-900"
             >
               <Plus className="h-4 w-4" />
               Add unit / shop
-            </Link>
+            </button>
           )}
         </div>
       </div>

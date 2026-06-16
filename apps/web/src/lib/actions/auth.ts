@@ -83,7 +83,7 @@ async function linkToPilotOrg(
   }
 
   revalidatePath("/access-pending");
-  revalidatePath("/d/pilot-plaza");
+  revalidatePath("/d/eri-plaza");
   return { success: true };
 }
 

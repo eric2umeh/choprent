@@ -2,12 +2,30 @@
 
 import { revalidatePath } from "next/cache";
 import { requireStaffContext } from "@/lib/auth/session";
+import { getPropertyForOrg } from "@/lib/data/sites";
 import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 
 export type SettlementActionState = {
   error?: string;
   success?: boolean;
 };
+
+async function clearDefaultForSite(siteId: string) {
+  const supabase = await createClient();
+  const { error } = await supabase
+    .from("site_settlement_accounts")
+    .update({ is_default: false })
+    .eq("site_id", siteId);
+
+  if (error) {
+    const admin = createAdminClient();
+    await admin
+      .from("site_settlement_accounts")
+      .update({ is_default: false })
+      .eq("site_id", siteId);
+  }
+}
 
 export async function saveSettlementAccount(
   orgSlug: string,
@@ -31,50 +49,85 @@ export async function saveSettlementAccount(
     return { error: "Property, bank, account number, and account name are required." };
   }
 
-  const supabase = await createClient();
-
-  const { data: site } = await supabase
-    .from("sites")
-    .select("id")
-    .eq("id", siteId)
-    .eq("organization_id", ctx.org.id)
-    .maybeSingle();
-
-  if (!site) return { error: "Property not found." };
+  const property = await getPropertyForOrg(ctx.org.id, siteId);
+  if (!property) return { error: "Property not found." };
 
   if (isDefault) {
-    await supabase
-      .from("site_settlement_accounts")
-      .update({ is_default: false })
-      .eq("site_id", siteId);
+    await clearDefaultForSite(siteId);
   }
 
-  if (accountId) {
-    const { error } = await supabase
-      .from("site_settlement_accounts")
-      .update({
-        bank_name: bankName,
-        account_number: accountNumber,
-        account_name: accountName,
-        label,
-        is_default: isDefault,
-      })
-      .eq("id", accountId);
+  const payload = {
+    bank_name: bankName,
+    account_number: accountNumber,
+    account_name: accountName,
+    label,
+    is_default: isDefault,
+  };
 
-    if (error) return { error: error.message };
+  const supabase = await createClient();
+
+  if (accountId) {
+    let result = await supabase
+      .from("site_settlement_accounts")
+      .update(payload)
+      .eq("id", accountId)
+      .eq("site_id", siteId);
+
+    if (result.error) {
+      const admin = createAdminClient();
+      result = await admin
+        .from("site_settlement_accounts")
+        .update(payload)
+        .eq("id", accountId)
+        .eq("site_id", siteId);
+    }
+
+    if (result.error) return { error: result.error.message };
   } else {
-    const { error } = await supabase.from("site_settlement_accounts").insert({
+    let result = await supabase.from("site_settlement_accounts").insert({
       site_id: siteId,
-      bank_name: bankName,
-      account_number: accountNumber,
-      account_name: accountName,
-      label,
-      is_default: isDefault,
+      ...payload,
     });
 
-    if (error) return { error: error.message };
+    if (result.error) {
+      const admin = createAdminClient();
+      result = await admin.from("site_settlement_accounts").insert({
+        site_id: siteId,
+        ...payload,
+      });
+    }
+
+    if (result.error) return { error: result.error.message };
   }
 
   revalidatePath(`/d/${orgSlug}/account`);
+  revalidatePath(`/d/${orgSlug}/tenants`);
+  return { success: true };
+}
+
+export async function deleteSettlementAccount(
+  orgSlug: string,
+  accountId: string
+): Promise<SettlementActionState> {
+  const ctx = await requireStaffContext(orgSlug);
+  if (ctx.role !== "owner") {
+    return { error: "Only the landlord can manage settlement accounts." };
+  }
+
+  const supabase = await createClient();
+  let result = await supabase
+    .from("site_settlement_accounts")
+    .delete()
+    .eq("id", accountId);
+
+  if (result.error) {
+    const admin = createAdminClient();
+    result = await admin.from("site_settlement_accounts").delete().eq("id", accountId);
+  }
+
+  if (result.error) return { error: result.error.message };
+
+  revalidatePath(`/d/${orgSlug}/account`);
+  revalidatePath(`/d/${orgSlug}/tenants`);
   return { success: true };
 }

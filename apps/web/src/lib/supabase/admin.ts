@@ -18,4 +18,6 @@ export function createAdminClient() {
 
 export const PILOT_ORG_ID = "11111111-1111-1111-1111-111111111111";
 export const PILOT_SITE_ID = "22222222-2222-2222-2222-222222222222";
-export const PILOT_ORG_SLUG = "pilot-plaza";
+export const PILOT_ORG_SLUG = "eri-plaza";
+/** @deprecated Old seed slug — middleware redirects to eri-plaza */
+export const LEGACY_ORG_SLUG = "pilot-plaza";

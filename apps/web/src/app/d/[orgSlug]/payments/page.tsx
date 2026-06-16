@@ -1,7 +1,7 @@
 import { Suspense } from "react";
 import { ListLoadingFallback } from "@/components/ui/list-loading-fallback";
 import { PageHeader } from "@/components/ui/page-header";
-import { PaymentsList } from "@/components/payments/payments-list";
+import { PaymentsPageClient } from "@/components/payments/payments-page-client";
 import { requireStaffContext } from "@/lib/auth/session";
 import { canVerifyPayments } from "@/lib/auth/roles";
 import { listPaymentsForOrg } from "@/lib/data/payments";
@@ -27,10 +27,10 @@ export default async function PaymentsPage({
     <div>
       <PageHeader
         title="Payments"
-        description="Verify receipts and record cash"
+        description="Verify tenant transfers and record cash"
       />
       <Suspense fallback={<ListLoadingFallback />}>
-        <PaymentsList
+        <PaymentsPageClient
           orgSlug={orgSlug}
           canVerify={canVerify}
           payments={payments}

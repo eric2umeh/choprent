@@ -1,15 +1,19 @@
 "use client";
 
-import { useActionState, useEffect, useRef } from "react";
+import { useActionState, useEffect, useRef, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import {
+  deleteProperty,
   saveProperty,
   type PropertyActionState,
 } from "@/lib/actions/sites";
 import type { PropertySummary } from "@/lib/data/property-types";
 import { SITE_TYPE_OPTIONS } from "@/lib/data/property-types";
+import { FormPanel } from "@/components/ui/form-panel";
 import { LoadingButton } from "@/components/ui/loading-button";
+import { confirmDialog } from "@/components/ui/confirm-dialog";
 import { toast } from "@/components/ui/toast";
+import { Trash2 } from "lucide-react";
 
 const initialState: PropertyActionState = {};
 
@@ -25,6 +29,7 @@ export function PropertyForm({
   submitLabel?: string;
 }) {
   const router = useRouter();
+  const [, startDelete] = useTransition();
   const [state, formAction, pending] = useActionState(
     saveProperty.bind(null, orgSlug),
     initialState
@@ -52,8 +57,29 @@ export function PropertyForm({
     }
   }, [state.success, property, onSaved, router]);
 
+  async function handleDelete() {
+    if (!property?.id) return;
+    const { confirmed } = await confirmDialog({
+      title: "Delete property?",
+      message: `Delete ${property.name}? All units, leases, and records under this property will be removed.`,
+      confirmLabel: "Delete property",
+      destructive: true,
+    });
+    if (!confirmed) return;
+    startDelete(async () => {
+      const result = await deleteProperty(orgSlug, property.id);
+      if (result.error) toast.error(result.error);
+      else {
+        toast.success("Property deleted.");
+        onSaved?.();
+        router.refresh();
+      }
+    });
+  }
+
   return (
-    <form action={formAction} className="space-y-4">
+    <FormPanel>
+      <form action={formAction} encType="multipart/form-data" className="space-y-4">
       {property?.id && (
         <input type="hidden" name="property_id" value={property.id} />
       )}
@@ -62,7 +88,7 @@ export function PropertyForm({
         <label className="text-label normal-case">Property name</label>
         <input
           name="name"
-          className="input-field mt-1"
+          className="input-field mt-1.5"
           placeholder="e.g. Eri Plaza, Lekki House 4"
           defaultValue={property?.name ?? ""}
           required
@@ -74,7 +100,7 @@ export function PropertyForm({
         <label className="text-label normal-case">Property type</label>
         <select
           name="site_type"
-          className="input-field mt-1"
+          className="input-field mt-1.5"
           defaultValue={property?.siteType ?? "plaza"}
           disabled={pending}
         >
@@ -120,14 +146,42 @@ export function PropertyForm({
         </div>
       </div>
 
-      <LoadingButton
-        type="submit"
-        loading={pending}
-        loadingLabel="Saving…"
-        className="btn-primary px-4 py-2 disabled:opacity-60"
-      >
-        {submitLabel ?? (property ? "Save property" : "Add property")}
-      </LoadingButton>
-    </form>
+      <div>
+        <label className="text-label normal-case">Property logo (optional)</label>
+        <input
+          name="logo"
+          type="file"
+          accept="image/jpeg,image/png,image/webp"
+          className="mt-1 block w-full text-sm"
+          disabled={pending}
+        />
+        <p className="mt-1 text-[11px] text-muted">
+          Shown to tenants on their portal — JPG, PNG, or WebP, max 2MB.
+        </p>
+      </div>
+
+      <div className="flex flex-wrap gap-2">
+        <LoadingButton
+          type="submit"
+          loading={pending}
+          loadingLabel="Saving…"
+          className="btn-primary px-4 py-2 disabled:opacity-60"
+        >
+          {submitLabel ?? (property ? "Save property" : "Add property")}
+        </LoadingButton>
+        {property?.id && (
+          <button
+            type="button"
+            onClick={handleDelete}
+            disabled={pending}
+            className="inline-flex items-center gap-1.5 rounded-lg border border-red-200 px-4 py-2 text-sm font-semibold text-red-600 hover:bg-red-50 disabled:opacity-60"
+          >
+            <Trash2 className="h-4 w-4" />
+            Delete property
+          </button>
+        )}
+      </div>
+      </form>
+    </FormPanel>
   );
 }

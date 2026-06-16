@@ -1,4 +1,6 @@
-# Sprint 4 — Tenant portal, letters, PDF statements, leases
+# Sprint 4 — Tenant portal, letters, PDF statements, leases ✓
+
+**Status:** Complete — see Sprint 5 (`14_sprint5_verification_settlement.md`).
 
 **Goal:** Tenants self-serve (ledger, pay, download docs). Staff issue letters, generate PDF statements, and manage leases from the UI.
 

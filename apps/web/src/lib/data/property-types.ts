@@ -7,6 +7,7 @@ export type PropertySummary = {
   addressLine1: string;
   city: string;
   state: string;
+  logoPath: string | null;
   unitCount: number;
 };
 

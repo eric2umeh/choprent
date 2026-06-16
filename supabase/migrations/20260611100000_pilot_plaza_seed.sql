@@ -1,11 +1,11 @@
--- Sprint 1: pilot plaza org (slug matches UI demo: pilot-plaza)
+-- Sprint 1: demo plaza org (slug: eri-plaza)
 -- Idempotent — safe to re-run on environments missing seed data
 
 insert into organizations (id, name, slug, settings)
 values (
   '11111111-1111-1111-1111-111111111111',
   'Pilot Landlord Org',
-  'pilot-plaza',
+  'eri-plaza',
   '{"payments":{"dva_enabled":false,"fee_bearer":"undecided"}}'::jsonb
 )
 on conflict (slug) do update set

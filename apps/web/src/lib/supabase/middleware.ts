@@ -46,6 +46,12 @@ export async function updateSession(request: NextRequest) {
 
   const { pathname } = request.nextUrl;
 
+  if (pathname.startsWith("/d/pilot-plaza") || pathname.startsWith("/t/pilot-plaza")) {
+    const url = request.nextUrl.clone();
+    url.pathname = pathname.replace("/pilot-plaza", "/eri-plaza");
+    return NextResponse.redirect(url);
+  }
+
   if (isProtectedPath(pathname) && !user) {
     const url = request.nextUrl.clone();
     url.pathname = "/login";

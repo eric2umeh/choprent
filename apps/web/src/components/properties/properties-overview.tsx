@@ -1,13 +1,17 @@
 "use client";
 
-import { useState } from "react";
-import Link from "next/link";
-import { Badge } from "@/components/ui/badge";
-import { Modal } from "@/components/ui/modal";
-import { PropertyForm } from "@/components/properties/property-form";
+import { useState, useTransition } from "react";
+import { useRouter } from "next/navigation";
+import { deleteProperty } from "@/lib/actions/sites";
 import type { PropertySummary } from "@/lib/data/property-types";
 import { formatSiteType } from "@/lib/data/property-types";
-import { Building2, ChevronRight, Pencil } from "lucide-react";
+import { Building2, ChevronRight, Pencil, Trash2 } from "lucide-react";
+import Link from "next/link";
+import { Modal } from "@/components/ui/modal";
+import { PropertyForm } from "@/components/properties/property-form";
+import { Badge } from "@/components/ui/badge";
+import { confirmDialog } from "@/components/ui/confirm-dialog";
+import { toast } from "@/components/ui/toast";
 
 export function PropertiesOverview({
   orgSlug,
@@ -18,7 +22,30 @@ export function PropertiesOverview({
   properties: PropertySummary[];
   canManage: boolean;
 }) {
+  const router = useRouter();
   const [editing, setEditing] = useState<PropertySummary | null>(null);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [, startDelete] = useTransition();
+
+  async function handleDelete(property: PropertySummary) {
+    const { confirmed } = await confirmDialog({
+      title: "Delete property?",
+      message: `Delete ${property.name}? All units and records under this property will be removed.`,
+      confirmLabel: "Delete property",
+      destructive: true,
+    });
+    if (!confirmed) return;
+    setDeletingId(property.id);
+    startDelete(async () => {
+      const result = await deleteProperty(orgSlug, property.id);
+      setDeletingId(null);
+      if (result.error) toast.error(result.error);
+      else {
+        toast.success("Property deleted.");
+        router.refresh();
+      }
+    });
+  }
 
   if (properties.length === 0) {
     return (
@@ -38,7 +65,7 @@ export function PropertiesOverview({
       <ul className="divide-y divide-border">
         {properties.map((property) => (
           <li key={property.id} className="bg-white px-3 py-3">
-            <div className="flex items-start justify-between gap-3">
+            <div className="flex items-start justify-between gap-2">
               <Link
                 href={`/d/${orgSlug}/properties/${property.id}`}
                 className="interactive-lift min-w-0 flex-1 rounded-lg p-1 -m-1"
@@ -59,18 +86,29 @@ export function PropertiesOverview({
                 </p>
               </Link>
               <div className="flex shrink-0 flex-col items-end gap-2">
-                <Badge variant="muted" className="text-[10px]">
+                <Badge variant="muted" className="text-[10px] font-semibold">
                   {formatSiteType(property.siteType)}
                 </Badge>
                 {canManage && (
-                  <button
-                    type="button"
-                    className="inline-flex items-center gap-1 text-[11px] font-medium text-green-700"
-                    onClick={() => setEditing(property)}
-                  >
-                    <Pencil className="h-3 w-3" />
-                    Edit
-                  </button>
+                  <div className="flex items-center gap-0.5">
+                    <button
+                      type="button"
+                      className="icon-btn-muted"
+                      title="Edit property"
+                      onClick={() => setEditing(property)}
+                    >
+                      <Pencil className="h-4 w-4" />
+                    </button>
+                    <button
+                      type="button"
+                      className="icon-btn-danger"
+                      title="Delete property"
+                      disabled={deletingId === property.id}
+                      onClick={() => handleDelete(property)}
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </button>
+                  </div>
                 )}
               </div>
             </div>
@@ -82,6 +120,7 @@ export function PropertiesOverview({
         open={!!editing}
         onClose={() => setEditing(null)}
         title="Edit property"
+        description="Update name, address, or logo."
       >
         {editing && (
           <PropertyForm

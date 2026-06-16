@@ -5,6 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { ListRow, SectionHeader } from "@/components/ui/section-header";
 import { requireStaffContext } from "@/lib/auth/session";
 import { getDashboardStats } from "@/lib/data/dashboard-stats";
+import { getActivityFeed } from "@/lib/data/activity-feed";
 import { listPaymentsForOrg } from "@/lib/data/payments";
 import { listUnitsForOrg } from "@/lib/data/units";
 import { formatPropertyType } from "@/lib/data/unit-types";
@@ -18,10 +19,11 @@ export default async function DashboardHomePage({
   const { orgSlug } = await params;
   const ctx = await requireStaffContext(orgSlug);
 
-  const [stats, payments, units] = await Promise.all([
+  const [stats, payments, units, activity] = await Promise.all([
     getDashboardStats(ctx.org.id),
     listPaymentsForOrg(ctx.org.id),
     listUnitsForOrg(ctx.org.id),
+    getActivityFeed(ctx.org.id, 8),
   ]);
 
   const pending = payments.filter((p) => p.status === "pending");
@@ -80,6 +82,30 @@ export default async function DashboardHomePage({
                   </div>
                 </div>
                 <Badge variant="warning">Pending</Badge>
+              </ListRow>
+            ))
+          )}
+        </div>
+      </div>
+
+      <div className="border-b border-border bg-white px-3 py-4">
+        <SectionHeader title="Recent activity" />
+        <div className="space-y-2">
+          {activity.length === 0 ? (
+            <p className="text-empty-state list-row">No payment activity yet.</p>
+          ) : (
+            activity.map((item) => (
+              <ListRow key={item.id} className="flex items-center justify-between gap-3">
+                <div className="min-w-0">
+                  <p className="text-list-primary">{item.title}</p>
+                  <p className="mt-0.5 text-list-secondary">{item.detail}</p>
+                </div>
+                <div className="shrink-0 text-right">
+                  <p className="text-money text-sm">{formatNaira(item.amount)}</p>
+                  <p className="mt-0.5 text-list-meta tabular-nums">
+                    {item.at.slice(0, 10)}
+                  </p>
+                </div>
               </ListRow>
             ))
           )}

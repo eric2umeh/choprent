@@ -29,6 +29,8 @@ export async function createLease(
   const startDate = String(formData.get("start_date") ?? "").trim();
   const endDate = String(formData.get("end_date") ?? "").trim();
   const billingCadence = String(formData.get("billing_cadence") ?? "annual") as BillingCadence;
+  const settlementAccountId =
+    String(formData.get("settlement_account_id") ?? "").trim() || null;
 
   if (!unitId || !tenantName || !startDate || !endDate) {
     return { error: "Unit, tenant name, and lease dates are required." };
@@ -72,6 +74,7 @@ export async function createLease(
     tenant_display_name: tenantName,
     tenant_phone: tenantPhone,
     tenant_email: tenantEmail,
+    settlement_account_id: settlementAccountId,
     start_date: startDate,
     end_date: endDate,
     billing_cadence: billingCadence,
