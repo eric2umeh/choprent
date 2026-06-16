@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { PageHeader } from "@/components/ui/page-header";
 import { UnitsList } from "@/components/units/units-list";
+import { AddUnitsInfoBanner } from "@/components/properties/add-units-info-banner";
 import { requireStaffContext } from "@/lib/auth/session";
 import { canAddUnits } from "@/lib/auth/roles";
 import { getPropertyForOrg } from "@/lib/data/sites";
@@ -35,11 +36,18 @@ export default async function PropertyDetailPage({
                 href={`/d/${orgSlug}/properties/${propertyId}/units/new`}
                 className="btn-primary px-3 py-1.5"
               >
-                Add unit
+                Add unit / shop
               </Link>
             )}
           </div>
         }
+      />
+      <AddUnitsInfoBanner
+        orgSlug={orgSlug}
+        propertyId={propertyId}
+        canManage={canAddUnits(ctx.role)}
+        unitCount={units.length}
+        compact
       />
       <UnitsList
         orgSlug={orgSlug}

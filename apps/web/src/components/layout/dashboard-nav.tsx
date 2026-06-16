@@ -15,6 +15,9 @@ import {
   PanelLeft,
   X,
   Landmark,
+  Receipt,
+  TrendingUp,
+  ChevronRight,
 } from "lucide-react";
 import { Logo } from "@/components/logo";
 import { cn } from "@/lib/utils";
@@ -24,9 +27,16 @@ import { signOutAction } from "@/lib/actions/auth";
 
 const navItems = [
   { href: "", label: "Dashboard", icon: LayoutDashboard },
-  { href: "/properties", label: "Properties", icon: Building2 },
+  {
+    href: "/properties",
+    label: "Properties & units",
+    icon: Building2,
+    hint: "Add shops and units inside each property",
+  },
   { href: "/tenants", label: "Tenants", icon: Users },
   { href: "/payments", label: "Payments", icon: CreditCard, badge: true },
+  { href: "/expenses", label: "Expenses", icon: Receipt, comingSoon: true },
+  { href: "/analytics", label: "Analytics", icon: TrendingUp, comingSoon: true },
   { href: "/documents", label: "Documents", icon: FileText },
   { href: "/reports", label: "Reports", icon: BarChart3 },
   { href: "/account", label: "Account", icon: Landmark },
@@ -50,39 +60,56 @@ function NavLinks({
   const base = `/d/${orgSlug}`;
 
   const filteredNav = navItems.filter((item) => {
+    if (collapsed && item.href === "") return false;
     if (item.href === "/settings" && role === "agent") return false;
     if (item.href === "/account" && role === "agent") return false;
     if (item.href === "/reports" && role === "agent") return false;
+    if (item.href === "/expenses" && role === "agent") return false;
+    if (item.href === "/analytics" && role === "agent") return false;
     return true;
   });
 
   return (
-    <nav className="flex-1 space-y-0.5 p-2">
-      {filteredNav.map(({ href, label, icon: Icon, badge }) => {
+    <nav className="flex-1 space-y-0.5 p-2.5">
+      {filteredNav.map(({ href, label, icon: Icon, badge, hint, comingSoon }) => {
         const path = `${base}${href}`;
         const active =
           href === "" ? pathname === base : pathname.startsWith(path);
-        const hrefWithQuery = path;
 
         return (
           <Link
             key={href}
-            href={hrefWithQuery}
+            href={path}
             onClick={onNavigate}
-            title={collapsed ? label : undefined}
+            title={collapsed ? label : hint ?? label}
             className={cn(
-              "flex items-center gap-2.5 rounded-lg px-2.5 py-2 text-xs font-medium transition-all duration-200",
+              "flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-all duration-200",
               active
                 ? "bg-green-100 text-green-800 shadow-sm"
                 : "text-muted hover:translate-x-0.5 hover:bg-surface-subtle hover:text-foreground",
-              collapsed && "justify-center px-2 hover:translate-x-0"
+              collapsed && "justify-center px-2.5 hover:translate-x-0",
+              comingSoon && !active && "opacity-90"
             )}
           >
-            <Icon className="h-4 w-4 shrink-0" />
-            {!collapsed && <span className="flex-1 truncate">{label}</span>}
+            <Icon className="h-5 w-5 shrink-0" />
+            {!collapsed && (
+              <span className="min-w-0 flex-1">
+                <span className="block truncate">{label}</span>
+                {hint && (
+                  <span className="block truncate text-[11px] font-normal text-muted">
+                    {hint}
+                  </span>
+                )}
+              </span>
+            )}
             {!collapsed && badge && pendingCount > 0 && (
-              <span className="flex h-4 min-w-4 items-center justify-center rounded-full bg-amber-500 px-1 text-[9px] font-bold text-white">
+              <span className="flex h-5 min-w-5 items-center justify-center rounded-full bg-amber-500 px-1 text-[10px] font-bold text-white">
                 {pendingCount}
+              </span>
+            )}
+            {!collapsed && comingSoon && (
+              <span className="shrink-0 rounded bg-surface-subtle px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-muted">
+                Soon
               </span>
             )}
           </Link>
@@ -146,35 +173,49 @@ export function DashboardSidebar({
       <aside
         className={cn(
           "fixed inset-y-0 left-0 z-50 flex flex-col border-r border-border bg-white shadow-xl transition-all duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] lg:sticky lg:top-0 lg:z-auto lg:h-screen lg:shadow-none",
-          collapsed ? "w-[4.25rem]" : "w-56",
+          collapsed ? "w-[4.5rem]" : "w-60",
           mobileOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"
         )}
       >
-        <div className="flex h-12 items-center justify-between border-b border-border px-2.5">
-          {!collapsed ? (
-            <Logo href={base} />
-          ) : (
-            <Link
-              href={base}
-              className="mx-auto flex h-8 w-8 items-center justify-center rounded-md bg-green-500 text-xs font-bold text-white"
-            >
-              C
-            </Link>
+        <div
+          className={cn(
+            "border-b border-border",
+            collapsed
+              ? "flex flex-col items-center gap-2.5 px-2 py-3"
+              : "flex h-14 items-center justify-between px-3"
           )}
-          <button
-            type="button"
-            onClick={handleHeaderClose}
-            className="btn-icon shrink-0"
-            aria-label={
-              isDesktop
-                ? collapsed
-                  ? "Expand sidebar"
-                  : "Collapse sidebar"
-                : "Close menu"
-            }
-          >
-            <X className="h-4 w-4" />
-          </button>
+        >
+          {collapsed ? (
+            <>
+              <Link
+                href={base}
+                className="flex h-11 w-11 items-center justify-center rounded-xl bg-green-500 text-lg font-bold text-white shadow-sm transition hover:bg-green-600"
+                title="ChopRent home"
+              >
+                C
+              </Link>
+              <button
+                type="button"
+                onClick={onToggleCollapse}
+                className="flex h-10 w-10 items-center justify-center rounded-lg text-muted transition hover:bg-surface-subtle hover:text-foreground"
+                aria-label="Expand sidebar"
+              >
+                <ChevronRight className="h-5 w-5" />
+              </button>
+            </>
+          ) : (
+            <>
+              <Logo href={base} />
+              <button
+                type="button"
+                onClick={handleHeaderClose}
+                className="btn-icon shrink-0"
+                aria-label={isDesktop ? "Collapse sidebar" : "Close menu"}
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </>
+          )}
         </div>
 
         <NavLinks
@@ -188,14 +229,14 @@ export function DashboardSidebar({
         <div className="mt-auto border-t border-border p-2">
           {!collapsed && (
             <div className="mb-2 flex items-center gap-2 px-1">
-              <span className="flex h-8 w-8 items-center justify-center rounded-full bg-green-100 text-xs font-semibold text-green-800">
+              <span className="flex h-9 w-9 items-center justify-center rounded-full bg-green-100 text-sm font-semibold text-green-800">
                 {userInitials}
               </span>
               <div className="min-w-0 flex-1">
-                <p className="truncate text-xs font-medium text-foreground">
+                <p className="truncate text-sm font-medium text-foreground">
                   {userName}
                 </p>
-                <p className="truncate text-[11px] capitalize text-muted">
+                <p className="truncate text-xs capitalize text-muted">
                   {role}
                 </p>
               </div>
@@ -217,7 +258,7 @@ export function DashboardSidebar({
             type="button"
             onClick={onToggleCollapse}
             className={cn(
-              "hidden w-full items-center gap-2 rounded-md border border-border px-2.5 py-2 text-xs text-muted hover:bg-surface-subtle lg:flex",
+              "hidden w-full items-center gap-2 rounded-md border border-border px-3 py-2.5 text-sm text-muted hover:bg-surface-subtle lg:flex",
               collapsed && "justify-center"
             )}
           >
