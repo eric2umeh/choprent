@@ -10,6 +10,7 @@ import Link from "next/link";
 import { Modal } from "@/components/ui/modal";
 import { PropertyForm } from "@/components/properties/property-form";
 import { Badge } from "@/components/ui/badge";
+import { confirmDialog } from "@/components/ui/confirm-dialog";
 import { toast } from "@/components/ui/toast";
 
 export function PropertiesOverview({
@@ -26,14 +27,14 @@ export function PropertiesOverview({
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [, startDelete] = useTransition();
 
-  function handleDelete(property: PropertySummary) {
-    if (
-      !window.confirm(
-        `Delete ${property.name}? All units and records under this property will be removed.`
-      )
-    ) {
-      return;
-    }
+  async function handleDelete(property: PropertySummary) {
+    const { confirmed } = await confirmDialog({
+      title: "Delete property?",
+      message: `Delete ${property.name}? All units and records under this property will be removed.`,
+      confirmLabel: "Delete property",
+      destructive: true,
+    });
+    if (!confirmed) return;
     setDeletingId(property.id);
     startDelete(async () => {
       const result = await deleteProperty(orgSlug, property.id);

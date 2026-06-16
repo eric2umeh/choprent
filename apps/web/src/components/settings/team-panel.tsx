@@ -11,6 +11,7 @@ import {
 import { FormPanel } from "@/components/ui/form-panel";
 import { LoadingButton } from "@/components/ui/loading-button";
 import { Badge } from "@/components/ui/badge";
+import { confirmDialog } from "@/components/ui/confirm-dialog";
 import { toast } from "@/components/ui/toast";
 
 const initial: TeamActionState = {};
@@ -25,8 +26,14 @@ export function TeamMembersList({
   const router = useRouter();
   const [, startRemove] = useTransition();
 
-  function handleRemove(membershipId: string, email: string | null) {
-    if (!window.confirm(`Remove ${email ?? "this member"} from your team?`)) return;
+  async function handleRemove(membershipId: string, email: string | null) {
+    const { confirmed } = await confirmDialog({
+      title: "Remove team member?",
+      message: `Remove ${email ?? "this member"} from your team? They will lose access immediately.`,
+      confirmLabel: "Remove member",
+      destructive: true,
+    });
+    if (!confirmed) return;
     startRemove(async () => {
       const result = await removeTeamMember(orgSlug, membershipId);
       if (result.error) toast.error(result.error);

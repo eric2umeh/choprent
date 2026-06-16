@@ -12,6 +12,7 @@ import type { PropertySummary } from "@/lib/data/property-types";
 import { LoadingButton } from "@/components/ui/loading-button";
 import { Modal } from "@/components/ui/modal";
 import { Badge } from "@/components/ui/badge";
+import { confirmDialog } from "@/components/ui/confirm-dialog";
 import { toast } from "@/components/ui/toast";
 import { Pencil, Trash2 } from "lucide-react";
 
@@ -151,14 +152,14 @@ export function SettlementAccountsPanel({
     return [...map.entries()];
   }, [accounts]);
 
-  function handleDelete(account: SettlementAccountItem) {
-    if (
-      !window.confirm(
-        `Delete ${account.label} (${account.accountNumber})? Leases using this account will fall back to the property default.`
-      )
-    ) {
-      return;
-    }
+  async function handleDelete(account: SettlementAccountItem) {
+    const { confirmed } = await confirmDialog({
+      title: "Delete settlement account?",
+      message: `Delete ${account.label} (${account.accountNumber})? Leases using this account will fall back to the property default.`,
+      confirmLabel: "Delete account",
+      destructive: true,
+    });
+    if (!confirmed) return;
     setDeletingId(account.id);
     startTransition(async () => {
       const result = await deleteSettlementAccount(orgSlug, account.id);

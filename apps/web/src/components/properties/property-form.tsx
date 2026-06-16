@@ -11,6 +11,7 @@ import type { PropertySummary } from "@/lib/data/property-types";
 import { SITE_TYPE_OPTIONS } from "@/lib/data/property-types";
 import { FormPanel } from "@/components/ui/form-panel";
 import { LoadingButton } from "@/components/ui/loading-button";
+import { confirmDialog } from "@/components/ui/confirm-dialog";
 import { toast } from "@/components/ui/toast";
 import { Trash2 } from "lucide-react";
 
@@ -56,18 +57,23 @@ export function PropertyForm({
     }
   }, [state.success, property, onSaved, router]);
 
-  function handleDelete() {
+  async function handleDelete() {
     if (!property?.id) return;
-    if (
-      !window.confirm(
-        `Delete ${property.name}? All units, leases, and records under this property will be removed.`
-      )
-    ) {
-      return;
-    }
+    const { confirmed } = await confirmDialog({
+      title: "Delete property?",
+      message: `Delete ${property.name}? All units, leases, and records under this property will be removed.`,
+      confirmLabel: "Delete property",
+      destructive: true,
+    });
+    if (!confirmed) return;
     startDelete(async () => {
       const result = await deleteProperty(orgSlug, property.id);
       if (result.error) toast.error(result.error);
+      else {
+        toast.success("Property deleted.");
+        onSaved?.();
+        router.refresh();
+      }
     });
   }
 

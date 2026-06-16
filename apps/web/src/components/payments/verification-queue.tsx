@@ -8,6 +8,7 @@ import { getReceiptDownloadUrl } from "@/lib/actions/documents";
 import type { PaymentListItem } from "@/lib/data/payments";
 import { formatNaira } from "@/lib/auth/roles";
 import { toast } from "@/components/ui/toast";
+import { confirmDialog } from "@/components/ui/confirm-dialog";
 import { Spinner } from "@/components/ui/spinner";
 import { Check, X, FileImage, Clock } from "lucide-react";
 
@@ -59,12 +60,23 @@ export function VerificationQueue({
     });
   }
 
-  function handleReject(paymentId: string) {
-    const reason = window.prompt("Rejection reason (optional):") ?? undefined;
+  async function handleReject(paymentId: string) {
+    const { confirmed, value } = await confirmDialog({
+      title: "Reject payment?",
+      message: "The tenant will not be credited for this transfer.",
+      confirmLabel: "Reject payment",
+      destructive: true,
+      input: {
+        label: "Reason (optional)",
+        placeholder: "e.g. Amount mismatch, unclear receipt",
+      },
+    });
+    if (!confirmed) return;
+
     setActingId(paymentId);
     setActingType("reject");
     startTransition(async () => {
-      const result = await rejectPayment(orgSlug, paymentId, reason);
+      const result = await rejectPayment(orgSlug, paymentId, value || undefined);
       setActingId(null);
       setActingType(null);
       if (result.error) toast.error(result.error);

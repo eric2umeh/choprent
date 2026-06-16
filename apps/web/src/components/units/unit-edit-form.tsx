@@ -13,6 +13,7 @@ import {
 } from "@/lib/data/unit-types";
 import { FormPanel } from "@/components/ui/form-panel";
 import { LoadingButton } from "@/components/ui/loading-button";
+import { confirmDialog } from "@/components/ui/confirm-dialog";
 import { toast } from "@/components/ui/toast";
 import { Trash2 } from "lucide-react";
 
@@ -49,17 +50,18 @@ export function UnitEditForm({
     }
   }, [state.error, state.success, onSaved, router]);
 
-  function handleDelete() {
-    if (
-      !window.confirm(
-        `Delete unit ${unit.unitCode}? This removes leases and ledger history for this unit.`
-      )
-    ) {
-      return;
-    }
+  async function handleDelete() {
+    const { confirmed } = await confirmDialog({
+      title: "Delete unit?",
+      message: `Delete unit ${unit.unitCode}? This removes leases and ledger history for this unit.`,
+      confirmLabel: "Delete unit",
+      destructive: true,
+    });
+    if (!confirmed) return;
     startDelete(async () => {
       const result = await deleteUnit(orgSlug, unit.id, propertyId);
       if (result.error) toast.error(result.error);
+      else toast.success("Unit deleted.");
     });
   }
 

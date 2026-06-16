@@ -13,6 +13,7 @@ import type { PropertySummary } from "@/lib/data/property-types";
 import type { UnitListItem } from "@/lib/data/unit-types";
 import { formatSiteType } from "@/lib/data/property-types";
 import { toast } from "@/components/ui/toast";
+import { confirmDialog } from "@/components/ui/confirm-dialog";
 import Link from "next/link";
 import { Pencil, Plus, Trash2 } from "lucide-react";
 
@@ -32,14 +33,14 @@ export function PropertyDetailPageClient({
   const [editing, setEditing] = useState(false);
   const [, startDelete] = useTransition();
 
-  function handleDeleteProperty() {
-    if (
-      !window.confirm(
-        `Delete ${property.name}? All units and records under this property will be removed.`
-      )
-    ) {
-      return;
-    }
+  async function handleDeleteProperty() {
+    const { confirmed } = await confirmDialog({
+      title: "Delete property?",
+      message: `Delete ${property.name}? All units and records under this property will be removed.`,
+      confirmLabel: "Delete property",
+      destructive: true,
+    });
+    if (!confirmed) return;
     startDelete(async () => {
       const result = await deleteProperty(orgSlug, property.id);
       if (result.error) toast.error(result.error);
