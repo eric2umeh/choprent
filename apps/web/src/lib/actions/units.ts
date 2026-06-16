@@ -4,7 +4,9 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { canAddUnits } from "@/lib/auth/roles";
 import { requireStaffContext } from "@/lib/auth/session";
+import { getPropertyForOrg } from "@/lib/data/sites";
 import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 import type { PropertyType } from "@/types/database";
 
 export type UnitActionState = {
@@ -43,33 +45,43 @@ export async function createUnit(
     return { error: "Unit code is required." };
   }
 
-  const supabase = await createClient();
-
-  const { data: site } = await supabase
-    .from("sites")
-    .select("id")
-    .eq("id", siteId)
-    .eq("organization_id", ctx.org.id)
-    .maybeSingle();
-
-  if (!site) {
+  const property = await getPropertyForOrg(ctx.org.id, siteId);
+  if (!property) {
     return { error: "Property not found. Refresh and try again." };
   }
 
-  const { data, error } = await supabase
+  const payload = {
+    organization_id: ctx.org.id,
+    site_id: siteId,
+    unit_code: unitCode,
+    unit_code_normalized: unitCode.toLowerCase().replace(/\s+/g, ""),
+    is_composite: isCompositeCode(unitCode),
+    composite_note: compositeNote,
+    property_type: propertyType,
+    status,
+  };
+
+  const supabase = await createClient();
+  let insertResult = await supabase
     .from("units")
-    .insert({
-      organization_id: ctx.org.id,
-      site_id: siteId,
-      unit_code: unitCode,
-      unit_code_normalized: unitCode.toLowerCase().replace(/\s+/g, ""),
-      is_composite: isCompositeCode(unitCode),
-      composite_note: compositeNote,
-      property_type: propertyType,
-      status,
-    })
+    .insert(payload)
     .select("id")
     .single();
+
+  if (insertResult.error) {
+    try {
+      const admin = createAdminClient();
+      insertResult = await admin
+        .from("units")
+        .insert(payload)
+        .select("id")
+        .single();
+    } catch {
+      /* use original error below */
+    }
+  }
+
+  const { data, error } = insertResult;
 
   if (error) {
     if (error.code === "23505") {
