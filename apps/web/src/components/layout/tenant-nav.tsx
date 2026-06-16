@@ -53,20 +53,40 @@ export function TenantHeader({
   tenantName,
   unitCode,
   orgDisplayName,
+  propertyLogoUrl,
+  propertyName,
 }: {
   orgSlug: string;
   tenantName: string;
   unitCode: string;
   orgDisplayName: string;
+  propertyLogoUrl?: string | null;
+  propertyName?: string | null;
 }) {
   return (
     <header className="sticky top-0 z-20 border-b border-border bg-white/90 backdrop-blur-md">
-      <div className="mx-auto flex h-12 max-w-lg items-center justify-between px-3">
-        <div className="animate-fade-in min-w-0">
-          <p className="truncate text-sm font-semibold text-foreground">{orgDisplayName}</p>
-          <p className="truncate text-[11px] text-muted">
-            Shop {unitCode} · {tenantName}
-          </p>
+      <div className="mx-auto flex h-14 max-w-lg items-center justify-between gap-3 px-3">
+        <div className="flex min-w-0 items-center gap-2.5">
+          {propertyLogoUrl ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={propertyLogoUrl}
+              alt=""
+              className="h-10 w-10 shrink-0 rounded-lg border border-border object-cover"
+            />
+          ) : (
+            <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-green-500 text-sm font-bold text-white">
+              {(propertyName ?? orgDisplayName).charAt(0).toUpperCase()}
+            </span>
+          )}
+          <div className="animate-fade-in min-w-0">
+            <p className="truncate text-sm font-semibold text-foreground">
+              {propertyName ?? orgDisplayName}
+            </p>
+            <p className="truncate text-[11px] text-muted">
+              Shop {unitCode} · {tenantName}
+            </p>
+          </div>
         </div>
         <Link
           href={`/t/${orgSlug}/documents`}

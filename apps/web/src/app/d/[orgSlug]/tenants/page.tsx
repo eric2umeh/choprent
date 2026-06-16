@@ -5,6 +5,7 @@ import { LeasesList } from "@/components/leases/leases-list";
 import { requireStaffContext } from "@/lib/auth/session";
 import { canManageLeases } from "@/lib/auth/roles";
 import { listLeasesForOrg, listVacantUnitsForLease } from "@/lib/data/leases";
+import { listSettlementAccounts } from "@/lib/data/settlement-accounts";
 
 export default async function TenantsPage({
   params,
@@ -15,9 +16,10 @@ export default async function TenantsPage({
   const ctx = await requireStaffContext(orgSlug);
   const canManage = canManageLeases(ctx.role);
 
-  const [leases, vacantUnits] = await Promise.all([
+  const [leases, vacantUnits, settlementAccounts] = await Promise.all([
     listLeasesForOrg(ctx.org.id),
     listVacantUnitsForLease(ctx.org.id),
+    listSettlementAccounts(ctx.org.id),
   ]);
 
   return (
@@ -31,6 +33,7 @@ export default async function TenantsPage({
           orgSlug={orgSlug}
           leases={leases}
           vacantUnits={vacantUnits}
+          settlementAccounts={settlementAccounts}
           canManage={canManage}
         />
       </Suspense>
