@@ -48,6 +48,7 @@ export function PaymentsList({
   const [view, setView] = useState<ViewMode>("table");
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
+  const [methodFilter, setMethodFilter] = useState("all");
   const [showCashForm, setShowCashForm] = useState(false);
   const [actingId, setActingId] = useState<string | null>(null);
   const [actingType, setActingType] = useState<"verify" | "reject" | null>(null);
@@ -63,9 +64,11 @@ export function PaymentsList({
         p.tenantName.toLowerCase().includes(q) ||
         (p.bankReference?.toLowerCase().includes(q) ?? false);
       const matchStatus = statusFilter === "all" || p.status === statusFilter;
-      return matchSearch && matchStatus;
+      const matchMethod =
+        methodFilter === "all" || p.paymentMethod === methodFilter;
+      return matchSearch && matchStatus && matchMethod;
     });
-  }, [payments, search, statusFilter]);
+  }, [payments, search, statusFilter, methodFilter]);
 
   const { page, setPage, totalPages, slice, pageSize } = usePagination(
     filtered,
@@ -246,6 +249,20 @@ export function PaymentsList({
               { value: "pending", label: "Pending" },
               { value: "verified", label: "Verified" },
               { value: "rejected", label: "Rejected" },
+            ]}
+          />
+          <FilterSelect
+            label="Method"
+            value={methodFilter}
+            onChange={(v) => {
+              setMethodFilter(v);
+              setPage(1);
+            }}
+            options={[
+              { value: "all", label: "All methods" },
+              { value: "bank_transfer", label: "Transfer" },
+              { value: "cash_recorded", label: "Cash" },
+              { value: "dedicated_account", label: "DVA" },
             ]}
           />
         </FilterBar>
