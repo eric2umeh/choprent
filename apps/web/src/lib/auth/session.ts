@@ -1,6 +1,6 @@
 import { redirect, notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
-import { createAdminClient } from "@/lib/supabase/admin";
+import { createAdminClient, LEGACY_ORG_SLUG, PILOT_ORG_ID, PILOT_ORG_SLUG } from "@/lib/supabase/admin";
 import type { MembershipRole } from "@/types/database";
 
 export type AuthUser = {
@@ -71,18 +71,37 @@ export async function getSessionUser(): Promise<AuthUser | null> {
   return mapAuthUser(user);
 }
 
+function slugLookupCandidates(slug: string): string[] {
+  if (slug === PILOT_ORG_SLUG || slug === LEGACY_ORG_SLUG) {
+    return [PILOT_ORG_SLUG, LEGACY_ORG_SLUG];
+  }
+  return [slug];
+}
+
+/** Prefer eri-plaza in URLs for the seeded demo org. */
+export function canonicalOrgSlug(org: { id: string; slug: string }): string {
+  if (org.id === PILOT_ORG_ID) return PILOT_ORG_SLUG;
+  return org.slug;
+}
+
 export async function getOrganizationBySlug(
   slug: string
 ): Promise<OrgContext | null> {
   const supabase = await createClient();
-  const { data, error } = await supabase
-    .from("organizations")
-    .select("id, name, slug")
-    .eq("slug", slug)
-    .maybeSingle();
 
-  if (error || !data) return null;
-  return data;
+  for (const candidate of slugLookupCandidates(slug)) {
+    const { data, error } = await supabase
+      .from("organizations")
+      .select("id, name, slug")
+      .eq("slug", candidate)
+      .maybeSingle();
+
+    if (!error && data) {
+      return { ...data, slug: canonicalOrgSlug(data) };
+    }
+  }
+
+  return null;
 }
 
 async function getOrganizationBySlugAdmin(
@@ -90,13 +109,20 @@ async function getOrganizationBySlugAdmin(
 ): Promise<OrgContext | null> {
   try {
     const admin = createAdminClient();
-    const { data } = await admin
-      .from("organizations")
-      .select("id, name, slug")
-      .eq("slug", slug)
-      .maybeSingle();
 
-    return data ?? null;
+    for (const candidate of slugLookupCandidates(slug)) {
+      const { data } = await admin
+        .from("organizations")
+        .select("id, name, slug")
+        .eq("slug", candidate)
+        .maybeSingle();
+
+      if (data) {
+        return { ...data, slug: canonicalOrgSlug(data) };
+      }
+    }
+
+    return null;
   } catch {
     return null;
   }
@@ -132,19 +158,37 @@ export async function getStaffMembership(
 }
 
 function orgSlugFromJoin(payload: unknown): string | null {
+  const org = orgFromJoin(payload);
+  return org?.slug ?? null;
+}
+
+function orgFromJoin(
+  payload: unknown
+): { id: string; slug: string } | null {
   if (!payload || typeof payload !== "object") return null;
   if (Array.isArray(payload)) {
     const first = payload[0];
-    return first &&
+    if (
+      first &&
       typeof first === "object" &&
       "slug" in first &&
-      typeof first.slug === "string"
-      ? first.slug
-      : null;
+      typeof first.slug === "string" &&
+      "id" in first &&
+      typeof first.id === "string"
+    ) {
+      return { id: first.id, slug: first.slug };
+    }
+    return null;
   }
-  return "slug" in payload && typeof payload.slug === "string"
-    ? payload.slug
-    : null;
+  if (
+    "slug" in payload &&
+    typeof payload.slug === "string" &&
+    "id" in payload &&
+    typeof payload.id === "string"
+  ) {
+    return { id: payload.id, slug: payload.slug };
+  }
+  return null;
 }
 
 /** Server-only fallback after auth.getUser() — avoids RLS/session edge cases on fresh links. */
@@ -153,14 +197,14 @@ async function getStaffDashboardPathAdmin(userId: string): Promise<string | null
     const admin = createAdminClient();
     const { data } = await admin
       .from("memberships")
-      .select("organizations(slug)")
+      .select("organizations(id, slug)")
       .eq("user_id", userId)
       .in("role", ["owner", "manager", "agent"])
       .limit(1)
       .maybeSingle();
 
-    const slug = orgSlugFromJoin(data?.organizations);
-    return slug ? `/d/${slug}` : null;
+    const org = orgFromJoin(data?.organizations);
+    return org ? `/d/${canonicalOrgSlug(org)}` : null;
   } catch {
     return null;
   }
@@ -174,24 +218,28 @@ export async function resolvePostLoginPath(): Promise<string> {
 
   const { data: membership } = await supabase
     .from("memberships")
-    .select("organization_id, organizations(slug)")
+    .select("organization_id, organizations(id, slug)")
     .eq("user_id", user.id)
     .in("role", ["owner", "manager", "agent"])
     .limit(1)
     .maybeSingle();
 
-  const slugFromJoin = orgSlugFromJoin(membership?.organizations);
+  const orgFromMembership = orgFromJoin(membership?.organizations);
 
-  if (slugFromJoin) return `/d/${slugFromJoin}`;
+  if (orgFromMembership) {
+    return `/d/${canonicalOrgSlug(orgFromMembership)}`;
+  }
 
   if (membership?.organization_id) {
-    const { data: org } = await supabase
+    const { data: orgRow } = await createAdminClient()
       .from("organizations")
-      .select("slug")
+      .select("id, slug")
       .eq("id", membership.organization_id)
       .maybeSingle();
 
-    if (org?.slug) return `/d/${org.slug}`;
+    if (orgRow) {
+      return `/d/${canonicalOrgSlug(orgRow)}`;
+    }
   }
 
   const adminPath = await getStaffDashboardPathAdmin(user.id);
@@ -199,7 +247,7 @@ export async function resolvePostLoginPath(): Promise<string> {
 
   const { data: lease } = await supabase
     .from("leases")
-    .select("units!inner(unit_code, sites!inner(organizations!inner(slug)))")
+    .select("units!inner(unit_code, sites!inner(organizations!inner(id, slug)))")
     .eq("tenant_user_id", user.id)
     .eq("status", "active")
     .limit(1)
@@ -209,12 +257,17 @@ export async function resolvePostLoginPath(): Promise<string> {
   if (unitsPayload && typeof unitsPayload === "object" && !Array.isArray(unitsPayload)) {
     const unit = unitsPayload as {
       sites?: {
-        organizations?: { slug?: string } | { slug?: string }[];
+        organizations?: { id?: string; slug?: string } | { id?: string; slug?: string }[];
       };
     };
     const orgs = unit.sites?.organizations;
-    const slug = Array.isArray(orgs) ? orgs[0]?.slug : orgs?.slug;
-    if (slug) return `/t/${slug}`;
+    const org = Array.isArray(orgs) ? orgs[0] : orgs;
+    if (org?.slug && org.id) {
+      return `/t/${canonicalOrgSlug({ id: org.id, slug: org.slug })}`;
+    }
+    if (org?.slug) {
+      return `/t/${org.slug === LEGACY_ORG_SLUG ? PILOT_ORG_SLUG : org.slug}`;
+    }
   }
 
   return "/access-pending";
