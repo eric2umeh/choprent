@@ -140,9 +140,9 @@ Counts toward “tenants self-serving” when tenant account has:
 | 1      | Auth (email+phone), org, plaza, unit CRUD, composite unit codes   | ✓ See `08_sprint1_auth_setup.md`                       |
 | 2      | Leases + renewals, charge engine, annual/quarterly/monthly ledger | Partial (seed in Sprint 3)                             |
 | 3      | Arrears + partial payment allocation, cash + transfer flows       | ✓ See `12_sprint3_payments_arrears.md`                 |
-| 4      | Tenant portal, letters, PDF statements, receipt upload            | **In progress** — see `13_sprint4_tenant_documents.md` |
-| 5      | Verification queue (landlord/manager/agent), multi bank accounts  |
-| 6      | Dashboards, Realtime, metrics CSV export                          |
+| 4      | Tenant portal, letters, PDF statements, receipt upload            | ✓ See `13_sprint4_tenant_documents.md`                 |
+| 5      | Verification queue, multi bank accounts, CSV exports, activity feed | **In progress** — see `14_sprint5_verification_settlement.md` |
+| 6      | Expenses, analytics, Realtime dashboards                          |
 | 7      | Client OCR + reminder rules + mobile polish                       |
 | **8**  | **Paystack DVA per unit + webhooks**                              |
 | **9**  | Electricity metering design spike / partner API                   |

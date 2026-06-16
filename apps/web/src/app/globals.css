@@ -184,19 +184,41 @@ body {
 }
 
 .text-label {
-  font-size: 0.6875rem;
-  font-weight: 600;
-  letter-spacing: 0.07em;
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
   text-transform: uppercase;
-  color: var(--muted-foreground);
+  color: var(--muted);
 }
 
 .text-section-title {
+  font-size: 1rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  line-height: 1.25;
+  color: var(--foreground);
+}
+
+.text-card-title {
   font-size: 0.9375rem;
-  font-weight: 600;
+  font-weight: 700;
   letter-spacing: -0.015em;
   line-height: 1.3;
   color: var(--foreground);
+}
+
+.text-form-title {
+  font-size: 1.0625rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  color: var(--foreground);
+}
+
+.text-form-hint {
+  font-size: 0.8125rem;
+  font-weight: 500;
+  line-height: 1.45;
+  color: var(--muted-foreground);
 }
 
 .text-section-link {
@@ -238,7 +260,7 @@ body {
 
 .text-list-primary {
   font-size: 0.9375rem;
-  font-weight: 600;
+  font-weight: 700;
   letter-spacing: -0.015em;
   line-height: 1.3;
   color: var(--foreground);
@@ -247,7 +269,7 @@ body {
 .text-list-secondary {
   font-size: 0.8125rem;
   font-weight: 500;
-  line-height: 1.35;
+  line-height: 1.4;
   color: var(--muted);
 }
 
@@ -492,6 +514,43 @@ body {
   box-shadow:
     0 0 0 3px rgba(34, 197, 94, 0.12),
     0 1px 2px rgba(0, 0, 0, 0.04);
+}
+
+.form-panel .input-field,
+.form-panel select.input-field {
+  max-width: 100%;
+}
+
+.icon-btn-danger {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 2rem;
+  width: 2rem;
+  border-radius: 0.5rem;
+  color: #dc2626;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+
+.icon-btn-danger:hover {
+  background: #fef2f2;
+  color: #b91c1c;
+}
+
+.icon-btn-muted {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 2rem;
+  width: 2rem;
+  border-radius: 0.5rem;
+  color: var(--muted);
+  transition: background 0.15s ease, color 0.15s ease;
+}
+
+.icon-btn-muted:hover {
+  background: var(--surface-subtle);
+  color: var(--foreground);
 }
 
 .select-field {
