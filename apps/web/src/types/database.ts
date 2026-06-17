@@ -19,6 +19,16 @@ export type PaymentMethod =
   | "cash_recorded"
   | "gateway_checkout";
 
+export type ExpenseCategory =
+  | "maintenance"
+  | "diesel"
+  | "security"
+  | "agency"
+  | "cleaning"
+  | "repairs"
+  | "utilities"
+  | "other";
+
 export interface Organization {
   id: string;
   name: string;
