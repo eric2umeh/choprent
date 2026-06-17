@@ -25,18 +25,25 @@ import type { MembershipRole } from "@/types/database";
 import { canAddUnits } from "@/lib/auth/roles";
 import { signOutAction } from "@/lib/actions/auth";
 
-const navItems = [
+const navItems: {
+  href: string;
+  label: string;
+  icon: typeof LayoutDashboard;
+  hint?: string;
+  badge?: boolean;
+  comingSoon?: boolean;
+}[] = [
   { href: "", label: "Dashboard", icon: LayoutDashboard },
+  { href: "/tenants", label: "Tenants", icon: Users },
   {
     href: "/properties",
     label: "Properties & units",
     icon: Building2,
     hint: "Add shops and units inside each property",
   },
-  { href: "/tenants", label: "Tenants", icon: Users },
   { href: "/payments", label: "Payments", icon: CreditCard, badge: true },
-  { href: "/expenses", label: "Expenses", icon: Receipt, comingSoon: true },
-  { href: "/analytics", label: "Analytics", icon: TrendingUp, comingSoon: true },
+  { href: "/expenses", label: "Expenses", icon: Receipt },
+  { href: "/analytics", label: "Analytics", icon: TrendingUp },
   { href: "/documents", label: "Documents", icon: FileText },
   { href: "/reports", label: "Reports", icon: BarChart3 },
   { href: "/account", label: "Account", icon: Landmark },
@@ -316,9 +323,9 @@ export function DashboardMobileNav({
 
   const items = [
     { href: "", label: "Home", icon: LayoutDashboard },
+    { href: "/tenants", label: "Tenants", icon: Users },
     { href: "/properties", label: "Properties", icon: Building2 },
     { href: "/payments", label: "Pay", icon: CreditCard, badge: pendingCount },
-    { href: "/tenants", label: "Tenants", icon: Users },
   ];
 
   return (

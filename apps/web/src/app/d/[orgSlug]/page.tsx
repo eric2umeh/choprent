@@ -6,6 +6,7 @@ import { ListRow, SectionHeader } from "@/components/ui/section-header";
 import { requireStaffContext } from "@/lib/auth/session";
 import { getDashboardStats } from "@/lib/data/dashboard-stats";
 import { getActivityFeed } from "@/lib/data/activity-feed";
+import { DashboardLiveSync } from "@/components/dashboard/dashboard-live-sync";
 import { listPaymentsForOrg } from "@/lib/data/payments";
 import { listUnitsForOrg } from "@/lib/data/units";
 import { formatPropertyType } from "@/lib/data/unit-types";
@@ -30,6 +31,7 @@ export default async function DashboardHomePage({
 
   return (
     <div>
+      <DashboardLiveSync orgId={ctx.org.id} />
       <PageHeader title="Dashboard" description={ctx.org.name} />
 
       <div className="grid grid-cols-2 gap-2.5 border-b border-border bg-white px-3 py-3 xl:grid-cols-4">
