@@ -17,6 +17,7 @@ import type { UnitListItem } from "@/lib/data/unit-types";
 import { formatPropertyType } from "@/lib/data/unit-types";
 import { formatNaira } from "@/lib/auth/roles";
 import { Plus } from "lucide-react";
+import { unitPath, propertyPath } from "@/lib/routes/dashboard-paths";
 
 function statusVariant(status: string) {
   if (status === "occupied") return "success" as const;
@@ -27,12 +28,14 @@ function statusVariant(status: string) {
 export function UnitsList({
   orgSlug,
   propertyId,
+  propertySlug,
   canAdd,
   units,
   onAddUnit,
 }: {
   orgSlug: string;
   propertyId: string;
+  propertySlug: string;
   canAdd: boolean;
   units: UnitListItem[];
   onAddUnit?: () => void;
@@ -196,7 +199,7 @@ export function UnitsList({
           )}
           {canAdd && !onAddUnit && (
             <Link
-              href={`/d/${orgSlug}/properties/${propertyId}/units/new`}
+              href={`${propertyPath(orgSlug, propertySlug)}/units/new`}
               className="btn-primary inline-flex gap-1.5 px-3 py-1.5"
             >
               <Plus className="h-3.5 w-3.5" />
@@ -212,9 +215,7 @@ export function UnitsList({
             rows={slice}
             columns={columns}
             onRowClick={(u) =>
-              router.push(
-                `/d/${orgSlug}/properties/${propertyId}/units/${u.id}`
-              )
+              router.push(unitPath(orgSlug, propertySlug, u.unitCode))
             }
             emptyMessage="No units match your filters"
           />
@@ -224,9 +225,7 @@ export function UnitsList({
               <CompactCard
                 key={unit.id}
                 onClick={() =>
-                  router.push(
-                    `/d/${orgSlug}/properties/${propertyId}/units/${unit.id}`
-                  )
+                  router.push(unitPath(orgSlug, propertySlug, unit.unitCode))
                 }
               >
                 <div className="flex items-start justify-between gap-2">

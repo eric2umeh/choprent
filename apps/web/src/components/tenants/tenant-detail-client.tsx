@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { propertyPath, unitPath } from "@/lib/routes/dashboard-paths";
 import { Badge } from "@/components/ui/badge";
 import { ListPanel } from "@/components/ui/page-header";
 import { ResponsiveDataTable, type Column } from "@/components/ui/responsive-table";
@@ -140,14 +141,14 @@ export function TenantDetailClient({
         </dl>
         <div className="mt-3 flex flex-wrap gap-2 text-sm">
           <Link
-            href={`/d/${orgSlug}/properties/${lease.propertyId}/units/${lease.unitId}`}
+            href={unitPath(orgSlug, lease.propertySlug, lease.unitCode)}
             className="font-semibold text-green-800 hover:text-green-900"
           >
             View unit →
           </Link>
           <span className="text-list-meta">·</span>
           <Link
-            href={`/d/${orgSlug}/properties/${lease.propertyId}`}
+            href={propertyPath(orgSlug, lease.propertySlug)}
             className="font-semibold text-green-800 hover:text-green-900"
           >
             View property →
