@@ -1,4 +1,3 @@
-import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import type { BillingCadence } from "@/types/database";
 
@@ -35,28 +34,56 @@ function unitCodeFromRow(units: LeaseRow["units"]): string {
   return units.unit_code;
 }
 
+function currentYearBounds() {
+  const year = new Date().getFullYear();
+  return {
+    year,
+    start: `${year}-01-01`,
+    end: `${year + 1}-01-01`,
+  };
+}
+
 async function annualTotalForLease(
-  supabase: Awaited<ReturnType<typeof createClient>>,
+  admin: ReturnType<typeof createAdminClient>,
   leaseId: string,
   unitId: string
 ): Promise<number> {
-  const { data: periods } = await supabase
+  const { start, end } = currentYearBounds();
+
+  const { data: periods } = await admin
     .from("ledger_periods")
-    .select("expected_total_ngn, status")
-    .or(`lease_id.eq.${leaseId},unit_id.eq.${unitId}`)
+    .select("expected_total_ngn, status, lease_id, period_start")
+    .eq("unit_id", unitId)
+    .gte("period_start", start)
+    .lt("period_start", end)
     .order("period_start", { ascending: false });
 
-  if (!periods?.length) return 0;
-  const openTotal = periods
-    .filter((p) => p.status === "open")
-    .reduce((sum, p) => sum + Number(p.expected_total_ngn), 0);
-  if (openTotal > 0) return openTotal;
-  return Number(periods[0].expected_total_ngn);
+  if (periods?.length) {
+    const forLease = periods.filter((p) => p.lease_id === leaseId);
+    const relevant = forLease.length > 0 ? forLease : periods;
+    const openTotal = relevant
+      .filter((p) => p.status === "open")
+      .reduce((sum, p) => sum + Number(p.expected_total_ngn), 0);
+    if (openTotal > 0) return openTotal;
+    return Number(relevant[0].expected_total_ngn);
+  }
+
+  const { data: template } = await admin
+    .from("charge_templates")
+    .select("amount")
+    .eq("scope", "unit")
+    .eq("scope_id", unitId)
+    .eq("charge_kind", "rent")
+    .order("effective_from", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  return Number(template?.amount ?? 0);
 }
 
 async function mapLeaseRows(
   rows: LeaseRow[],
-  supabase: Awaited<ReturnType<typeof createClient>>
+  admin: ReturnType<typeof createAdminClient>
 ): Promise<LeaseListItem[]> {
   return Promise.all(
     rows.map(async (row) => ({
@@ -70,39 +97,27 @@ async function mapLeaseRows(
       endDate: row.end_date,
       billingCadence: row.billing_cadence,
       status: row.status,
-      annualTotal: await annualTotalForLease(supabase, row.id, row.unit_id),
+      annualTotal: await annualTotalForLease(admin, row.id, row.unit_id),
     }))
   );
 }
 
 export async function listLeasesForOrg(orgId: string): Promise<LeaseListItem[]> {
-  const supabase = await createClient();
-  const { data, error } = await supabase
-    .from("leases")
-    .select(
-      "id, unit_id, tenant_display_name, tenant_phone, tenant_email, start_date, end_date, billing_cadence, status, units!inner(unit_code, organization_id)"
-    )
-    .eq("units.organization_id", orgId)
-    .order("start_date", { ascending: false });
+  try {
+    const admin = createAdminClient();
+    const { data } = await admin
+      .from("leases")
+      .select(
+        "id, unit_id, tenant_display_name, tenant_phone, tenant_email, start_date, end_date, billing_cadence, status, units!inner(unit_code, organization_id)"
+      )
+      .eq("units.organization_id", orgId)
+      .order("start_date", { ascending: false });
 
-  if (error || !data) {
-    try {
-      const admin = createAdminClient();
-      const { data: adminRows } = await admin
-        .from("leases")
-        .select(
-          "id, unit_id, tenant_display_name, tenant_phone, tenant_email, start_date, end_date, billing_cadence, status, units!inner(unit_code, organization_id)"
-        )
-        .eq("units.organization_id", orgId)
-        .order("start_date", { ascending: false });
-      if (!adminRows) return [];
-      return mapLeaseRows(adminRows as LeaseRow[], supabase);
-    } catch {
-      return [];
-    }
+    if (!data) return [];
+    return mapLeaseRows(data as LeaseRow[], admin);
+  } catch {
+    return [];
   }
-
-  return mapLeaseRows(data as LeaseRow[], supabase);
 }
 
 export async function listVacantUnitsForLease(
@@ -115,8 +130,13 @@ export async function listVacantUnitsForLease(
         .from("units")
         .select("id, unit_code, site_id")
         .eq("organization_id", orgId)
+        .in("status", ["vacant", "maintenance"])
         .order("unit_code"),
-      admin.from("leases").select("unit_id").eq("status", "active"),
+      admin
+        .from("leases")
+        .select("unit_id, units!inner(organization_id)")
+        .eq("status", "active")
+        .eq("units.organization_id", orgId),
     ]);
 
     const leasedIds = new Set((activeLeases ?? []).map((l) => l.unit_id));

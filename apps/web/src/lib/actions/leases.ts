@@ -4,7 +4,6 @@ import { revalidatePath } from "next/cache";
 import { canManageLeases } from "@/lib/auth/roles";
 import { requireStaffContext } from "@/lib/auth/session";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { createClient } from "@/lib/supabase/server";
 import type { BillingCadence } from "@/types/database";
 
 export type LeaseActionState = {
@@ -36,19 +35,18 @@ export async function createLease(
     return { error: "Unit, tenant name, and lease dates are required." };
   }
 
-  const supabase = await createClient();
   const admin = createAdminClient();
 
-  const { data: unit } = await supabase
+  const { data: unit } = await admin
     .from("units")
-    .select("id, organization_id, status")
+    .select("id, organization_id, status, site_id")
     .eq("id", unitId)
     .eq("organization_id", ctx.org.id)
     .maybeSingle();
 
-  if (!unit) return { error: "Unit not found." };
+  if (!unit) return { error: "Unit not found in this organization." };
 
-  const { data: existingLease } = await supabase
+  const { data: existingLease } = await admin
     .from("leases")
     .select("id")
     .eq("unit_id", unitId)
@@ -68,7 +66,19 @@ export async function createLease(
       )?.id ?? null;
   }
 
-  const { error: insertError } = await supabase.from("leases").insert({
+  if (settlementAccountId) {
+    const { data: account } = await admin
+      .from("site_settlement_accounts")
+      .select("id, site_id")
+      .eq("id", settlementAccountId)
+      .maybeSingle();
+
+    if (!account || account.site_id !== unit.site_id) {
+      return { error: "Settlement account must belong to this unit's property." };
+    }
+  }
+
+  const { error: insertError } = await admin.from("leases").insert({
     unit_id: unitId,
     tenant_user_id: tenantUserId,
     tenant_display_name: tenantName,
@@ -83,10 +93,7 @@ export async function createLease(
 
   if (insertError) return { error: insertError.message };
 
-  await supabase
-    .from("units")
-    .update({ status: "occupied" })
-    .eq("id", unitId);
+  await admin.from("units").update({ status: "occupied" }).eq("id", unitId);
 
   revalidatePath(`/d/${orgSlug}/tenants`);
   revalidatePath(`/d/${orgSlug}/properties`);
@@ -112,9 +119,9 @@ export async function renewLease(
     return { error: "New lease dates are required." };
   }
 
-  const supabase = await createClient();
+  const admin = createAdminClient();
 
-  const { data: current } = await supabase
+  const { data: current } = await admin
     .from("leases")
     .select(
       "id, unit_id, tenant_user_id, tenant_display_name, tenant_phone, tenant_email, settlement_account_id, units!inner(organization_id)"
@@ -135,14 +142,14 @@ export async function renewLease(
 
   if (orgId !== ctx.org.id) return { error: "Lease not found." };
 
-  const { error: endError } = await supabase
+  const { error: endError } = await admin
     .from("leases")
     .update({ status: "ended" })
     .eq("id", leaseId);
 
   if (endError) return { error: endError.message };
 
-  const { error: insertError } = await supabase.from("leases").insert({
+  const { error: insertError } = await admin.from("leases").insert({
     unit_id: current.unit_id,
     tenant_user_id: current.tenant_user_id,
     tenant_display_name: current.tenant_display_name,
