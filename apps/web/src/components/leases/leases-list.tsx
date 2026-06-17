@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState, useTransition } from "react";
-import { Badge } from "@/components/ui/badge";
+import { useRouter } from "next/navigation";
 import { CompactCard } from "@/components/ui/card";
 import { FilterBar, FilterSelect } from "@/components/ui/filter-bar";
 import { ListPanel, ListToolbar } from "@/components/ui/page-header";
@@ -12,6 +12,7 @@ import {
 } from "@/components/ui/responsive-table";
 import { ViewToggle, type ViewMode } from "@/components/ui/view-toggle";
 import { LeaseForm } from "@/components/leases/lease-form";
+import { TenantPaymentStatusBadge } from "@/components/tenants/tenant-payment-status-badge";
 import type { LeaseListItem } from "@/lib/data/leases";
 import type { SettlementAccountItem } from "@/lib/data/settlement-accounts";
 import { formatNaira } from "@/lib/auth/roles";
@@ -29,9 +30,11 @@ export function LeasesList({
   settlementAccounts: SettlementAccountItem[];
   canManage: boolean;
 }) {
+  const router = useRouter();
   const [view, setView] = useState<ViewMode>("table");
   const [search, setSearch] = useState("");
   const [cadenceFilter, setCadenceFilter] = useState("all");
+  const [rentStatusFilter, setRentStatusFilter] = useState("all");
   const [formMode, setFormMode] = useState<"create" | "renew" | null>(null);
   const [renewLease, setRenewLease] = useState<LeaseListItem | null>(null);
   const [, startTransition] = useTransition();
@@ -42,12 +45,15 @@ export function LeasesList({
       const matchSearch =
         !q ||
         l.unitCode.toLowerCase().includes(q) ||
-        l.tenantName.toLowerCase().includes(q);
+        l.tenantName.toLowerCase().includes(q) ||
+        l.propertyName.toLowerCase().includes(q);
       const matchCadence =
         cadenceFilter === "all" || l.billingCadence === cadenceFilter;
-      return matchSearch && matchCadence;
+      const matchRentStatus =
+        rentStatusFilter === "all" || l.paymentStatus === rentStatusFilter;
+      return matchSearch && matchCadence && matchRentStatus;
     });
-  }, [leases, search, cadenceFilter]);
+  }, [leases, search, cadenceFilter, rentStatusFilter]);
 
   const { page, setPage, totalPages, slice, pageSize } = usePagination(
     filtered,
@@ -70,12 +76,31 @@ export function LeasesList({
       render: (l) => <span className="text-table-cell">{l.tenantName}</span>,
     },
     {
+      key: "property",
+      header: "Property",
+      render: (l) => (
+        <span className="text-table-cell-muted">{l.propertyName}</span>
+      ),
+    },
+    {
       key: "total",
-      header: "Annual total",
+      header: "Annual rent",
       mobilePrimary: true,
       render: (l) => (
         <span className="text-money">{formatNaira(l.annualTotal)}</span>
       ),
+    },
+    {
+      key: "collected",
+      header: "Collected",
+      render: (l) => (
+        <span className="text-table-cell">{formatNaira(l.paidAmount)}</span>
+      ),
+    },
+    {
+      key: "rentStatus",
+      header: "Rent status",
+      render: (l) => <TenantPaymentStatusBadge status={l.paymentStatus} />,
     },
     {
       key: "period",
@@ -92,15 +117,6 @@ export function LeasesList({
       header: "Billing",
       render: (l) => (
         <span className="text-meta-pill capitalize">{l.billingCadence}</span>
-      ),
-    },
-    {
-      key: "status",
-      header: "Status",
-      render: (l) => (
-        <Badge variant={l.status === "active" ? "success" : "muted"}>
-          {l.status}
-        </Badge>
       ),
     },
     {
@@ -145,8 +161,22 @@ export function LeasesList({
             setSearch(v);
             setPage(1);
           }}
-          searchPlaceholder="Search unit or tenant…"
+          searchPlaceholder="Search unit, tenant, or property…"
         >
+          <FilterSelect
+            label="Rent status"
+            value={rentStatusFilter}
+            onChange={(v) => {
+              setRentStatusFilter(v);
+              setPage(1);
+            }}
+            options={[
+              { value: "all", label: "All" },
+              { value: "paid", label: "Paid" },
+              { value: "partial", label: "Partial" },
+              { value: "debt", label: "In debt" },
+            ]}
+          />
           <FilterSelect
             label="Billing"
             value={cadenceFilter}
@@ -181,12 +211,16 @@ export function LeasesList({
           <ResponsiveDataTable
             rows={slice}
             columns={columns}
-            emptyMessage="No leases match your filters"
+            onRowClick={(l) => router.push(`/d/${orgSlug}/tenants/${l.id}`)}
+            emptyMessage="No tenants match your filters"
           />
         ) : (
           <div className="grid gap-2 p-3 sm:grid-cols-2">
             {slice.map((l) => (
-              <CompactCard key={l.id}>
+              <CompactCard
+                key={l.id}
+                onClick={() => router.push(`/d/${orgSlug}/tenants/${l.id}`)}
+              >
                 <div className="flex justify-between gap-2">
                   <div>
                     <p className="text-sm font-semibold">
@@ -199,8 +233,14 @@ export function LeasesList({
                       {l.billingCadence}
                     </p>
                   </div>
+                  <TenantPaymentStatusBadge status={l.paymentStatus} />
+                </div>
+                <div className="mt-2 flex items-center justify-between">
                   <span className="text-xs font-semibold">
                     {formatNaira(l.annualTotal)}
+                  </span>
+                  <span className="text-list-secondary text-xs">
+                    Collected {formatNaira(l.paidAmount)}
                   </span>
                 </div>
               </CompactCard>
