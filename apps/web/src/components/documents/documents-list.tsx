@@ -173,6 +173,7 @@ export function DocumentsList({
             }}
             options={[
               { value: "all", label: "All types" },
+              { value: "attachment", label: "Attachment" },
               { value: "letter", label: "Letter" },
               { value: "notice", label: "Notice" },
               { value: "statement", label: "Statement" },

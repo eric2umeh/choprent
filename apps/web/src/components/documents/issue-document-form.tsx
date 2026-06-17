@@ -46,7 +46,7 @@ export function IssueDocumentForm({
       open={open}
       onClose={onClose}
       title="Issue document"
-      description="Upload a letter, notice, or receipt for tenants to download."
+      description="Upload any file — PDF, images, Word, Excel, and more."
       preventClose={loading}
     >
       <form onSubmit={handleSubmit} className="space-y-3">
@@ -67,7 +67,9 @@ export function IssueDocumentForm({
               name="doc_type"
               className="input-field mt-1"
               disabled={loading}
+              defaultValue="attachment"
             >
+              <option value="attachment">Attachment</option>
               <option value="letter">Letter</option>
               <option value="notice">Notice</option>
               <option value="receipt">Receipt</option>
@@ -95,7 +97,7 @@ export function IssueDocumentForm({
             name="file"
             type="file"
             required
-            accept="application/pdf,image/jpeg,image/png,image/webp"
+            accept="*/*"
             disabled={loading}
             className="input-field mt-1 file:mr-2 file:rounded file:border-0 file:bg-green-50 file:px-2 file:py-1 file:text-xs file:font-medium file:text-green-800"
           />

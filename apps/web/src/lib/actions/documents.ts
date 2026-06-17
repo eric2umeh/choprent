@@ -7,7 +7,7 @@ import { listDocumentsForOrg } from "@/lib/data/documents";
 import { getTenantLedger } from "@/lib/data/ledger";
 import { buildStatementPdf } from "@/lib/pdf/statement";
 import { createSignedStorageUrl } from "@/lib/storage/signed-url";
-import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 import type { DocumentType } from "@/lib/data/documents";
 
 export type DocumentActionState = {
@@ -16,12 +16,33 @@ export type DocumentActionState = {
   downloadUrl?: string;
 };
 
-const ALLOWED_DOC_MIME = new Set([
-  "application/pdf",
-  "image/jpeg",
-  "image/png",
-  "image/webp",
-]);
+const DOC_TYPES: DocumentType[] = [
+  "letter",
+  "notice",
+  "receipt",
+  "statement",
+  "attachment",
+];
+
+function inferContentType(file: File, ext: string): string {
+  if (file.type && file.type !== "application/octet-stream") return file.type;
+
+  const byExt: Record<string, string> = {
+    pdf: "application/pdf",
+    png: "image/png",
+    jpg: "image/jpeg",
+    jpeg: "image/jpeg",
+    webp: "image/webp",
+    gif: "image/gif",
+    doc: "application/msword",
+    docx: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+    xls: "application/vnd.ms-excel",
+    xlsx: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    txt: "text/plain",
+  };
+
+  return byExt[ext] ?? "application/octet-stream";
+}
 
 export async function getDocumentDownloadUrl(
   orgSlug: string,
@@ -47,9 +68,8 @@ export async function getDocumentDownloadUrl(
   }
 
   const ctx = await requireStaffContext(orgSlug);
-
-  const supabase = await createClient();
-  const { data: doc } = await supabase
+  const admin = createAdminClient();
+  const { data: doc } = await admin
     .from("management_documents")
     .select("file_url")
     .eq("id", documentId)
@@ -67,9 +87,8 @@ export async function getReceiptDownloadUrl(
   paymentId: string
 ): Promise<DocumentActionState> {
   const ctx = await requireStaffContext(orgSlug);
-
-  const supabase = await createClient();
-  const { data: payment } = await supabase
+  const admin = createAdminClient();
+  const { data: payment } = await admin
     .from("payments")
     .select("receipt_file_url")
     .eq("id", paymentId)
@@ -95,34 +114,35 @@ export async function issueDocument(
   }
 
   const title = String(formData.get("title") ?? "").trim();
-  const docType = String(formData.get("doc_type") ?? "letter") as DocumentType;
+  const requestedType = String(formData.get("doc_type") ?? "attachment");
+  const docType = (
+    DOC_TYPES.includes(requestedType as DocumentType) ? requestedType : "attachment"
+  ) as DocumentType;
   const unitId = String(formData.get("unit_id") ?? "").trim() || null;
   const file = formData.get("file");
 
   if (!title) return { error: "Title is required." };
   if (!(file instanceof File) || file.size === 0) {
-    return { error: "Upload a PDF or image file." };
+    return { error: "Choose a file to upload." };
   }
   if (file.size > 20 * 1024 * 1024) {
     return { error: "File must be 20MB or less." };
   }
-  if (!ALLOWED_DOC_MIME.has(file.type)) {
-    return { error: "Use PDF, JPG, PNG, or WebP." };
-  }
 
-  const supabase = await createClient();
-  const ext = file.name.split(".").pop()?.toLowerCase() ?? "pdf";
+  const admin = createAdminClient();
+  const ext = file.name.split(".").pop()?.toLowerCase() ?? "bin";
+  const contentType = inferContentType(file, ext);
   const path = `${ctx.org.id}/${unitId ?? "plaza"}/${crypto.randomUUID()}.${ext}`;
 
-  const { error: uploadError } = await supabase.storage
+  const { error: uploadError } = await admin.storage
     .from("documents")
-    .upload(path, file, { upsert: false, contentType: file.type });
+    .upload(path, file, { upsert: false, contentType });
 
   if (uploadError) return { error: uploadError.message };
 
   let leaseId: string | null = null;
   if (unitId) {
-    const { data: lease } = await supabase
+    const { data: lease } = await admin
       .from("leases")
       .select("id")
       .eq("unit_id", unitId)
@@ -131,7 +151,7 @@ export async function issueDocument(
     leaseId = lease?.id ?? null;
   }
 
-  const { error: insertError } = await supabase.from("management_documents").insert({
+  const { error: insertError } = await admin.from("management_documents").insert({
     organization_id: ctx.org.id,
     unit_id: unitId,
     lease_id: leaseId,
@@ -142,7 +162,13 @@ export async function issueDocument(
   });
 
   if (insertError) {
-    await supabase.storage.from("documents").remove([path]);
+    await admin.storage.from("documents").remove([path]);
+    if (insertError.message.includes("invalid input value for enum")) {
+      return {
+        error:
+          "Document type not supported yet. Run the latest database migration, then try again.",
+      };
+    }
     return { error: insertError.message };
   }
 
@@ -160,9 +186,9 @@ export async function generateStatement(
     return { error: "You don't have permission to generate statements." };
   }
 
-  const supabase = await createClient();
+  const admin = createAdminClient();
 
-  const { data: unit } = await supabase
+  const { data: unit } = await admin
     .from("units")
     .select("unit_code, organization_id")
     .eq("id", unitId)
@@ -171,7 +197,7 @@ export async function generateStatement(
 
   if (!unit) return { error: "Unit not found." };
 
-  const { data: lease } = await supabase
+  const { data: lease } = await admin
     .from("leases")
     .select("id, tenant_display_name")
     .eq("unit_id", unitId)
@@ -192,7 +218,7 @@ export async function generateStatement(
   });
 
   const path = `${ctx.org.id}/${unitId}/statement-${issuedAt}-${crypto.randomUUID()}.pdf`;
-  const { error: uploadError } = await supabase.storage
+  const { error: uploadError } = await admin.storage
     .from("documents")
     .upload(path, pdfBytes, {
       upsert: false,
@@ -201,7 +227,7 @@ export async function generateStatement(
 
   if (uploadError) return { error: uploadError.message };
 
-  const { error: insertError } = await supabase.from("management_documents").insert({
+  const { error: insertError } = await admin.from("management_documents").insert({
     organization_id: ctx.org.id,
     unit_id: unitId,
     lease_id: lease?.id ?? null,
@@ -212,7 +238,7 @@ export async function generateStatement(
   });
 
   if (insertError) {
-    await supabase.storage.from("documents").remove([path]);
+    await admin.storage.from("documents").remove([path]);
     return { error: insertError.message };
   }
 
