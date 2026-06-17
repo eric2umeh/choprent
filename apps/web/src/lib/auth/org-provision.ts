@@ -1,15 +1,8 @@
+import { slugify } from "@/lib/utils/slug";
 import type { AuthUser } from "@/lib/auth/session";
 import { createAdminClient } from "@/lib/supabase/admin";
 
-function slugify(input: string): string {
-  return (
-    input
-      .toLowerCase()
-      .replace(/[^a-z0-9]+/g, "-")
-      .replace(/^-+|-+$/g, "")
-      .slice(0, 40) || "landlord"
-  );
-}
+export { slugify } from "@/lib/utils/slug";
 
 export function orgSlugCandidate(user: AuthUser): string {
   const fromEmail = user.email?.split("@")[0] ?? "";

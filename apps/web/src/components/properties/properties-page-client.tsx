@@ -103,6 +103,7 @@ export function PropertiesPageClient({
         <UnitsList
           orgSlug={orgSlug}
           propertyId={singleProperty.id}
+          propertySlug={singleProperty.slug}
           canAdd={canManage}
           units={units}
           onAddUnit={canManage ? () => setShowAddUnit(true) : undefined}

@@ -1,14 +1,18 @@
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { isUuid } from "@/lib/utils/slug";
 import type { PropertySummary } from "@/lib/data/property-types";
 import type { Site } from "@/types/database";
 
 export type { PropertySummary } from "@/lib/data/property-types";
 
-function mapSite(row: Site, unitCount = 0): PropertySummary {
+type SiteRow = Site & { slug?: string };
+
+function mapSite(row: SiteRow, unitCount = 0): PropertySummary {
   const address = (row.address ?? {}) as Record<string, string>;
   return {
     id: row.id,
+    slug: row.slug ?? row.id,
     name: row.name,
     siteType: row.site_type,
     addressLine1: address.line1 ?? "",
@@ -23,7 +27,7 @@ async function fetchProperties(orgId: string): Promise<PropertySummary[]> {
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("sites")
-    .select("id, name, site_type, address")
+    .select("id, slug, name, site_type, address")
     .eq("organization_id", orgId)
     .order("created_at");
 
@@ -32,22 +36,22 @@ async function fetchProperties(orgId: string): Promise<PropertySummary[]> {
       const admin = createAdminClient();
       const { data: adminRows } = await admin
         .from("sites")
-        .select("id, name, site_type, address")
+        .select("id, slug, name, site_type, address")
         .eq("organization_id", orgId)
         .order("created_at");
       if (!adminRows?.length) return [];
-      return attachUnitCounts(adminRows as Site[], admin);
+      return attachUnitCounts(adminRows as SiteRow[], admin);
     } catch {
       return [];
     }
   }
 
   if (!data.length) return [];
-  return attachUnitCounts(data as Site[], supabase);
+  return attachUnitCounts(data as SiteRow[], supabase);
 }
 
 async function attachUnitCounts(
-  sites: Site[],
+  sites: SiteRow[],
   client: Awaited<ReturnType<typeof createClient>> | ReturnType<typeof createAdminClient>
 ): Promise<PropertySummary[]> {
   const siteIds = sites.map((s) => s.id);
@@ -75,12 +79,24 @@ export async function getPrimarySiteForOrg(
   return properties[0] ?? null;
 }
 
+/** Resolve a property by URL slug or legacy UUID. */
+export async function resolveProperty(
+  orgId: string,
+  ref: string
+): Promise<PropertySummary | null> {
+  const properties = await listPropertiesForOrg(orgId);
+  if (isUuid(ref)) {
+    return properties.find((property) => property.id === ref) ?? null;
+  }
+  return properties.find((property) => property.slug === ref) ?? null;
+}
+
+/** @deprecated Prefer resolveProperty — kept for internal UUID lookups. */
 export async function getPropertyForOrg(
   orgId: string,
   propertyId: string
 ): Promise<PropertySummary | null> {
-  const properties = await listPropertiesForOrg(orgId);
-  return properties.find((property) => property.id === propertyId) ?? null;
+  return resolveProperty(orgId, propertyId);
 }
 
 export async function getSiteBrandingForUnit(

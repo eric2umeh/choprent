@@ -41,6 +41,7 @@ export interface Site {
   id: string;
   organization_id: string;
   name: string;
+  slug: string;
   site_type: "plaza" | "mall" | "estate" | "compound" | "house";
   address: Record<string, unknown>;
 }

@@ -5,6 +5,8 @@ import { redirect } from "next/navigation";
 import { canAddUnits } from "@/lib/auth/roles";
 import { requireStaffContext } from "@/lib/auth/session";
 import { getPropertyForOrg } from "@/lib/data/sites";
+import { unitPath, propertyPath } from "@/lib/routes/dashboard-paths";
+import { revalidatePropertyDashboardPaths } from "@/lib/routes/revalidate-dashboard";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import type { PropertyType } from "@/types/database";
@@ -73,14 +75,14 @@ export async function createUnit(
     return { error: error.message };
   }
 
-  revalidatePath(`/d/${orgSlug}/properties/${siteId}`);
+  revalidatePropertyDashboardPaths(orgSlug, ctx.org.id, siteId);
   revalidatePath(`/d/${orgSlug}/properties`);
 
   if (formData.get("stay_on_page") === "1") {
     return { success: true, unitId: data.id };
   }
 
-  redirect(`/d/${orgSlug}/properties/${siteId}/units/${data.id}`);
+  redirect(unitPath(orgSlug, property.slug, unitCode));
 }
 
 export async function setupUnitDetails(
@@ -216,10 +218,13 @@ export async function setupUnitDetails(
     await upsertUnitRentLedger(admin, ctx.org.id, unitId, activeLease.id, annualRent);
   }
 
-  revalidatePath(`/d/${orgSlug}/properties/${unit.site_id}/units/${unitId}`);
-  revalidatePath(`/d/${orgSlug}/properties/${unit.site_id}`);
+  await revalidatePropertyDashboardPaths(
+    orgSlug,
+    ctx.org.id,
+    unit.site_id,
+    unitCode
+  );
   revalidatePath(`/d/${orgSlug}/tenants`);
-  revalidatePath(`/d/${orgSlug}/properties`);
   return { success: true };
 }
 
@@ -330,7 +335,7 @@ export async function deleteUnit(
   const { error } = await admin.from("units").delete().eq("id", unitId);
   if (error) return { error: error.message };
 
-  revalidatePath(`/d/${orgSlug}/properties/${propertyId}`);
-  revalidatePath(`/d/${orgSlug}/properties`);
-  redirect(`/d/${orgSlug}/properties/${propertyId}`);
+  const property = await getPropertyForOrg(ctx.org.id, propertyId);
+  await revalidatePropertyDashboardPaths(orgSlug, ctx.org.id, propertyId);
+  redirect(propertyPath(orgSlug, property?.slug ?? propertyId));
 }

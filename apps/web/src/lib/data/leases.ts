@@ -1,5 +1,6 @@
 import { createAdminClient } from "@/lib/supabase/admin";
 import type { BillingCadence } from "@/types/database";
+import { slugify } from "@/lib/utils/slug";
 import {
   deriveTenantPaymentStatus,
   type TenantPaymentStatus,
@@ -10,6 +11,7 @@ export type LeaseListItem = {
   unitId: string;
   unitCode: string;
   propertyId: string;
+  propertySlug: string;
   propertyName: string;
   tenantName: string;
   tenantPhone: string | null;
@@ -57,13 +59,13 @@ type LeaseRow = {
         unit_code: string;
         site_id: string;
         arrears_balance_ngn: number;
-        sites: { name: string } | { name: string }[] | null;
+        sites: { name: string; slug?: string } | { name: string; slug?: string }[] | null;
       }
     | {
         unit_code: string;
         site_id: string;
         arrears_balance_ngn: number;
-        sites: { name: string } | { name: string }[] | null;
+        sites: { name: string; slug?: string } | { name: string; slug?: string }[] | null;
       }[]
     | null;
 };
@@ -75,6 +77,16 @@ function unitFromRow(units: LeaseRow["units"]) {
 
 function unitCodeFromRow(units: LeaseRow["units"]): string {
   return unitFromRow(units)?.unit_code ?? "—";
+}
+
+function propertySlugFromRow(units: LeaseRow["units"]): string {
+  const unit = unitFromRow(units);
+  if (!unit) return "";
+  const site = unit.sites;
+  const siteRow = Array.isArray(site) ? site[0] : site;
+  if (siteRow?.slug) return siteRow.slug;
+  if (siteRow?.name) return slugify(siteRow.name);
+  return unit.site_id;
 }
 
 function propertyNameFromRow(units: LeaseRow["units"]): string {
@@ -157,6 +169,7 @@ async function mapLeaseRows(
         unitId: row.unit_id,
         unitCode: unitCodeFromRow(row.units),
         propertyId: unit?.site_id ?? "",
+        propertySlug: propertySlugFromRow(row.units) || unit?.site_id || "",
         propertyName: propertyNameFromRow(row.units),
         tenantName: row.tenant_display_name,
         tenantPhone: row.tenant_phone,
@@ -175,7 +188,7 @@ async function mapLeaseRows(
 }
 
 const leaseSelect =
-  "id, unit_id, tenant_display_name, tenant_phone, tenant_email, start_date, end_date, billing_cadence, status, units!inner(unit_code, site_id, organization_id, arrears_balance_ngn, sites(name))";
+  "id, unit_id, tenant_display_name, tenant_phone, tenant_email, start_date, end_date, billing_cadence, status, units!inner(unit_code, site_id, organization_id, arrears_balance_ngn, sites(name, slug))";
 
 export async function listLeasesForOrg(orgId: string): Promise<LeaseListItem[]> {
   try {

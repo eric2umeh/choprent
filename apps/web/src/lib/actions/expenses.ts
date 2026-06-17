@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { canManageExpenses } from "@/lib/auth/roles";
 import { requireStaffContext } from "@/lib/auth/session";
 import { getPropertyForOrg } from "@/lib/data/sites";
+import { revalidatePropertyDashboardPaths } from "@/lib/routes/revalidate-dashboard";
 import { createAdminClient } from "@/lib/supabase/admin";
 import type { ExpenseCategory } from "@/types/database";
 
@@ -104,9 +105,20 @@ export async function saveExpense(
   revalidatePath(`/d/${orgSlug}/analytics`);
   revalidatePath(`/d/${orgSlug}/reports`);
   if (unitId) {
-    revalidatePath(`/d/${orgSlug}/properties/${siteId}/units/${unitId}`);
+    const { data: unitRow } = await admin
+      .from("units")
+      .select("unit_code")
+      .eq("id", unitId)
+      .maybeSingle();
+    await revalidatePropertyDashboardPaths(
+      orgSlug,
+      ctx.org.id,
+      siteId,
+      unitRow?.unit_code
+    );
+  } else {
+    await revalidatePropertyDashboardPaths(orgSlug, ctx.org.id, siteId);
   }
-  revalidatePath(`/d/${orgSlug}/properties/${siteId}`);
   return { success: true };
 }
 
