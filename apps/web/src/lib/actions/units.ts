@@ -104,14 +104,15 @@ export async function setupUnitDetails(
   const tenantName = String(formData.get("tenant_display_name") ?? "").trim();
   const tenantPhone = String(formData.get("tenant_phone") ?? "").trim() || null;
   const tenantEmail = String(formData.get("tenant_email") ?? "").trim() || null;
-  const annualRent = Number(formData.get("annual_rent_ngn"));
+  const annualRentRaw = String(formData.get("annual_rent_ngn") ?? "").trim();
+  const annualRent = annualRentRaw === "" ? NaN : Number(annualRentRaw);
   const arrears = Number(formData.get("arrears_ngn"));
 
   if (!unitCode) return { error: "Unit code is required." };
   if (!Number.isFinite(arrears) || arrears < 0) {
     return { error: "Arrears must be zero or a positive amount." };
   }
-  if (formData.get("annual_rent_ngn") && (!Number.isFinite(annualRent) || annualRent < 0)) {
+  if (annualRentRaw && (!Number.isFinite(annualRent) || annualRent < 0)) {
     return { error: "Annual rent must be a valid amount." };
   }
 
@@ -211,7 +212,7 @@ export async function setupUnitDetails(
     }
   }
 
-  if (activeLease && Number.isFinite(annualRent) && annualRent > 0) {
+  if (activeLease && annualRentRaw && Number.isFinite(annualRent) && annualRent >= 0) {
     await upsertUnitRentLedger(admin, ctx.org.id, unitId, activeLease.id, annualRent);
   }
 
@@ -230,6 +231,14 @@ async function upsertUnitRentLedger(
   annualRent: number
 ) {
   const { start, end } = currentYearRange();
+
+  const { data: existingPeriod } = await admin
+    .from("ledger_periods")
+    .select("id, paid_total_ngn")
+    .eq("unit_id", unitId)
+    .eq("period_start", start)
+    .eq("billing_cadence", "annual")
+    .maybeSingle();
 
   await admin
     .from("charge_templates")
@@ -266,7 +275,7 @@ async function upsertUnitRentLedger(
         billing_cadence: "annual",
         status: "open",
         expected_total_ngn: annualRent,
-        paid_total_ngn: 0,
+        paid_total_ngn: Number(existingPeriod?.paid_total_ngn ?? 0),
         arrears_opening_ngn: 0,
         arrears_closing_ngn: 0,
       },
