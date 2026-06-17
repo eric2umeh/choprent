@@ -170,8 +170,7 @@ export function UnitEditForm({
               <input
                 name="annual_rent_ngn"
                 type="number"
-                min={0}
-                step={1000}
+                step="any"
                 defaultValue={unit.annualRent > 0 ? unit.annualRent : ""}
                 className="input-field mt-1"
                 placeholder="1200000"
@@ -183,8 +182,7 @@ export function UnitEditForm({
               <input
                 name="arrears_ngn"
                 type="number"
-                min={0}
-                step={1000}
+                step="any"
                 defaultValue={unit.arrears}
                 className="input-field mt-1"
                 disabled={pending}
