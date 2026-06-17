@@ -1,12 +1,15 @@
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import type { PaymentMethod, PaymentStatus } from "@/types/database";
+import type { TenantPaymentStatus } from "@/lib/data/tenant-payment-status";
 
 export type PaymentListItem = {
   id: string;
   unitId: string;
   unitCode: string;
   tenantName: string;
+  leaseId: string | null;
+  rentStatus: TenantPaymentStatus | null;
   amount: number;
   periodLabel: string | null;
   paymentMethod: PaymentMethod;
@@ -36,21 +39,68 @@ function unitCodeFromRow(units: PaymentRow["units"]): string {
   return units.unit_code;
 }
 
-async function tenantNameForUnit(unitId: string): Promise<string> {
+async function tenantInfoForUnit(
+  unitId: string,
+  statusByUnit: Map<string, { status: TenantPaymentStatus; leaseId: string }>
+): Promise<{ name: string; leaseId: string | null; rentStatus: TenantPaymentStatus | null }> {
+  const fromMap = statusByUnit.get(unitId);
+  if (fromMap) {
+    const admin = createAdminClient();
+    const { data } = await admin
+      .from("leases")
+      .select("tenant_display_name")
+      .eq("id", fromMap.leaseId)
+      .maybeSingle();
+    return {
+      name: data?.tenant_display_name ?? "—",
+      leaseId: fromMap.leaseId,
+      rentStatus: fromMap.status,
+    };
+  }
+
   const admin = createAdminClient();
   const { data } = await admin
     .from("leases")
-    .select("tenant_display_name")
+    .select("id, tenant_display_name")
     .eq("unit_id", unitId)
     .eq("status", "active")
     .limit(1)
     .maybeSingle();
-  return data?.tenant_display_name ?? "—";
+
+  return {
+    name: data?.tenant_display_name ?? "—",
+    leaseId: data?.id ?? null,
+    rentStatus: null,
+  };
+}
+
+function mapPaymentRow(
+  row: PaymentRow,
+  tenant: { name: string; leaseId: string | null; rentStatus: TenantPaymentStatus | null }
+): PaymentListItem {
+  return {
+    id: row.id,
+    unitId: row.unit_id,
+    unitCode: unitCodeFromRow(row.units),
+    tenantName: tenant.name,
+    leaseId: tenant.leaseId,
+    rentStatus: tenant.rentStatus,
+    amount: Number(row.amount_ngn),
+    periodLabel: row.period_label,
+    paymentMethod: row.payment_method,
+    status: row.status,
+    bankReference: row.bank_reference,
+    receiptFileUrl: row.receipt_file_url,
+    createdAt: row.created_at,
+  };
 }
 
 export async function listPaymentsForOrg(
   orgId: string
 ): Promise<PaymentListItem[]> {
+  const { getTenantStatusByUnit } = await import("@/lib/data/leases");
+  const statusByUnit = await getTenantStatusByUnit(orgId);
+
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("payments")
@@ -74,19 +124,8 @@ export async function listPaymentsForOrg(
       return Promise.all(
         adminRows.map(async (row) => {
           const r = row as PaymentRow;
-          return {
-            id: r.id,
-            unitId: r.unit_id,
-            unitCode: unitCodeFromRow(r.units),
-            tenantName: await tenantNameForUnit(r.unit_id),
-            amount: Number(r.amount_ngn),
-            periodLabel: r.period_label,
-            paymentMethod: r.payment_method,
-            status: r.status,
-            bankReference: r.bank_reference,
-            receiptFileUrl: r.receipt_file_url,
-            createdAt: r.created_at,
-          };
+          const tenant = await tenantInfoForUnit(r.unit_id, statusByUnit);
+          return mapPaymentRow(r, tenant);
         })
       );
     } catch {
@@ -95,18 +134,9 @@ export async function listPaymentsForOrg(
   }
 
   return Promise.all(
-    (data as PaymentRow[]).map(async (row) => ({
-      id: row.id,
-      unitId: row.unit_id,
-      unitCode: unitCodeFromRow(row.units),
-      tenantName: await tenantNameForUnit(row.unit_id),
-      amount: Number(row.amount_ngn),
-      periodLabel: row.period_label,
-      paymentMethod: row.payment_method,
-      status: row.status,
-      bankReference: row.bank_reference,
-      receiptFileUrl: row.receipt_file_url,
-      createdAt: row.created_at,
-    }))
+    (data as PaymentRow[]).map(async (row) => {
+      const tenant = await tenantInfoForUnit(row.unit_id, statusByUnit);
+      return mapPaymentRow(row, tenant);
+    })
   );
 }
