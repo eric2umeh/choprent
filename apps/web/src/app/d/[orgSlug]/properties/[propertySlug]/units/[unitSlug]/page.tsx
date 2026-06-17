@@ -1,38 +1,62 @@
 import { PageHeader } from "@/components/ui/page-header";
 import { Card } from "@/components/ui/card";
 import { UnitDetailClient } from "@/components/units/unit-detail-client";
+import { UnitHistorySections } from "@/components/units/unit-history-sections";
 import { requireStaffContext } from "@/lib/auth/session";
 import { canAddUnits } from "@/lib/auth/roles";
-import { getUnitDetail } from "@/lib/data/units";
+import { resolveProperty } from "@/lib/data/sites";
+import { resolveUnit } from "@/lib/data/units";
+import { getUnitHistory } from "@/lib/data/leases";
+import { listExpensesForUnit } from "@/lib/data/expenses";
+import { propertyPath, unitPath } from "@/lib/routes/dashboard-paths";
 import { formatNaira } from "@/lib/auth/roles";
 import { formatPropertyType } from "@/lib/data/unit-types";
+import { isUuid } from "@/lib/utils/slug";
 import Link from "next/link";
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 
 export default async function PropertyUnitDetailPage({
   params,
 }: {
-  params: Promise<{ orgSlug: string; propertyId: string; unitId: string }>;
+  params: Promise<{ orgSlug: string; propertySlug: string; unitSlug: string }>;
 }) {
-  const { orgSlug, propertyId, unitId } = await params;
+  const { orgSlug, propertySlug, unitSlug } = await params;
   const ctx = await requireStaffContext(orgSlug);
-  const unit = await getUnitDetail(unitId, ctx.org.id);
+  const property = await resolveProperty(ctx.org.id, propertySlug);
+  if (!property) notFound();
+
+  if (isUuid(propertySlug)) {
+    redirect(propertyPath(orgSlug, property.slug));
+  }
+
+  const unit = await resolveUnit(ctx.org.id, property.id, unitSlug);
   if (!unit) notFound();
-  if (unit.siteId !== propertyId) {
-    const { redirect } = await import("next/navigation");
-    redirect(`/d/${orgSlug}/properties/${unit.siteId}/units/${unitId}`);
+
+  if (unit.siteId !== property.id) {
+    const actualProperty = await resolveProperty(ctx.org.id, unit.siteId);
+    if (!actualProperty) notFound();
+    redirect(unitPath(orgSlug, actualProperty.slug, unit.unitCode));
+  }
+
+  if (isUuid(unitSlug)) {
+    redirect(unitPath(orgSlug, property.slug, unit.unitCode));
   }
 
   const canManage = canAddUnits(ctx.role);
+
+  const [history, expenses] = await Promise.all([
+    getUnitHistory(ctx.org.id, unit.id),
+    listExpensesForUnit(ctx.org.id, unit.id),
+  ]);
 
   return (
     <div>
       <PageHeader
         title={`Unit ${unit.unitCode}`}
-        description={`${formatPropertyType(unit.propertyType)} · ${unit.propertyName ?? "Property"}`}
+        description={`${formatPropertyType(unit.propertyType)} · ${property.name}`}
         action={
           <Link
-            href={`/d/${orgSlug}/properties/${propertyId}`}
+            href={propertyPath(orgSlug, property.slug)}
             className="btn-ghost px-3 py-1.5"
           >
             ← Back to units
@@ -42,7 +66,7 @@ export default async function PropertyUnitDetailPage({
 
       <UnitDetailClient
         orgSlug={orgSlug}
-        propertyId={propertyId}
+        propertyId={property.id}
         unit={unit}
         canManage={canManage}
       >
@@ -83,6 +107,13 @@ export default async function PropertyUnitDetailPage({
             </Card>
           )}
         </div>
+
+        <UnitHistorySections
+          orgSlug={orgSlug}
+          payments={history.payments}
+          leases={history.leases}
+          expenses={expenses}
+        />
       </UnitDetailClient>
     </div>
   );

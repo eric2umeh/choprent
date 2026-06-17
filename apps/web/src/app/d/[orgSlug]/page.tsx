@@ -6,8 +6,10 @@ import { ListRow, SectionHeader } from "@/components/ui/section-header";
 import { requireStaffContext } from "@/lib/auth/session";
 import { getDashboardStats } from "@/lib/data/dashboard-stats";
 import { getActivityFeed } from "@/lib/data/activity-feed";
+import { DashboardLiveSync } from "@/components/dashboard/dashboard-live-sync";
 import { listPaymentsForOrg } from "@/lib/data/payments";
 import { listUnitsForOrg } from "@/lib/data/units";
+import { unitPath } from "@/lib/routes/dashboard-paths";
 import { formatPropertyType } from "@/lib/data/unit-types";
 import { formatNaira } from "@/lib/auth/roles";
 
@@ -30,6 +32,7 @@ export default async function DashboardHomePage({
 
   return (
     <div>
+      <DashboardLiveSync orgId={ctx.org.id} />
       <PageHeader title="Dashboard" description={ctx.org.name} />
 
       <div className="grid grid-cols-2 gap-2.5 border-b border-border bg-white px-3 py-3 xl:grid-cols-4">
@@ -121,7 +124,11 @@ export default async function DashboardHomePage({
             {units.slice(0, 6).map((unit) => (
               <Link
                 key={unit.id}
-                href={`/d/${orgSlug}/properties/${unit.siteId}/units/${unit.id}`}
+                href={
+                  unit.propertySlug
+                    ? unitPath(orgSlug, unit.propertySlug, unit.unitCode)
+                    : `/d/${orgSlug}/properties`
+                }
                 className="interactive-lift rounded-xl border border-border bg-surface-subtle/40 p-3 transition hover:border-green-200 hover:bg-green-50/30"
               >
                 <div className="flex items-start justify-between gap-2">

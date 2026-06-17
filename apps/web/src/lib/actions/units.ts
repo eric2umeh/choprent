@@ -5,6 +5,8 @@ import { redirect } from "next/navigation";
 import { canAddUnits } from "@/lib/auth/roles";
 import { requireStaffContext } from "@/lib/auth/session";
 import { getPropertyForOrg } from "@/lib/data/sites";
+import { unitPath, propertyPath } from "@/lib/routes/dashboard-paths";
+import { revalidatePropertyDashboardPaths } from "@/lib/routes/revalidate-dashboard";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import type { PropertyType } from "@/types/database";
@@ -73,14 +75,14 @@ export async function createUnit(
     return { error: error.message };
   }
 
-  revalidatePath(`/d/${orgSlug}/properties/${siteId}`);
+  revalidatePropertyDashboardPaths(orgSlug, ctx.org.id, siteId);
   revalidatePath(`/d/${orgSlug}/properties`);
 
   if (formData.get("stay_on_page") === "1") {
     return { success: true, unitId: data.id };
   }
 
-  redirect(`/d/${orgSlug}/properties/${siteId}/units/${data.id}`);
+  redirect(unitPath(orgSlug, property.slug, unitCode));
 }
 
 export async function setupUnitDetails(
@@ -104,14 +106,15 @@ export async function setupUnitDetails(
   const tenantName = String(formData.get("tenant_display_name") ?? "").trim();
   const tenantPhone = String(formData.get("tenant_phone") ?? "").trim() || null;
   const tenantEmail = String(formData.get("tenant_email") ?? "").trim() || null;
-  const annualRent = Number(formData.get("annual_rent_ngn"));
+  const annualRentRaw = String(formData.get("annual_rent_ngn") ?? "").trim();
+  const annualRent = annualRentRaw === "" ? NaN : Number(annualRentRaw);
   const arrears = Number(formData.get("arrears_ngn"));
 
   if (!unitCode) return { error: "Unit code is required." };
   if (!Number.isFinite(arrears) || arrears < 0) {
     return { error: "Arrears must be zero or a positive amount." };
   }
-  if (formData.get("annual_rent_ngn") && (!Number.isFinite(annualRent) || annualRent < 0)) {
+  if (annualRentRaw && (!Number.isFinite(annualRent) || annualRent < 0)) {
     return { error: "Annual rent must be a valid amount." };
   }
 
@@ -211,14 +214,17 @@ export async function setupUnitDetails(
     }
   }
 
-  if (activeLease && Number.isFinite(annualRent) && annualRent > 0) {
+  if (activeLease && annualRentRaw && Number.isFinite(annualRent) && annualRent >= 0) {
     await upsertUnitRentLedger(admin, ctx.org.id, unitId, activeLease.id, annualRent);
   }
 
-  revalidatePath(`/d/${orgSlug}/properties/${unit.site_id}/units/${unitId}`);
-  revalidatePath(`/d/${orgSlug}/properties/${unit.site_id}`);
+  await revalidatePropertyDashboardPaths(
+    orgSlug,
+    ctx.org.id,
+    unit.site_id,
+    unitCode
+  );
   revalidatePath(`/d/${orgSlug}/tenants`);
-  revalidatePath(`/d/${orgSlug}/properties`);
   return { success: true };
 }
 
@@ -230,6 +236,14 @@ async function upsertUnitRentLedger(
   annualRent: number
 ) {
   const { start, end } = currentYearRange();
+
+  const { data: existingPeriod } = await admin
+    .from("ledger_periods")
+    .select("id, paid_total_ngn")
+    .eq("unit_id", unitId)
+    .eq("period_start", start)
+    .eq("billing_cadence", "annual")
+    .maybeSingle();
 
   await admin
     .from("charge_templates")
@@ -266,7 +280,7 @@ async function upsertUnitRentLedger(
         billing_cadence: "annual",
         status: "open",
         expected_total_ngn: annualRent,
-        paid_total_ngn: 0,
+        paid_total_ngn: Number(existingPeriod?.paid_total_ngn ?? 0),
         arrears_opening_ngn: 0,
         arrears_closing_ngn: 0,
       },
@@ -321,7 +335,7 @@ export async function deleteUnit(
   const { error } = await admin.from("units").delete().eq("id", unitId);
   if (error) return { error: error.message };
 
-  revalidatePath(`/d/${orgSlug}/properties/${propertyId}`);
-  revalidatePath(`/d/${orgSlug}/properties`);
-  redirect(`/d/${orgSlug}/properties/${propertyId}`);
+  const property = await getPropertyForOrg(ctx.org.id, propertyId);
+  await revalidatePropertyDashboardPaths(orgSlug, ctx.org.id, propertyId);
+  redirect(propertyPath(orgSlug, property?.slug ?? propertyId));
 }

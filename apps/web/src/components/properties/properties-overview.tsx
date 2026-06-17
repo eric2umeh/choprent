@@ -7,6 +7,7 @@ import type { PropertySummary } from "@/lib/data/property-types";
 import { formatSiteType } from "@/lib/data/property-types";
 import { Building2, ChevronRight, Pencil, Trash2 } from "lucide-react";
 import Link from "next/link";
+import { propertyPath } from "@/lib/routes/dashboard-paths";
 import { Modal } from "@/components/ui/modal";
 import { PropertyForm } from "@/components/properties/property-form";
 import { Badge } from "@/components/ui/badge";
@@ -67,7 +68,7 @@ export function PropertiesOverview({
           <li key={property.id} className="bg-white px-3 py-3">
             <div className="flex items-start justify-between gap-2">
               <Link
-                href={`/d/${orgSlug}/properties/${property.id}`}
+                href={propertyPath(orgSlug, property.slug)}
                 className="interactive-lift min-w-0 flex-1 rounded-lg p-1 -m-1"
               >
                 <div className="flex items-center gap-2">

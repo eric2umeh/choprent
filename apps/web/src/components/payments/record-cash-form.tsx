@@ -65,8 +65,7 @@ export function RecordCashForm({
           <input
             name="amount_ngn"
             type="number"
-            min={1}
-            step="0.01"
+            step="any"
             className="input-field mt-1"
             required
             disabled={loading}

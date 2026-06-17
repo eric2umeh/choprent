@@ -10,6 +10,7 @@ import { Pagination, usePagination } from "@/components/ui/pagination";
 import { ResponsiveDataTable, type Column } from "@/components/ui/responsive-table";
 import { ViewToggle, type ViewMode } from "@/components/ui/view-toggle";
 import { RecordCashForm } from "@/components/payments/record-cash-form";
+import { TenantPaymentStatusBadge } from "@/components/tenants/tenant-payment-status-badge";
 import { rejectPayment, verifyPayment } from "@/lib/actions/payments";
 import { getReceiptDownloadUrl } from "@/lib/actions/documents";
 import type { PaymentListItem } from "@/lib/data/payments";
@@ -48,6 +49,7 @@ export function PaymentsList({
   const [view, setView] = useState<ViewMode>("table");
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
+  const [rentStatusFilter, setRentStatusFilter] = useState("all");
   const [methodFilter, setMethodFilter] = useState("all");
   const [showCashForm, setShowCashForm] = useState(false);
   const [actingId, setActingId] = useState<string | null>(null);
@@ -64,11 +66,14 @@ export function PaymentsList({
         p.tenantName.toLowerCase().includes(q) ||
         (p.bankReference?.toLowerCase().includes(q) ?? false);
       const matchStatus = statusFilter === "all" || p.status === statusFilter;
+      const matchRentStatus =
+        rentStatusFilter === "all" ||
+        (p.rentStatus !== null && p.rentStatus === rentStatusFilter);
       const matchMethod =
         methodFilter === "all" || p.paymentMethod === methodFilter;
-      return matchSearch && matchStatus && matchMethod;
+      return matchSearch && matchStatus && matchRentStatus && matchMethod;
     });
-  }, [payments, search, statusFilter, methodFilter]);
+  }, [payments, search, statusFilter, rentStatusFilter, methodFilter]);
 
   const { page, setPage, totalPages, slice, pageSize } = usePagination(
     filtered,
@@ -135,6 +140,16 @@ export function PaymentsList({
       render: (p) => <span className="text-money">{formatNaira(p.amount)}</span>,
     },
     {
+      key: "rentStatus",
+      header: "Rent status",
+      render: (p) =>
+        p.rentStatus ? (
+          <TenantPaymentStatusBadge status={p.rentStatus} />
+        ) : (
+          <span className="text-table-cell-muted">—</span>
+        ),
+    },
+    {
       key: "period",
       header: "Period",
       render: (p) =>
@@ -199,7 +214,10 @@ export function PaymentsList({
             <button
               type="button"
               disabled={actingId !== null}
-              onClick={() => handleVerify(p.id)}
+              onClick={(e) => {
+                e.stopPropagation();
+                handleVerify(p.id);
+              }}
               className="inline-flex items-center gap-1 rounded-lg bg-green-600 px-2 py-1 text-[11px] font-semibold text-white transition-all duration-200 hover:bg-green-700 active:scale-95 disabled:opacity-60"
             >
               {actingId === p.id && actingType === "verify" ? (
@@ -212,7 +230,10 @@ export function PaymentsList({
             <button
               type="button"
               disabled={actingId !== null}
-              onClick={() => handleReject(p.id)}
+              onClick={(e) => {
+                e.stopPropagation();
+                handleReject(p.id);
+              }}
               className="inline-flex items-center gap-1 rounded-lg border border-red-200 px-2 py-1 text-[11px] font-semibold text-red-600 transition-all duration-200 hover:bg-red-50 active:scale-95 disabled:opacity-60"
             >
               {actingId === p.id && actingType === "reject" ? (
@@ -237,6 +258,20 @@ export function PaymentsList({
           }}
           searchPlaceholder="Search unit, tenant, ref…"
         >
+          <FilterSelect
+            label="Rent status"
+            value={rentStatusFilter}
+            onChange={(v) => {
+              setRentStatusFilter(v);
+              setPage(1);
+            }}
+            options={[
+              { value: "all", label: "All" },
+              { value: "paid", label: "Paid" },
+              { value: "partial", label: "Partial" },
+              { value: "debt", label: "In debt" },
+            ]}
+          />
           <FilterSelect
             label="Status"
             value={statusFilter}
@@ -285,6 +320,11 @@ export function PaymentsList({
           <ResponsiveDataTable
             rows={slice}
             columns={columns}
+            onRowClick={(p) => {
+              if (p.leaseId) {
+                router.push(`/d/${orgSlug}/tenants/${p.leaseId}`);
+              }
+            }}
             emptyMessage="No payments match your filters"
           />
         ) : (
@@ -294,6 +334,11 @@ export function PaymentsList({
                 key={p.id}
                 className="animate-stagger-item"
                 style={{ ["--stagger" as string]: index }}
+                onClick={() => {
+                  if (p.leaseId) {
+                    router.push(`/d/${orgSlug}/tenants/${p.leaseId}`);
+                  }
+                }}
               >
                 <div className="flex justify-between gap-2">
                   <div>

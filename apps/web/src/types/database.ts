@@ -19,6 +19,16 @@ export type PaymentMethod =
   | "cash_recorded"
   | "gateway_checkout";
 
+export type ExpenseCategory =
+  | "maintenance"
+  | "diesel"
+  | "security"
+  | "agency"
+  | "cleaning"
+  | "repairs"
+  | "utilities"
+  | "other";
+
 export interface Organization {
   id: string;
   name: string;
@@ -31,6 +41,7 @@ export interface Site {
   id: string;
   organization_id: string;
   name: string;
+  slug: string;
   site_type: "plaza" | "mall" | "estate" | "compound" | "house";
   address: Record<string, unknown>;
 }

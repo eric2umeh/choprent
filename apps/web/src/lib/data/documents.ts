@@ -1,7 +1,12 @@
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 
-export type DocumentType = "letter" | "notice" | "receipt" | "statement";
+export type DocumentType =
+  | "letter"
+  | "notice"
+  | "receipt"
+  | "statement"
+  | "attachment";
 
 export type DocumentListItem = {
   id: string;

@@ -2,6 +2,7 @@ import type { Site } from "@/types/database";
 
 export type PropertySummary = {
   id: string;
+  slug: string;
   name: string;
   siteType: Site["site_type"];
   addressLine1: string;

@@ -1,7 +1,10 @@
-import Link from "next/link";
 import { PageHeader } from "@/components/ui/page-header";
-import { Card } from "@/components/ui/card";
+import { ExpensesPageClient } from "@/components/expenses/expenses-page-client";
 import { requireStaffContext } from "@/lib/auth/session";
+import { canManageExpenses } from "@/lib/auth/roles";
+import { getPropertyPnL, listExpensesForOrg } from "@/lib/data/expenses";
+import { listPropertiesForOrg } from "@/lib/data/sites";
+import { listUnitsForOrg } from "@/lib/data/units";
 
 export default async function ExpensesPage({
   params,
@@ -9,7 +12,20 @@ export default async function ExpensesPage({
   params: Promise<{ orgSlug: string }>;
 }) {
   const { orgSlug } = await params;
-  await requireStaffContext(orgSlug);
+  const ctx = await requireStaffContext(orgSlug);
+
+  const [expenses, pnl, properties, units] = await Promise.all([
+    listExpensesForOrg(ctx.org.id),
+    getPropertyPnL(ctx.org.id),
+    listPropertiesForOrg(ctx.org.id),
+    listUnitsForOrg(ctx.org.id),
+  ]);
+
+  const unitOptions = units.map((u) => ({
+    id: u.id,
+    unitCode: u.unitCode,
+    siteId: u.siteId,
+  }));
 
   return (
     <div>
@@ -17,26 +33,14 @@ export default async function ExpensesPage({
         title="Expenses"
         description="Track property costs alongside rent collected"
       />
-
-      <Card className="mx-3 mt-4 rounded-xl border-amber-200 bg-amber-50/60 p-4">
-        <p className="text-sm font-semibold text-amber-950">Coming in a future sprint</p>
-        <p className="mt-2 text-sm text-amber-900/90">
-          Landlords and managers will record maintenance, diesel, security, agency,
-          and other costs per property — with revenue vs expense views for
-          management reporting.
-        </p>
-        <ul className="mt-3 list-inside list-disc space-y-1 text-sm text-amber-900/80">
-          <li>Add, edit, and delete expenses (manager + landlord roles)</li>
-          <li>Category tags and receipt attachments</li>
-          <li>Monthly P&amp;L per property and portfolio summary</li>
-        </ul>
-        <Link
-          href={`/d/${orgSlug}/reports`}
-          className="mt-4 inline-block text-sm font-semibold text-green-800 hover:text-green-900"
-        >
-          View current reports →
-        </Link>
-      </Card>
+      <ExpensesPageClient
+        orgSlug={orgSlug}
+        expenses={expenses}
+        pnl={pnl}
+        properties={properties}
+        units={unitOptions}
+        canManage={canManageExpenses(ctx.role)}
+      />
     </div>
   );
 }

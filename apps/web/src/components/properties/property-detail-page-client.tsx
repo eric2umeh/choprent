@@ -8,9 +8,12 @@ import { PropertyForm } from "@/components/properties/property-form";
 import { AddUnitsInfoBanner } from "@/components/properties/add-units-info-banner";
 import { UnitsList } from "@/components/units/units-list";
 import { NewUnitForm } from "@/components/units/new-unit-form";
+import { ExpenseHistoryTable } from "@/components/expenses/expense-history-table";
+import { ListPanel } from "@/components/ui/page-header";
 import { deleteProperty } from "@/lib/actions/sites";
 import type { PropertySummary } from "@/lib/data/property-types";
 import type { UnitListItem } from "@/lib/data/unit-types";
+import type { ExpenseListItem } from "@/lib/data/expenses";
 import { formatSiteType } from "@/lib/data/property-types";
 import { toast } from "@/components/ui/toast";
 import { confirmDialog } from "@/components/ui/confirm-dialog";
@@ -21,11 +24,13 @@ export function PropertyDetailPageClient({
   orgSlug,
   property,
   units,
+  expenses,
   canManage,
 }: {
   orgSlug: string;
   property: PropertySummary;
   units: UnitListItem[];
+  expenses: ExpenseListItem[];
   canManage: boolean;
 }) {
   const router = useRouter();
@@ -104,10 +109,22 @@ export function PropertyDetailPageClient({
       <UnitsList
         orgSlug={orgSlug}
         propertyId={property.id}
+        propertySlug={property.slug}
         canAdd={canManage}
         units={units}
         onAddUnit={canManage ? () => setShowAddUnit(true) : undefined}
       />
+
+      <ListPanel>
+        <h2 className="border-b border-border px-3 py-3 text-card-title">
+          Property expenses &amp; repairs
+        </h2>
+        <ExpenseHistoryTable
+          expenses={expenses}
+          showProperty={false}
+          showUnit
+        />
+      </ListPanel>
 
       <Modal
         open={editing}

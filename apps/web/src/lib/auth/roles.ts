@@ -8,6 +8,10 @@ export function canManageLeases(role: MembershipRole | null | undefined): boolea
   return role === "owner" || role === "manager";
 }
 
+export function canManageExpenses(role: MembershipRole | null | undefined): boolean {
+  return role === "owner" || role === "manager";
+}
+
 export function canVerifyPayments(role: MembershipRole | null | undefined): boolean {
   return role === "owner" || role === "manager" || role === "agent";
 }

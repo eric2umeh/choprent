@@ -4,6 +4,8 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { requireStaffContext } from "@/lib/auth/session";
 import { getPropertyForOrg } from "@/lib/data/sites";
+import { slugify } from "@/lib/utils/slug";
+import { propertyPath } from "@/lib/routes/dashboard-paths";
 import { SITE_TYPE_OPTIONS } from "@/lib/data/property-types";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
@@ -16,6 +18,25 @@ export type PropertyActionState = {
 
 const SITE_TYPES = SITE_TYPE_OPTIONS.map((option) => option.value);
 const LOGO_MIME = new Set(["image/jpeg", "image/png", "image/webp"]);
+
+async function uniquePropertySlug(
+  admin: ReturnType<typeof createAdminClient>,
+  orgId: string,
+  name: string
+): Promise<string> {
+  let base = slugify(name);
+  for (let attempt = 0; attempt < 20; attempt += 1) {
+    const candidate = attempt === 0 ? base : `${base}-${attempt + 1}`;
+    const { data } = await admin
+      .from("sites")
+      .select("id")
+      .eq("organization_id", orgId)
+      .eq("slug", candidate)
+      .maybeSingle();
+    if (!data) return candidate;
+  }
+  return `${base}-${crypto.randomUUID().slice(0, 8)}`;
+}
 
 export async function saveProperty(
   orgSlug: string,
@@ -99,6 +120,7 @@ export async function saveProperty(
       .insert({
         organization_id: ctx.org.id,
         name,
+        slug: await uniquePropertySlug(admin, ctx.org.id, name),
         site_type: siteType,
         address: insertAddress,
       })

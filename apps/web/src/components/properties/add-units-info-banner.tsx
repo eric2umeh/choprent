@@ -16,6 +16,7 @@ export function AddUnitsInfoBanner({
   onAddUnit?: () => void;
 }) {
   if (!canManage) return null;
+  if (unitCount !== undefined && unitCount > 0) return null;
 
   const showAdd = Boolean(propertyId && onAddUnit);
 

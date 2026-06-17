@@ -1,5 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { decodeRouteSegment } from "@/lib/routes/dashboard-paths";
+import { isUuid } from "@/lib/utils/slug";
 import type { UnitListItem, UnitDetail } from "@/lib/data/unit-types";
 import type { PropertyType, UnitStatus } from "@/types/database";
 
@@ -12,8 +14,14 @@ type UnitRow = {
   arrears_balance_ngn: number;
   is_composite: boolean;
   composite_note: string | null;
-  sites: { name?: string } | { name?: string }[] | null;
+  sites: { name?: string; slug?: string } | { name?: string; slug?: string }[] | null;
 };
+
+function propertySlugFromRow(sites: UnitRow["sites"]): string | null {
+  if (!sites) return null;
+  if (Array.isArray(sites)) return sites[0]?.slug ?? null;
+  return sites.slug ?? null;
+}
 
 function propertyNameFromRow(sites: UnitRow["sites"]): string | null {
   if (!sites) return null;
@@ -58,6 +66,7 @@ async function mapUnitRows(rows: UnitRow[]): Promise<UnitListItem[]> {
   return rows.map((u) => ({
     id: u.id,
     siteId: u.site_id,
+    propertySlug: propertySlugFromRow(u.sites),
     unitCode: u.unit_code,
     propertyName: propertyNameFromRow(u.sites),
     propertyType: u.property_type,
@@ -80,7 +89,7 @@ export async function listUnitsForOrg(
   let query = supabase
     .from("units")
     .select(
-      "id, site_id, unit_code, property_type, status, arrears_balance_ngn, is_composite, composite_note, sites(name)"
+      "id, site_id, unit_code, property_type, status, arrears_balance_ngn, is_composite, composite_note, sites(name, slug)"
     )
     .eq("organization_id", orgId)
     .order("unit_code");
@@ -97,7 +106,7 @@ export async function listUnitsForOrg(
       let adminQuery = admin
         .from("units")
         .select(
-          "id, site_id, unit_code, property_type, status, arrears_balance_ngn, is_composite, composite_note, sites(name)"
+          "id, site_id, unit_code, property_type, status, arrears_balance_ngn, is_composite, composite_note, sites(name, slug)"
         )
         .eq("organization_id", orgId)
         .order("unit_code");
@@ -116,29 +125,68 @@ export async function getUnitDetail(
   unitId: string,
   orgId: string
 ): Promise<UnitDetail | null> {
+  return fetchUnitDetail(orgId, { kind: "id", value: unitId });
+}
+
+/** Resolve a unit by URL segment (unit code or legacy UUID). */
+export async function resolveUnit(
+  orgId: string,
+  siteId: string,
+  ref: string
+): Promise<UnitDetail | null> {
+  if (isUuid(ref)) {
+    const unit = await fetchUnitDetail(orgId, { kind: "id", value: ref });
+    if (unit && unit.siteId === siteId) return unit;
+    return null;
+  }
+
+  const unitCode = decodeRouteSegment(ref);
+  return fetchUnitDetail(orgId, { kind: "code", value: unitCode, siteId });
+}
+
+async function fetchUnitDetail(
+  orgId: string,
+  lookup:
+    | { kind: "id"; value: string }
+    | { kind: "code"; value: string; siteId: string }
+): Promise<UnitDetail | null> {
   const supabase = await createClient();
-  const { data: unit, error } = await supabase
+  let query = supabase
     .from("units")
     .select(
-      "id, site_id, unit_code, property_type, status, arrears_balance_ngn, is_composite, composite_note, organization_id, sites(name)"
+      "id, site_id, unit_code, property_type, status, arrears_balance_ngn, is_composite, composite_note, organization_id, sites(name, slug)"
     )
-    .eq("id", unitId)
-    .eq("organization_id", orgId)
-    .maybeSingle();
+    .eq("organization_id", orgId);
+
+  if (lookup.kind === "id") {
+    query = query.eq("id", lookup.value);
+  } else {
+    query = query.eq("site_id", lookup.siteId).eq("unit_code", lookup.value);
+  }
+
+  const { data: unit, error } = await query.maybeSingle();
 
   let row = unit as UnitRow | null;
 
   if (error || !unit) {
     try {
       const admin = createAdminClient();
-      const { data: adminUnit } = await admin
+      let adminQuery = admin
         .from("units")
         .select(
-          "id, site_id, unit_code, property_type, status, arrears_balance_ngn, is_composite, composite_note, organization_id, sites(name)"
+          "id, site_id, unit_code, property_type, status, arrears_balance_ngn, is_composite, composite_note, organization_id, sites(name, slug)"
         )
-        .eq("id", unitId)
-        .eq("organization_id", orgId)
-        .maybeSingle();
+        .eq("organization_id", orgId);
+
+      if (lookup.kind === "id") {
+        adminQuery = adminQuery.eq("id", lookup.value);
+      } else {
+        adminQuery = adminQuery
+          .eq("site_id", lookup.siteId)
+          .eq("unit_code", lookup.value);
+      }
+
+      const { data: adminUnit } = await adminQuery.maybeSingle();
       row = (adminUnit as UnitRow | null) ?? null;
     } catch {
       return null;
@@ -155,7 +203,7 @@ export async function getUnitDetail(
   const { data: lease } = await admin
     .from("leases")
     .select("id, tenant_phone, tenant_email")
-    .eq("unit_id", unitId)
+    .eq("unit_id", base.id)
     .eq("status", "active")
     .maybeSingle();
 

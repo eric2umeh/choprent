@@ -65,7 +65,7 @@ export function TenantPayForm({ orgSlug }: { orgSlug: string }) {
         <input
           name="amount_ngn"
           type="number"
-          min={1}
+          step="any"
           required
           disabled={loading}
           className="input-field mt-1"
