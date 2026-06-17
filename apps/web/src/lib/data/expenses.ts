@@ -4,6 +4,8 @@ import type { ExpenseCategory } from "@/types/database";
 export type ExpenseListItem = {
   id: string;
   siteId: string;
+  unitId: string | null;
+  unitCode: string | null;
   propertyName: string;
   category: ExpenseCategory;
   description: string;
@@ -44,30 +46,90 @@ function currentYearBounds() {
   };
 }
 
+function mapExpenseRow(row: {
+  id: string;
+  site_id: string;
+  unit_id: string | null;
+  category: string;
+  description: string;
+  amount_ngn: number;
+  expense_date: string;
+  sites: { name: string } | { name: string }[] | null;
+  units: { unit_code: string } | { unit_code: string }[] | null;
+}): ExpenseListItem {
+  const site = row.sites;
+  const propertyName = Array.isArray(site) ? site[0]?.name : site?.name;
+  const units = row.units;
+  const unitCode = row.unit_id
+    ? Array.isArray(units)
+      ? units[0]?.unit_code
+      : units?.unit_code
+    : null;
+
+  return {
+    id: row.id,
+    siteId: row.site_id,
+    unitId: row.unit_id,
+    unitCode: unitCode ?? null,
+    propertyName: propertyName ?? "Property",
+    category: row.category as ExpenseCategory,
+    description: row.description,
+    amountNgn: Number(row.amount_ngn),
+    expenseDate: row.expense_date,
+  };
+}
+
+const expenseSelect =
+  "id, site_id, unit_id, category, description, amount_ngn, expense_date, sites!inner(name, organization_id), units(unit_code)";
+
 export async function listExpensesForOrg(orgId: string): Promise<ExpenseListItem[]> {
   try {
     const admin = createAdminClient();
     const { data } = await admin
       .from("property_expenses")
-      .select(
-        "id, site_id, category, description, amount_ngn, expense_date, sites!inner(name, organization_id)"
-      )
+      .select(expenseSelect)
       .eq("organization_id", orgId)
       .order("expense_date", { ascending: false });
 
-    return (data ?? []).map((row) => {
-      const site = row.sites as { name: string } | { name: string }[] | null;
-      const propertyName = Array.isArray(site) ? site[0]?.name : site?.name;
-      return {
-        id: row.id,
-        siteId: row.site_id,
-        propertyName: propertyName ?? "Property",
-        category: row.category as ExpenseCategory,
-        description: row.description,
-        amountNgn: Number(row.amount_ngn),
-        expenseDate: row.expense_date,
-      };
-    });
+    return (data ?? []).map(mapExpenseRow);
+  } catch {
+    return [];
+  }
+}
+
+export async function listExpensesForUnit(
+  orgId: string,
+  unitId: string
+): Promise<ExpenseListItem[]> {
+  try {
+    const admin = createAdminClient();
+    const { data } = await admin
+      .from("property_expenses")
+      .select(expenseSelect)
+      .eq("organization_id", orgId)
+      .eq("unit_id", unitId)
+      .order("expense_date", { ascending: false });
+
+    return (data ?? []).map(mapExpenseRow);
+  } catch {
+    return [];
+  }
+}
+
+export async function listExpensesForProperty(
+  orgId: string,
+  siteId: string
+): Promise<ExpenseListItem[]> {
+  try {
+    const admin = createAdminClient();
+    const { data } = await admin
+      .from("property_expenses")
+      .select(expenseSelect)
+      .eq("organization_id", orgId)
+      .eq("site_id", siteId)
+      .order("expense_date", { ascending: false });
+
+    return (data ?? []).map(mapExpenseRow);
   } catch {
     return [];
   }

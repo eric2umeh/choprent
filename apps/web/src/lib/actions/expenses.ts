@@ -35,6 +35,7 @@ export async function saveExpense(
 
   const expenseId = String(formData.get("expense_id") ?? "").trim() || null;
   const siteId = String(formData.get("site_id") ?? "").trim();
+  const unitId = String(formData.get("unit_id") ?? "").trim() || null;
   const category = String(formData.get("category") ?? "other") as ExpenseCategory;
   const description = String(formData.get("description") ?? "").trim();
   const amount = Number(formData.get("amount_ngn"));
@@ -53,10 +54,23 @@ export async function saveExpense(
   const property = await getPropertyForOrg(ctx.org.id, siteId);
   if (!property) return { error: "Property not found." };
 
+  if (unitId) {
+    const admin = createAdminClient();
+    const { data: unit } = await admin
+      .from("units")
+      .select("id")
+      .eq("id", unitId)
+      .eq("site_id", siteId)
+      .eq("organization_id", ctx.org.id)
+      .maybeSingle();
+    if (!unit) return { error: "Unit not found in this property." };
+  }
+
   const admin = createAdminClient();
   const payload = {
     organization_id: ctx.org.id,
     site_id: siteId,
+    unit_id: unitId,
     category,
     description,
     amount_ngn: amount,
@@ -89,6 +103,10 @@ export async function saveExpense(
   revalidatePath(`/d/${orgSlug}/expenses`);
   revalidatePath(`/d/${orgSlug}/analytics`);
   revalidatePath(`/d/${orgSlug}/reports`);
+  if (unitId) {
+    revalidatePath(`/d/${orgSlug}/properties/${siteId}/units/${unitId}`);
+  }
+  revalidatePath(`/d/${orgSlug}/properties/${siteId}`);
   return { success: true };
 }
 

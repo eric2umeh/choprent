@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useEffect, useRef } from "react";
+import { useActionState, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { saveExpense, type ExpenseActionState } from "@/lib/actions/expenses";
 import {
@@ -18,21 +18,29 @@ const initial: ExpenseActionState = {};
 export function ExpenseForm({
   orgSlug,
   properties,
+  units,
   expense,
   onSaved,
 }: {
   orgSlug: string;
   properties: PropertySummary[];
+  units: { id: string; unitCode: string; siteId: string }[];
   expense?: ExpenseListItem | null;
   onSaved?: () => void;
 }) {
   const router = useRouter();
+  const [selectedSiteId, setSelectedSiteId] = useState(expense?.siteId ?? "");
   const [state, formAction, pending] = useActionState(
     saveExpense.bind(null, orgSlug),
     initial
   );
   const lastError = useRef<string | undefined>(undefined);
   const lastSuccess = useRef(false);
+
+  const unitsForProperty = useMemo(
+    () => units.filter((u) => u.siteId === selectedSiteId),
+    [units, selectedSiteId]
+  );
 
   useEffect(() => {
     if (state.error && state.error !== lastError.current) {
@@ -58,7 +66,8 @@ export function ExpenseForm({
             name="site_id"
             required
             className="input-field mt-1.5"
-            defaultValue={expense?.siteId ?? ""}
+            value={selectedSiteId}
+            onChange={(e) => setSelectedSiteId(e.target.value)}
             disabled={pending || !!expense}
           >
             <option value="">Select property…</option>
@@ -69,6 +78,25 @@ export function ExpenseForm({
             ))}
           </select>
         </div>
+
+        {selectedSiteId && unitsForProperty.length > 0 && (
+          <div>
+            <label className="text-label normal-case">Unit (optional)</label>
+            <select
+              name="unit_id"
+              className="input-field mt-1.5"
+              defaultValue={expense?.unitId ?? ""}
+              disabled={pending}
+            >
+              <option value="">Whole property</option>
+              {unitsForProperty.map((u) => (
+                <option key={u.id} value={u.id}>
+                  {u.unitCode}
+                </option>
+              ))}
+            </select>
+          </div>
+        )}
 
         <div className="grid gap-3 sm:grid-cols-2">
           <div>
@@ -129,6 +157,7 @@ export function ExpenseForm({
         {expense && (
           <p className="text-form-hint">
             {formatExpenseCategory(expense.category)} · {expense.propertyName}
+            {expense.unitCode ? ` · Unit ${expense.unitCode}` : ""}
           </p>
         )}
 

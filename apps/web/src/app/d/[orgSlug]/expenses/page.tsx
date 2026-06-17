@@ -4,6 +4,7 @@ import { requireStaffContext } from "@/lib/auth/session";
 import { canManageExpenses } from "@/lib/auth/roles";
 import { getPropertyPnL, listExpensesForOrg } from "@/lib/data/expenses";
 import { listPropertiesForOrg } from "@/lib/data/sites";
+import { listUnitsForOrg } from "@/lib/data/units";
 
 export default async function ExpensesPage({
   params,
@@ -13,11 +14,18 @@ export default async function ExpensesPage({
   const { orgSlug } = await params;
   const ctx = await requireStaffContext(orgSlug);
 
-  const [expenses, pnl, properties] = await Promise.all([
+  const [expenses, pnl, properties, units] = await Promise.all([
     listExpensesForOrg(ctx.org.id),
     getPropertyPnL(ctx.org.id),
     listPropertiesForOrg(ctx.org.id),
+    listUnitsForOrg(ctx.org.id),
   ]);
+
+  const unitOptions = units.map((u) => ({
+    id: u.id,
+    unitCode: u.unitCode,
+    siteId: u.siteId,
+  }));
 
   return (
     <div>
@@ -30,6 +38,7 @@ export default async function ExpensesPage({
         expenses={expenses}
         pnl={pnl}
         properties={properties}
+        units={unitOptions}
         canManage={canManageExpenses(ctx.role)}
       />
     </div>
