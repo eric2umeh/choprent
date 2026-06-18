@@ -43,6 +43,15 @@ export function DashboardLiveSync({ orgId }: { orgId: string }) {
         },
         () => router.refresh()
       )
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "ledger_periods",
+        },
+        () => router.refresh()
+      )
       .subscribe();
 
     return () => {
