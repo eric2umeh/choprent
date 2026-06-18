@@ -63,6 +63,17 @@ export async function getDocumentDownloadUrl(
     }
     if (!doc.filePath) return { error: "File not available." };
 
+    const { recordTenantEngagementInternal } = await import("@/lib/actions/tenant-activity-internal");
+    await recordTenantEngagementInternal({
+      orgId: ctx.org.id,
+      tenantUserId: ctx.user.id,
+      leaseId: ctx.leaseId,
+      unitId: ctx.unitId,
+      eventType:
+        doc.docType === "statement" ? "statement_downloaded" : "document_downloaded",
+      metadata: { document_id: documentId, title: doc.title },
+    });
+
     const url = await createSignedStorageUrl("documents", doc.filePath);
     return url ? { downloadUrl: url } : { error: "Could not generate download link." };
   }

@@ -91,5 +91,17 @@ export async function submitTransferPayment(
   revalidatePath(`/t/${orgSlug}`);
   revalidatePath(`/t/${orgSlug}/pay`);
   revalidatePath(`/t/${orgSlug}/ledger`);
+  revalidatePath(`/d/${orgSlug}/reports`);
+
+  const { recordTenantEngagementInternal } = await import("@/lib/actions/tenant-activity-internal");
+  await recordTenantEngagementInternal({
+    orgId: ctx.org.id,
+    tenantUserId: ctx.user.id,
+    leaseId: lease.id,
+    unitId: lease.unit_id,
+    eventType: "receipt_uploaded",
+    metadata: { amount: String(amount) },
+  });
+
   return { success: true };
 }
