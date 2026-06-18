@@ -8,7 +8,7 @@ import { resolveProperty } from "@/lib/data/sites";
 import { resolveUnit } from "@/lib/data/units";
 import { getUnitHistory } from "@/lib/data/leases";
 import { listExpensesForUnit } from "@/lib/data/expenses";
-import { propertyPath, unitPath } from "@/lib/routes/dashboard-paths";
+import { propertyPath, unitPath, unitCodeFromUrlRef } from "@/lib/routes/dashboard-paths";
 import { formatNaira } from "@/lib/auth/roles";
 import { formatPropertyType } from "@/lib/data/unit-types";
 import { isUuid } from "@/lib/utils/slug";
@@ -18,9 +18,15 @@ import { notFound, redirect } from "next/navigation";
 export default async function PropertyUnitDetailPage({
   params,
 }: {
-  params: Promise<{ orgSlug: string; propertySlug: string; unitSlug: string }>;
+  params: Promise<{ orgSlug: string; propertySlug: string; unitSlug: string[] }>;
 }) {
-  const { orgSlug, propertySlug, unitSlug } = await params;
+  const { orgSlug, propertySlug: rawPropertySlug, unitSlug: unitSlugParts } =
+    await params;
+  const propertySlug = decodeURIComponent(rawPropertySlug);
+  if (!unitSlugParts?.length) {
+    redirect(propertyPath(orgSlug, propertySlug));
+  }
+  const unitRef = unitCodeFromUrlRef(unitSlugParts);
   const ctx = await requireStaffContext(orgSlug);
   const property = await resolveProperty(ctx.org.id, propertySlug);
   if (!property) notFound();
@@ -29,7 +35,7 @@ export default async function PropertyUnitDetailPage({
     redirect(propertyPath(orgSlug, property.slug));
   }
 
-  const unit = await resolveUnit(ctx.org.id, property.id, unitSlug);
+  const unit = await resolveUnit(ctx.org.id, property.id, unitRef);
   if (!unit) notFound();
 
   if (unit.siteId !== property.id) {
@@ -38,7 +44,11 @@ export default async function PropertyUnitDetailPage({
     redirect(unitPath(orgSlug, actualProperty.slug, unit.unitCode));
   }
 
-  if (isUuid(unitSlug)) {
+  if (isUuid(unitRef)) {
+    redirect(unitPath(orgSlug, property.slug, unit.unitCode));
+  }
+
+  if (propertySlug !== property.slug || unitRef !== unit.unitCode) {
     redirect(unitPath(orgSlug, property.slug, unit.unitCode));
   }
 

@@ -1,6 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { isUuid } from "@/lib/utils/slug";
+import { isUuid, slugify } from "@/lib/utils/slug";
 import type { PropertySummary } from "@/lib/data/property-types";
 import type { Site } from "@/types/database";
 
@@ -88,7 +88,15 @@ export async function resolveProperty(
   if (isUuid(ref)) {
     return properties.find((property) => property.id === ref) ?? null;
   }
-  return properties.find((property) => property.slug === ref) ?? null;
+
+  const decoded = decodeURIComponent(ref);
+  return (
+    properties.find((property) => property.slug === decoded) ??
+    properties.find((property) => slugify(property.name) === decoded) ??
+    (properties.length === 1 && decoded === properties[0].slug
+      ? properties[0]
+      : null)
+  );
 }
 
 /** @deprecated Prefer resolveProperty — kept for internal UUID lookups. */
