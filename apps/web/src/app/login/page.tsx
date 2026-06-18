@@ -19,7 +19,7 @@ export default function LoginPage() {
             <span className="text-green-700">with confidence.</span>
           </h1>
           <p className="mt-4 max-w-sm text-sm leading-relaxed text-muted">
-            Sign in with email or phone. Landlords, managers, agents, and tenants
+            Sign in with email and password. Landlords, managers, agents, and tenants
             use the same login — we route you to the right portal.
           </p>
         </div>
@@ -38,7 +38,7 @@ export default function LoginPage() {
             Sign in to ChopRent
           </h2>
           <p className="mt-2 text-sm text-muted">
-            Password sign-in (recommended) · magic link · phone OTP
+            Password sign-in (recommended) · magic link
           </p>
 
           <div className="animate-fade-up mt-8">

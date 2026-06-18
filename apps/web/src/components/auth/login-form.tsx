@@ -17,7 +17,7 @@ import { LoadingButton } from "@/components/ui/loading-button";
 import { toast } from "@/components/ui/toast";
 import type { MembershipRole } from "@/types/database";
 
-type LoginMethod = "password" | "magic_link" | "phone";
+type LoginMethod = "password" | "magic_link";
 type PasswordMode = "sign_in" | "sign_up" | "forgot_password";
 
 const SIGNUP_ROLES: { value: MembershipRole; label: string }[] = [
@@ -33,7 +33,6 @@ export function LoginForm() {
   const [signupRole, setSignupRole] = useState<MembershipRole>("owner");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [phone, setPhone] = useState("");
   const [loading, setLoading] = useState(false);
   const [cooldown, setCooldown] = useState(0);
   const [draftReady, setDraftReady] = useState(false);
@@ -42,14 +41,13 @@ export function LoginForm() {
     const draft = readLoginDraft();
     setEmail(draft.email);
     setPassword(draft.password);
-    setPhone(draft.phone);
     setDraftReady(true);
   }, []);
 
   useEffect(() => {
     if (!draftReady) return;
-    writeLoginDraft({ email, password, phone });
-  }, [email, password, phone, draftReady]);
+    writeLoginDraft({ email, password, phone: "" });
+  }, [email, password, draftReady]);
 
   useEffect(() => {
     if (cooldown <= 0) return;
@@ -59,20 +57,14 @@ export function LoginForm() {
     return () => window.clearInterval(timer);
   }, [cooldown]);
 
-  function preserveDraft(next: {
-    email?: string;
-    password?: string;
-    phone?: string;
-  }) {
+  function preserveDraft(next: { email?: string; password?: string }) {
     const preserved = {
       email: next.email ?? email,
       password: next.password ?? password,
-      phone: next.phone ?? phone,
     };
     setEmail(preserved.email);
     setPassword(preserved.password);
-    setPhone(preserved.phone);
-    writeLoginDraft(preserved);
+    writeLoginDraft({ ...preserved, phone: "" });
   }
 
   async function handlePasswordSubmit(e: React.FormEvent) {
@@ -160,7 +152,7 @@ export function LoginForm() {
     }
   }
 
-  async function handleOtpSubmit(e: React.FormEvent) {
+  async function handleMagicLinkSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (cooldown > 0) return;
 
@@ -168,40 +160,21 @@ export function LoginForm() {
 
     const supabase = createClient();
     const trimmedEmail = email.trim();
-    const trimmedPhone = phone.trim();
 
     try {
-      if (method === "magic_link") {
-        const { error: authError } = await supabase.auth.signInWithOtp({
-          email: trimmedEmail,
-          options: {
-            emailRedirectTo: `${appUrl()}/auth/callback`,
-          },
-        });
-        if (authError) throw authError;
-        toast.success("Check your email for a sign-in link.");
-        setCooldown(MAGIC_LINK_COOLDOWN_SEC);
-        preserveDraft({ email: trimmedEmail });
-      } else {
-        const normalized = trimmedPhone.startsWith("+")
-          ? trimmedPhone
-          : `+234${trimmedPhone.replace(/^0/, "")}`;
-
-        const { error: authError } = await supabase.auth.signInWithOtp({
-          phone: normalized,
-        });
-        if (authError) throw authError;
-        toast.success("Check your phone for a verification code.");
-        setCooldown(MAGIC_LINK_COOLDOWN_SEC);
-        preserveDraft({ phone: trimmedPhone });
-      }
+      const { error: authError } = await supabase.auth.signInWithOtp({
+        email: trimmedEmail,
+        options: {
+          emailRedirectTo: `${appUrl()}/auth/callback`,
+        },
+      });
+      if (authError) throw authError;
+      toast.success("Check your email for a sign-in link.");
+      setCooldown(MAGIC_LINK_COOLDOWN_SEC);
+      preserveDraft({ email: trimmedEmail });
     } catch (err) {
       const raw = err instanceof Error ? err.message : "Sign-in failed.";
-      preserveDraft(
-        method === "magic_link"
-          ? { email: trimmedEmail }
-          : { phone: trimmedPhone }
-      );
+      preserveDraft({ email: trimmedEmail });
       toast.error(formatAuthError(raw));
     } finally {
       setLoading(false);
@@ -215,7 +188,6 @@ export function LoginForm() {
           [
             ["password", "Password"],
             ["magic_link", "Magic link"],
-            ["phone", "Phone"],
           ] as const
         ).map(([key, label]) => (
           <button
@@ -355,57 +327,33 @@ export function LoginForm() {
           )}
         </form>
       ) : (
-        <form onSubmit={handleOtpSubmit} className="space-y-4">
-          {method === "magic_link" && (
-            <p className="text-[11px] text-amber-800">
-              Email links are limited on free plans.{" "}
-              <button
-                type="button"
-                className="font-medium underline"
-                onClick={() => setMethod("password")}
-              >
-                Password sign-in
-              </button>{" "}
-              is more reliable.
-            </p>
-          )}
-          {method === "phone" && (
-            <p className="text-[11px] text-muted">
-              Phone sign-in requires SMS setup and has a per-message cost.
-            </p>
-          )}
+        <form onSubmit={handleMagicLinkSubmit} className="space-y-4">
+          <p className="text-[11px] text-amber-800">
+            Email links are limited on free plans.{" "}
+            <button
+              type="button"
+              className="font-medium underline"
+              onClick={() => setMethod("password")}
+            >
+              Password sign-in
+            </button>{" "}
+            is more reliable.
+          </p>
 
-          {method === "magic_link" ? (
-            <div>
-              <label className="text-label normal-case">Email address</label>
-              <input
-                className="input-field mt-1"
-                type="email"
-                name="email"
-                required
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder="you@company.ng"
-                autoComplete="username email"
-                disabled={loading}
-              />
-            </div>
-          ) : (
-            <div>
-              <label className="text-label normal-case">Phone number</label>
-              <input
-                className="input-field mt-1"
-                type="tel"
-                name="phone"
-                required
-                value={phone}
-                onChange={(e) => setPhone(e.target.value)}
-                placeholder="08012345678"
-                autoComplete="tel"
-                disabled={loading}
-              />
-            </div>
-          )}
+          <div>
+            <label className="text-label normal-case">Email address</label>
+            <input
+              className="input-field mt-1"
+              type="email"
+              name="email"
+              required
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              placeholder="you@company.ng"
+              autoComplete="username email"
+              disabled={loading}
+            />
+          </div>
 
           <LoadingButton
             type="submit"
@@ -414,11 +362,7 @@ export function LoginForm() {
             loadingLabel="Sending…"
             className="btn-primary w-full py-2.5 disabled:opacity-60"
           >
-            {cooldown > 0
-              ? `Wait ${cooldown}s`
-              : method === "magic_link"
-                ? "Send magic link"
-                : "Send SMS code"}
+            {cooldown > 0 ? `Wait ${cooldown}s` : "Send magic link"}
           </LoadingButton>
         </form>
       )}
