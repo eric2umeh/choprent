@@ -1,7 +1,13 @@
 /** Human-readable dashboard URLs (org slug + property slug + unit code). */
 
+import {
+  decodeRouteSegment,
+  unitCodeFromUrlRef,
+  unitCodeToUrlRef,
+} from "@/lib/utils/slug";
+
 export function propertyPath(orgSlug: string, propertySlug: string): string {
-  return `/d/${orgSlug}/properties/${propertySlug}`;
+  return `/d/${orgSlug}/properties/${encodeURIComponent(propertySlug)}`;
 }
 
 export function unitPath(
@@ -9,17 +15,11 @@ export function unitPath(
   propertySlug: string,
   unitCode: string
 ): string {
-  return `/d/${orgSlug}/properties/${propertySlug}/units/${encodeURIComponent(unitCode)}`;
+  return `/d/${orgSlug}/properties/${encodeURIComponent(propertySlug)}/units/${unitCodeToUrlRef(unitCode)}`;
 }
 
 export function tenantPath(orgSlug: string, leaseId: string): string {
   return `/d/${orgSlug}/tenants/${leaseId}`;
 }
 
-export function decodeRouteSegment(segment: string): string {
-  try {
-    return decodeURIComponent(segment);
-  } catch {
-    return segment;
-  }
-}
+export { decodeRouteSegment, unitCodeFromUrlRef, unitCodeToUrlRef };

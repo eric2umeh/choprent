@@ -14,3 +14,24 @@ export function slugify(input: string): string {
 export function isUuid(value: string): boolean {
   return UUID_RE.test(value);
 }
+
+/** Build a URL-safe unit path segment (supports composite codes like 14/16). */
+export function unitCodeToUrlRef(unitCode: string): string {
+  return unitCode
+    .split("/")
+    .map((part) => encodeURIComponent(part))
+    .join("/");
+}
+
+/** Restore unit code from catch-all URL segments. */
+export function unitCodeFromUrlRef(segments: string[]): string {
+  return segments.map((segment) => decodeRouteSegment(segment)).join("/");
+}
+
+export function decodeRouteSegment(segment: string): string {
+  try {
+    return decodeURIComponent(segment);
+  } catch {
+    return segment;
+  }
+}

@@ -199,20 +199,29 @@ async function fetchUnitDetail(
   const base = mapped[0];
   if (!base) return null;
 
-  const admin = createAdminClient();
-  const { data: lease } = await admin
-    .from("leases")
-    .select("id, tenant_phone, tenant_email")
-    .eq("unit_id", base.id)
-    .eq("status", "active")
-    .maybeSingle();
+  try {
+    const admin = createAdminClient();
+    const { data: lease } = await admin
+      .from("leases")
+      .select("id, tenant_phone, tenant_email")
+      .eq("unit_id", base.id)
+      .eq("status", "active")
+      .maybeSingle();
 
-  return {
-    ...base,
-    leaseId: lease?.id ?? null,
-    tenantPhone: lease?.tenant_phone ?? null,
-    tenantEmail: lease?.tenant_email ?? null,
-  };
+    return {
+      ...base,
+      leaseId: lease?.id ?? null,
+      tenantPhone: lease?.tenant_phone ?? null,
+      tenantEmail: lease?.tenant_email ?? null,
+    };
+  } catch {
+    return {
+      ...base,
+      leaseId: null,
+      tenantPhone: null,
+      tenantEmail: null,
+    };
+  }
 }
 
 export async function getDefaultSiteId(orgId: string): Promise<string | null> {
