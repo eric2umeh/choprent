@@ -1,6 +1,6 @@
 # Sprint 5 — Verification queue, settlement accounts, exports
 
-**Goal:** Staff verify payments faster with a dedicated queue. Landlords manage multiple bank accounts per property. Metrics CSV exports and dashboard activity feed support OC3 reporting.
+**Goal:** Staff verify payments faster with a dedicated queue. Landlords manage multiple bank accounts per property. CSV exports and dashboard activity feed support monthly reporting.
 
 **Depends on:** Sprint 3 payments (`12_sprint3_payments_arrears.md`), Sprint 4 tenant portal (`13_sprint4_tenant_documents.md`).
 
@@ -13,7 +13,7 @@
 | 1 | **Verification queue** — pending-first cards with receipt, verify, reject | Owner, manager, agent |
 | 2 | **Multi settlement accounts** — add, edit, delete, default per property | Owner |
 | 3 | **Lease settlement picker** — assign rent account when creating lease | Owner, manager |
-| 4 | **CSV exports** — payments + units for monthly metrics pack | Owner, manager |
+| 4 | **CSV exports** — payments + units for monthly report pack | Owner, manager |
 | 5 | **Activity feed** — recent payment events on dashboard | All staff |
 | 6 | **Enhanced payment filters** — method filter on all-payments tab | All staff |
 

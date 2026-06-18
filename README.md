@@ -26,10 +26,10 @@ See **[docs/07_supabase_setup.md](docs/07_supabase_setup.md)** — you do **not*
 | [docs/00_project_summary.md](docs/00_project_summary.md)                       | MVP scope, phases, sprints                |
 | [docs/01_architecture.md](docs/01_architecture.md)                             | Schema, DVA, utilities, realtime          |
 | [docs/01_LOI_pilot_agreement_draft.md](docs/01_LOI_pilot_agreement_draft.md)   | Commercial / pilot terms                  |
-| [docs/02_metrics_tracking_checklist.md](docs/02_metrics_tracking_checklist.md) | Monthly OC3 evidence                      |
+| [docs/02_monthly_reports_checklist.md](docs/02_monthly_reports_checklist.md) | Monthly reports archive                   |
 | [docs/03_decisions_log.md](docs/03_decisions_log.md)                           | Locked product decisions                  |
 | [docs/04_privacy_ndpr.md](docs/04_privacy_ndpr.md)                             | Privacy & NDPR checklist                  |
-| [docs/06_competitive_positioning.md](docs/06_competitive_positioning.md)       | vs PayRent; unique OC3 differentiators    |
+| [docs/06_competitive_positioning.md](docs/06_competitive_positioning.md)       | vs PayRent; unique product differentiators |
 | [docs/07_supabase_setup.md](docs/07_supabase_setup.md)                         | Cloud setup; how migrations work          |
 | [docs/08_sprint1_auth_setup.md](docs/08_sprint1_auth_setup.md)                 | Sprint 1 auth, roles, password login      |
 | [docs/09_web_app_setup.md](docs/09_web_app_setup.md)                           | Web app local dev                         |

@@ -2,7 +2,7 @@
 
 **Reference reviewed:** [PayRent product features](https://www.payrent.com/rent-payment-app-features/#h-product) (US independent-landlord rent app, March 2026).
 
-**Purpose:** Avoid building a “generic rent app” for OC3 evidence. ChopRent must be clearly **plaza / Nigerian commercial-first**, with features PayRent and local clones do not combine.
+**Purpose:** Avoid building a “generic rent app”. ChopRent must be clearly **plaza / Nigerian commercial-first**, with features PayRent and local clones do not combine.
 
 ---
 
@@ -19,13 +19,13 @@ PayRent targets **US residential landlords** with:
 | Ops | Reminders, activity feed, document store, QuickBooks export, clone property |
 | Security | Encrypted vault, SSL, chargeback alerts |
 
-**Gap for your pilot:** PayRent is not built for **Nigerian plaza traders**, **₦1M+ annual shop rent**, **multiple settlement accounts per site**, **manager/agent verification chains**, or **monthly verified-collection evidence packs**.
+**Gap for your pilot:** PayRent is not built for **Nigerian plaza traders**, **₦1M+ annual shop rent**, **multiple settlement accounts per site**, **manager/agent verification chains**, or **monthly verified-collection report packs**.
 
 ---
 
 ## 2. What we deliberately do NOT copy (low uniqueness)
 
-These are **commodity** in rent apps globally — implement only if pilot landlord asks; do not lead OC3 narrative:
+These are **commodity** in rent apps globally — implement only if pilot landlord asks; do not lead product narrative:
 
 - US credit bureau reporting (Experian/TransUnion/Equifax)
 - In-app tenant screening marketplace
@@ -37,9 +37,9 @@ These are **commodity** in rent apps globally — implement only if pilot landlo
 
 ---
 
-## 3. ChopRent unique differentiators (OC3 story)
+## 3. ChopRent unique differentiators
 
-These should appear in architecture evidence, demo script, and landlord pitch.
+These should appear in architecture docs, demo script, and landlord pitch.
 
 ### A. Trader-zero-friction collection ( flagship )
 
@@ -47,7 +47,7 @@ These should appear in architecture evidence, demo script, and landlord pitch.
 
 - Account number **stays on the shop door** when tenant changes; only display name updates
 - Payment works **without app login** — critical for market traders
-- Webhook → auto-match → optional verify → ledger + metrics
+- Webhook → auto-match → optional verify → ledger + reporting
 
 *PayRent:* one landlord settlement account; tenants pay through app/ACH. No per-unit sticky NUBAN for turnover.
 
@@ -60,15 +60,15 @@ These should appear in architecture evidence, demo script, and landlord pitch.
 
 *PayRent:* “clone property” for similar units; no composite numbering or NG plaza semantics.
 
-### C. Verified evidence pipeline (product + compliance)
+### C. Verified payment audit pipeline (product + compliance)
 
-Every verified payment stores audit fields required for monthly pack:
+Every verified payment stores audit fields required for monthly reports:
 
 `tenant_id, unit_id, amount_ngn, period, payment_date, bank_reference, receipt_file_url, verified_by, verified_at`
 
-Plus one-click **metrics export** (`02_metrics_tracking_checklist.md`) — the product is instrumented for proof, not just collection.
+Plus one-click **CSV export** (`02_monthly_reports_checklist.md`) — the product is instrumented for reporting, not just collection.
 
-*PayRent:* landlord reconciliation; not designed for third-party viability metrics vault.
+*PayRent:* landlord reconciliation; not designed for third-party monthly report archives.
 
 ### D. Flexible plaza charge engine
 
@@ -113,8 +113,8 @@ Build these in MVP/Phase 1 — table stakes, not differentiation:
 | Activity feed | Sprint 5 | Realtime on payments/units |
 | Document management | Sprint 4 | Letters, statements, receipts |
 | Automated late fees | Sprint 2–3 | After charge engine |
-| Dashboard (collected vs due) | Sprint 5 | Collection rate for metrics |
-| Transaction export CSV | Sprint 5 | Metrics + landlord books |
+| Dashboard (collected vs due) | Sprint 5 | Collection rate for reports |
+| Transaction export CSV | Sprint 5 | Reports + landlord books |
 | Search/filter units & payments | Sprint 5 | Plaza scale |
 
 ---
@@ -125,13 +125,13 @@ ChopRent is unlikely to patent “online rent collection.” Stronger **defensib
 
 1. **System + method** for persistent per-commercial-unit virtual account with tenant rotation without NUBAN change (document in architecture + webhook flow).
 2. **Composite commercial unit** billing and arrears allocation across merged shop numbers.
-3. **Human-in-the-loop verified transfer pipeline** producing standardized monthly evidence artifacts for property-management pilots in NG.
+3. **Human-in-the-loop verified transfer pipeline** producing standardized monthly report artifacts for property-management pilots in NG.
 
 Before filing anything: talk to a **IP lawyer**; treat this doc as product strategy, not legal advice.
 
-**Demo one-liner for OC3:**
+**Demo one-liner:**
 
-> “PayRent helps US landlords collect card/ACH rent. ChopRent gives each plaza shop a **permanent payment account**, verifies **bank transfers at million-naira scale**, and exports **audited collection proof** for mixed shop/office plazas in Nigeria.”
+> “PayRent helps US landlords collect card/ACH rent. ChopRent gives each plaza shop a **permanent payment account**, verifies **bank transfers at million-naira scale**, and exports **audited collection reports** for mixed shop/office plazas in Nigeria.”
 
 ---
 
@@ -150,7 +150,7 @@ quadrantChart
   Verified receipt audit: [0.85, 0.90]
   Plaza charge engine: [0.78, 0.85]
   Composite units: [0.80, 0.75]
-  Metrics export pack: [0.88, 0.82]
+  Report export pack: [0.88, 0.82]
   Tenant portal: [0.35, 0.80]
   Rent reminders: [0.25, 0.70]
   Credit reporting: [0.15, 0.10]
@@ -166,7 +166,7 @@ quadrantChart
 | # | Item | Status |
 |---|------|--------|
 | 34 | Position vs PayRent | Documented here |
-| 35 | Lead OC3 demo with DVA + verified transfer + plaza charge engine | Recommended |
+| 35 | Lead demo with DVA + verified transfer + plaza charge engine | Recommended |
 | 36 | Defer credit reporting, lending, US screening | Confirmed skip |
 
 Add rows to `03_decisions_log.md` when locked in review.
