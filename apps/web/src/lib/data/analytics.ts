@@ -1,7 +1,7 @@
 import { createAdminClient } from "@/lib/supabase/admin";
 import type { PropertyType } from "@/types/database";
 
-export type PortfolioMetrics = {
+export type PortfolioSummary = {
   year: number;
   collectionRate: number;
   occupancyRate: number;
@@ -39,7 +39,7 @@ function currentYearBounds() {
   };
 }
 
-export async function getPortfolioMetrics(orgId: string): Promise<PortfolioMetrics> {
+export async function getPortfolioSummary(orgId: string): Promise<PortfolioSummary> {
   const { year, start, end } = currentYearBounds();
 
   try {

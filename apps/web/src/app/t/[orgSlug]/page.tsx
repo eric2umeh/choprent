@@ -2,6 +2,7 @@ import Link from "next/link";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { CopyAccountButton } from "@/components/tenant/copy-account-button";
+import { TenantInstallAppCard } from "@/components/pwa/add-to-home-screen";
 import { requireTenantContext } from "@/lib/auth/session";
 import { getTenantHomeSummary } from "@/lib/data/tenant-home";
 import { formatNaira } from "@/lib/auth/roles";
@@ -22,6 +23,8 @@ export default async function TenantHomePage({
 
   return (
     <div className="space-y-0">
+      <TenantInstallAppCard orgSlug={orgSlug} />
+
       <div className="border-b border-green-200 bg-green-50 px-3 py-3">
         <p className="text-stat-label text-green-800">Balance due</p>
         <p className="text-stat-value">{formatNaira(summary.balance)}</p>

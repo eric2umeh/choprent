@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { formatNaira } from "@/lib/auth/roles";
 import { formatPropertyType } from "@/lib/data/unit-types";
-import type { PortfolioMetrics, RentAdvisorItem } from "@/lib/data/analytics";
+import type { PortfolioSummary, RentAdvisorItem } from "@/lib/data/analytics";
 import { StatCard } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 
@@ -15,11 +15,11 @@ function advisorVariant(item: RentAdvisorItem) {
 
 export function AnalyticsPageClient({
   orgSlug,
-  metrics,
+  summary,
   advisor,
 }: {
   orgSlug: string;
-  metrics: PortfolioMetrics;
+  summary: PortfolioSummary;
   advisor: RentAdvisorItem[];
 }) {
   return (
@@ -27,22 +27,22 @@ export function AnalyticsPageClient({
       <div className="grid grid-cols-2 gap-2.5 border-b border-border bg-white px-3 py-3 xl:grid-cols-4">
         <StatCard
           label="Collection rate"
-          value={`${metrics.collectionRate}%`}
-          hint={`${metrics.year} ledger`}
+          value={`${summary.collectionRate}%`}
+          hint={`${summary.year} ledger`}
         />
         <StatCard
           label="Occupancy"
-          value={`${metrics.occupancyRate}%`}
-          hint={`${metrics.occupiedUnits}/${metrics.totalUnits} units`}
+          value={`${summary.occupancyRate}%`}
+          hint={`${summary.occupiedUnits}/${summary.totalUnits} units`}
         />
         <StatCard
           label="Net margin"
-          value={`${metrics.netMarginPct}%`}
+          value={`${summary.netMarginPct}%`}
           hint="After recorded expenses"
         />
         <StatCard
           label="Arrears"
-          value={formatNaira(metrics.totalArrears)}
+          value={formatNaira(summary.totalArrears)}
           hint="Across portfolio"
         />
       </div>
@@ -90,11 +90,11 @@ export function AnalyticsPageClient({
         </div>
       </div>
 
-      {metrics.arrearsByType.length > 0 && (
+      {summary.arrearsByType.length > 0 && (
         <div className="border-b border-border bg-white px-3 py-4">
           <h2 className="text-card-title">Arrears by unit type</h2>
           <div className="mt-3 space-y-2">
-            {metrics.arrearsByType.map((row) => (
+            {summary.arrearsByType.map((row) => (
               <div
                 key={row.type}
                 className="flex items-center justify-between rounded-lg border border-border px-3 py-2"
@@ -121,7 +121,7 @@ export function AnalyticsPageClient({
           >
             Expenses
           </Link>{" "}
-          to improve net margin accuracy. Export metrics from{" "}
+          to improve net margin accuracy. Export CSVs from{" "}
           <Link
             href={`/d/${orgSlug}/reports`}
             className="font-semibold text-green-800 hover:text-green-900"

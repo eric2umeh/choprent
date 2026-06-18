@@ -347,7 +347,7 @@ management_documents (
 )
 ```
 
-Tenant downloads statements and letters from portal; counts toward self-service metrics.
+Tenant downloads statements and letters from portal; counts toward self-service activity tracking.
 
 ### 5.6 Dedicated virtual accounts (Paystack DVA) — Phase 1.5
 
@@ -494,12 +494,12 @@ Service role bypass only in Edge Functions for cron jobs — never exposed to cl
 | Channel | Table | Events | Subscribers |
 |---------|-------|--------|-------------|
 | `org:{id}:payments` | payments | INSERT, UPDATE | manager dashboard |
-| `org:{id}:metrics` | ledger_periods | UPDATE | landlord home |
+| `org:{id}:reports` | ledger_periods | UPDATE | landlord home |
 | `user:{id}:notifications` | notifications | INSERT | tenant app |
 
 Use `supabase.channel().on('postgres_changes', ...)`.
 
-**Scale note:** filter subscriptions by `organization_id`; avoid global listeners. For 80–500 units OC3 scale, Realtime default limits are sufficient.
+**Scale note:** filter subscriptions by `organization_id`; avoid global listeners. For 80–500 units at pilot scale, Realtime default limits are sufficient.
 
 ---
 
@@ -513,8 +513,8 @@ Use `supabase.channel().on('postgres_changes', ...)`.
 | Server Action `recordCashPayment` | Cash entry |
 | Server Action `renewLease` | End + create renewal |
 | Server Action `updateVirtualAccountName` | Tenant change on unit |
-| `GET /api/exports/payments.csv` | Metrics evidence |
-| `GET /api/exports/units.csv` | Metrics evidence |
+| `GET /api/exports/payments.csv` | Monthly reports |
+| `GET /api/exports/units.csv` | Monthly reports |
 | Client `lib/ocr/tesseract` | Zero-cost receipt pre-fill |
 
 Prefer **Server Actions** for mutations; Route Handlers for exports and webhooks.
@@ -525,7 +525,7 @@ Prefer **Server Actions** for mutations; Route Handlers for exports and webhooks
 
 ### Phase 1 — Transfer, cash, receipts
 
-No gateway required for OC3. Supports partial payments and multi-account reconciliation.
+No payment gateway required for Phase 1. Supports partial payments and multi-account reconciliation.
 
 ### Phase 1.5 — Paystack Dedicated Virtual Accounts (primary digital path)
 
@@ -601,14 +601,14 @@ apps/web/
 
 ---
 
-## 12. Observability & metrics pipeline
+## 12. Observability & reporting pipeline
 
 ```mermaid
 flowchart LR
   APP[App events] --> PG[(metrics_snapshots)]
   PG --> CRON[Monthly cron Edge Fn]
   CRON --> EXPORT[CSV / PDF to Storage]
-  EXPORT --> WORKS[works/choprent/metrics/YYYY-MM/]
+  EXPORT --> WORKS[reports/YYYY-MM/]
 ```
 
 **Internal tables**
@@ -635,7 +635,7 @@ Admin UI button: **Export month pack** → downloads zip aligned with checklist.
 
 | Stage | Units | Approach |
 |-------|-------|----------|
-| OC3 pilot | 80–200 | Single Supabase project, RLS, indexes on `(organization_id, period_month)` |
+| Pilot (single plaza) | 80–200 | Single Supabase project, RLS, indexes on `(organization_id, period_month)` |
 | City scale | 2k–10k | Read replicas, materialized views for dashboards, queue verification |
 | Multi-city | 10k+ | Consider org sharding, dedicated Supabase per large landlord, CDN for receipts |
 
@@ -683,7 +683,7 @@ All items locked in [`03_decisions_log.md`](03_decisions_log.md). Open only:
 
 ---
 
-## 17. Architecture evidence (OC3 technical item)
+## 17. Architecture documentation
 
 Deliverables for monthly pack:
 
@@ -691,7 +691,7 @@ Deliverables for monthly pack:
 2. GitHub repo link + commit activity
 3. Screenshots: admin dashboard, tenant mobile, receipt upload flow
 
-Keep diagrams in Mermaid; export to PNG for evidence zip if needed.
+Keep diagrams in Mermaid; export to PNG for monthly archive if needed.
 
 ---
 
@@ -699,10 +699,10 @@ Keep diagrams in Mermaid; export to PNG for evidence zip if needed.
 
 Full analysis: [`06_competitive_positioning.md`](06_competitive_positioning.md) (vs [PayRent](https://www.payrent.com/rent-payment-app-features/#h-product)).
 
-**Lead with these moats for OC3 — not generic rent-app features:**
+**Lead with these moats — not generic rent-app features:**
 
 1. **Sticky NUBAN per shop** (Paystack DVA) — traders pay without app; account survives tenant change
-2. **Verified bank-transfer audit pipeline** — exportable evidence fields + monthly metrics pack
+2. **Verified bank-transfer audit pipeline** — exportable fields + monthly report pack
 3. **Plaza charge engine** — annual rent + % service + fixed fees + partial pay + year-carry arrears
 4. **Composite units** (`14/16`) and mixed property types in one plaza
 5. **Landlord / manager / agent** verification chain with site-scoped agents

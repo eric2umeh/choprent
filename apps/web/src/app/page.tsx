@@ -71,14 +71,6 @@ export default function HomePage() {
               <Link href="/login" className="btn-primary px-6 py-3 text-base">
                 Explore demo
               </Link>
-              <a
-                href="https://github.com/eric2umeh/choprent"
-                target="_blank"
-                rel="noreferrer"
-                className="btn-ghost px-6 py-3"
-              >
-                View on GitHub
-              </a>
             </div>
             <ul className="mt-8 flex flex-wrap gap-x-6 gap-y-2">
               {trustItems.map((item) => (
@@ -177,7 +169,7 @@ export default function HomePage() {
             Ready to run your plaza on ChopRent?
           </h2>
           <p className="mt-3 text-muted">
-            Mobile-first. Supabase-backed. Built for pilot metrics from day one.
+            Mobile-first. Supabase-backed. Built for Nigerian plazas from day one.
           </p>
           <Link
             href="/login"

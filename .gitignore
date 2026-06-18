@@ -30,7 +30,7 @@ yarn-error.log*
 supabase/.branches
 supabase/.temp
 
-# metrics evidence (sensitive)
+# monthly reports archive (sensitive)
 works/
 
 # typescript

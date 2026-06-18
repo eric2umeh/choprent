@@ -26,7 +26,7 @@ For each processing activity, document basis in your privacy policy:
 | Account creation (manager assigns tenant) | **Contract** — tenancy / platform use |
 | Rent ledger & verification | **Contract** + **Legal obligation** (audit trail) |
 | Marketing to landlords (B2B) | **Consent** or **Legitimate interest** |
-| Analytics / product metrics | **Legitimate interest** (aggregated, minimal PII) |
+| Analytics / product usage | **Legitimate interest** (aggregated, minimal PII) |
 | AI receipt OCR | **Consent** at first upload + contract |
 
 **Tenant assigned by manager:** On first login, show **Terms + Privacy Policy + consent** for processing payment data and storing receipts indefinitely.

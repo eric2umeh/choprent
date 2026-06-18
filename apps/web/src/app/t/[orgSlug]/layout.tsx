@@ -1,4 +1,5 @@
 import { TenantHeader, TenantMobileNav } from "@/components/layout/tenant-nav";
+import { AddToHomeScreenPrompt } from "@/components/pwa/add-to-home-screen";
 import { requireTenantContext } from "@/lib/auth/session";
 import { displayOrgName, getOrgBranding } from "@/lib/data/org-profile";
 import { getSiteBrandingForUnit } from "@/lib/data/sites";
@@ -31,6 +32,7 @@ export default async function TenantLayout({
       />
       <main className="animate-page-enter mx-auto max-w-lg pb-20">{children}</main>
       <TenantMobileNav orgSlug={orgSlug} />
+      <AddToHomeScreenPrompt orgSlug={orgSlug} />
     </div>
   );
 }

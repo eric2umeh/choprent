@@ -45,7 +45,7 @@ const navItems: {
   { href: "/expenses", label: "Expenses", icon: Receipt },
   { href: "/analytics", label: "Analytics", icon: TrendingUp },
   { href: "/documents", label: "Documents", icon: FileText },
-  { href: "/reports", label: "Reports", icon: BarChart3 },
+  { href: "/reports", label: "Reports", icon: BarChart3, hint: "Exports & snapshots" },
   { href: "/account", label: "Account", icon: Landmark },
   { href: "/settings", label: "Settings", icon: Settings },
 ];

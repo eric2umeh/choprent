@@ -1,13 +1,13 @@
-# ChopRent — monthly metrics vault (OC3)
+# ChopRent — monthly reports archive
 
-Export and store these **every month** in `works/choprent/metrics/YYYY-MM/`.
+Export and store these **every month** in your `reports/YYYY-MM/` folder.
 
 ---
 
 ## A. Product usage
 
-| Metric | Example | Evidence file |
-|--------|---------|---------------|
+| Indicator | Example | Archive file |
+|-----------|---------|---------------|
 | Units registered | 80 | `units_export.csv` |
 | Tenants with profiles | 75 | screenshot |
 | Tenants self-serving (uploaded proof) | 8 → 25 → 40 | dashboard screenshot (dated) |
@@ -20,8 +20,8 @@ Export and store these **every month** in `works/choprent/metrics/YYYY-MM/`.
 
 ## B. Commercial (landlord → you)
 
-| Metric | Evidence |
-|--------|----------|
+| Indicator | Archive |
+|-----------|----------|
 | Monthly platform/management fee received | Bank alert / invoice |
 | Contract or LOI signed | PDF in `signed/` |
 | Line items (management vs software) | Invoice |
@@ -58,7 +58,7 @@ payment_date, bank_reference, receipt_file_url,
 verified_by, verified_at
 ```
 
-**Monthly reconciliation:** system total vs landlord bank statement (redact account number in evidence pack).
+**Monthly reconciliation:** system total vs landlord bank statement (redact account number in monthly archive).
 
 ---
 
@@ -70,6 +70,6 @@ After **3 months live**, propose:
 - **₦[X]M+** verified collections recorded  
 - **10+** tenants using self-service OR 100% admin-recorded with receipt images  
 - **2** reference letters (hotel billing product + plaza landlord)  
-- **2** products with GitHub + architecture proof  
+- **2** products with GitHub + architecture documentation  
 
-Ask: *“Does this satisfy OC3 for two products?”*
+Ask: *“Does this satisfy pilot success criteria for both products?”*

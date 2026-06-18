@@ -3,7 +3,7 @@
 **Repo:** [github.com/eric2umeh/choprent](https://github.com/eric2umeh/choprent)  
 **Product:** Multi-property rent collection and plaza management for Nigerian landlords, managers, agents, and tenants.  
 **Initial delivery:** Mobile-first responsive web app (Next.js on Vercel, Supabase backend).  
-**Pilot framing:** OC3 viability product — one plaza live first, architecture ready for many landlords.
+**Pilot framing:** One plaza live first, architecture ready for many landlords.
 
 **Decisions locked:** See [`docs/03_decisions_log.md`](03_decisions_log.md).
 
@@ -13,7 +13,7 @@
 
 Plaza landlords track rent across shops, flats, and offices using spreadsheets, WhatsApp, and manual bank reconciliation. **Traders** especially will not log into an app monthly — they transfer to a familiar account number. Managers struggle to see arrears, collection rate, and unit-level history in one place.
 
-ChopRent centralizes **plaza → units → leases → charges → payments → verified receipts**, with optional **Paystack dedicated accounts per shop**, real-time dashboards, tenant self-service, and monthly exportable metrics.
+ChopRent centralizes **plaza → units → leases → charges → payments → verified receipts**, with optional **Paystack dedicated accounts per shop**, real-time dashboards, tenant self-service, and monthly CSV exports.
 
 **Why not “just another rent app”:** See [`06_competitive_positioning.md`](06_competitive_positioning.md) — ChopRent is **plaza / Nigeria / trader-first** (sticky shop NUBAN, verified transfer audit, composite units), not a US card/ACH clone like PayRent.
 
@@ -27,7 +27,7 @@ ChopRent centralizes **plaza → units → leases → charges → payments → v
 | **Manager**          | Day-to-day ops: assign tenants, set charges on existing units, verify receipts, issue letters — **cannot add units** |
 | **Agent**            | **Assigned plazas only**: verify receipts, record cash — **cannot add units**                                        |
 | **Tenant**           | Pay (transfer or DVA), optional upload receipt, view ledger, download statements & management letters                |
-| **Platform admin**   | Onboard orgs, support, metrics export                                                                                |
+| **Platform admin**   | Onboard orgs, support, report exports                                                                                |
 
 Pilot starts with **one landlord / one plaza**; schema is multi-tenant for year-1 expansion.
 
@@ -46,7 +46,7 @@ Pilot starts with **one landlord / one plaza**; schema is multi-tenant for year-
 7. **Bank transfer + cash** (manager-recorded); receipt upload → verify queue (landlord/manager/agent)
 8. **Multiple settlement bank accounts** per plaza
 9. Tenant portal: ledger, receipts, **management letters**, PDF downloads
-10. Realtime dashboards + metrics exports (`02_metrics_tracking_checklist.md`)
+10. Realtime dashboards + CSV exports (`02_monthly_reports_checklist.md`)
 11. **Free/low-cost AI:** client-side OCR (Tesseract) + rule-based arrears reminders
 
 ### Phase 1.5 — Trader-friendly collections (high priority)
@@ -122,7 +122,7 @@ Organization (landlord)
 
 ---
 
-## Self-serving tenant (OC3 metric)
+## Self-serving tenant
 
 Counts toward “tenants self-serving” when tenant account has:
 
@@ -159,10 +159,10 @@ choprent/
 │   ├── 00_project_summary.md
 │   ├── 01_architecture.md
 │   ├── 01_LOI_pilot_agreement_draft.md
-│   ├── 02_metrics_tracking_checklist.md
+│   ├── 02_monthly_reports_checklist.md
 │   ├── 03_decisions_log.md
 │   └── 04_privacy_ndpr.md
-└── works/choprent/metrics/
+└── reports/
 ```
 
 ---

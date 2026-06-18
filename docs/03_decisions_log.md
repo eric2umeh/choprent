@@ -27,7 +27,7 @@ Locked product decisions from pre-build Q&A. Architecture doc implements these; 
 | 21 | Notifications | **Email + in-app** now; **WhatsApp** later | 2026-06-08 |
 | 22 | AI budget | **Zero / very low cost** — client OCR, rules, templates first | 2026-06-08 |
 | 23 | AI priorities | (1) Receipt OCR pre-fill (2) Arrears reminders (3) Rent FAQ chatbot | 2026-06-08 |
-| 24 | Pilot size | Metrics target = **this plaza** (not multi-site aggregate for OC3) | 2026-06-08 |
+| 24 | Pilot size | Reporting target = **this plaza** (not multi-site aggregate) | 2026-06-08 |
 | 25 | Self-serving tenant | Upload receipt, **view ledger**, **management letters**, download **statements + letters** | 2026-06-08 |
 | 26 | Commercial model | See **`docs/01_LOI_pilot_agreement_draft.md`** (landlord-provided) | 2026-06-08 |
 | 27 | Year 1 ambition | **More plazas, more landlords** on same platform | 2026-06-08 |
@@ -37,7 +37,7 @@ Locked product decisions from pre-build Q&A. Architecture doc implements these; 
 | 31 | Paystack DVA | **Phase 1.5** — dedicated virtual account **per unit**; account number persists, display name updates on tenant change | 2026-06-08 |
 | 32 | Trader UX | Traders pay via **static account number** without app login; app optional for receipts/statements | 2026-06-08 |
 | 33 | Electricity | **Phase 2** — prepaid meter / token flow; disco partnership + optional platform margin (TBD legally) | 2026-06-08 |
-| 34 | vs PayRent | Lead OC3 with DVA + verified transfer + plaza charge engine; skip credit reporting/lending/screening | 2026-06-08 |
+| 34 | vs PayRent | Lead with DVA + verified transfer + plaza charge engine; skip credit reporting/lending/screening | 2026-06-08 |
 | 35 | Supabase schema | Apply via **`supabase db push`** — not manual SQL editor (see `07_supabase_setup.md`) | 2026-06-08 |
 | 36 | UI list views | **Table default**, card optional toggle; filters + pagination; mobile expand rows (no horizontal scroll) | 2026-06-11 |
 | 37 | Marketplace search/book for tenants | **Defer** — keep Lyteville for discovery; ChopRent for plaza ops + verified rent (see `06_competitive_positioning.md`) | 2026-06-11 |

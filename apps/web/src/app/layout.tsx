@@ -17,13 +17,21 @@ export const metadata: Metadata = {
   description:
     "Rent collection and plaza management for Nigerian landlords, managers, and tenants.",
   applicationName: "ChopRent",
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "default",
+    title: "ChopRent",
+  },
+  formatDetection: {
+    telephone: false,
+  },
 };
 
 export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
   maximumScale: 1,
-  themeColor: "#ffffff",
+  themeColor: "#16a34a",
 };
 
 export default function RootLayout({
