@@ -2,6 +2,7 @@ import { Suspense } from "react";
 import { ListLoadingFallback } from "@/components/ui/list-loading-fallback";
 import { PageHeader } from "@/components/ui/page-header";
 import { TenantLedgerList } from "@/components/tenant/tenant-ledger-list";
+import { TenantEngagementBeacon } from "@/components/reports/tenant-engagement-beacon";
 import { requireTenantContext } from "@/lib/auth/session";
 import { getTenantLedger } from "@/lib/data/ledger";
 
@@ -17,6 +18,7 @@ export default async function TenantLedgerPage({
 
   return (
     <div>
+      <TenantEngagementBeacon orgSlug={orgSlug} eventType="ledger_viewed" />
       <PageHeader
         title="Ledger"
         description="Charges, payments, and running balance"
