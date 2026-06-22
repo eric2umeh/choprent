@@ -171,3 +171,65 @@ export async function recordCashPayment(
   revalidatePath(`/d/${orgSlug}`);
   return { success: true };
 }
+
+export async function updateCashPayment(
+  orgSlug: string,
+  _prev: PaymentActionState,
+  formData: FormData
+): Promise<PaymentActionState> {
+  const ctx = await requireStaffContext(orgSlug);
+  if (!canVerifyPayments(ctx.role)) {
+    return { error: "You don't have permission to edit payments." };
+  }
+
+  const paymentId = String(formData.get("payment_id") ?? "");
+  const amount = Number(formData.get("amount_ngn"));
+  const periodLabel = String(formData.get("period_label") ?? "").trim() || null;
+  const paymentDate = String(formData.get("payment_date") ?? "").trim() || null;
+
+  if (!paymentId || !Number.isFinite(amount) || amount <= 0) {
+    return { error: "A valid amount is required." };
+  }
+
+  const admin = createAdminClient();
+  const { data: payment } = await admin
+    .from("payments")
+    .select("id, status, payment_method, organization_id")
+    .eq("id", paymentId)
+    .eq("organization_id", ctx.org.id)
+    .maybeSingle();
+
+  if (!payment) return { error: "Payment not found." };
+  if (payment.payment_method !== "cash_recorded") {
+    return { error: "Only cash-recorded payments can be edited." };
+  }
+  if (payment.status === "rejected") {
+    return { error: "Rejected payments cannot be edited." };
+  }
+
+  const { error } = await admin
+    .from("payments")
+    .update({
+      amount_ngn: amount,
+      period_label: periodLabel,
+      payment_date: paymentDate,
+    })
+    .eq("id", paymentId);
+
+  if (error) return { error: error.message };
+
+  if (payment.status === "verified" || payment.status === "auto_matched") {
+    try {
+      await runPaymentAllocation(paymentId);
+    } catch (err) {
+      return {
+        error:
+          err instanceof Error ? err.message : "Updated but allocation failed.",
+      };
+    }
+  }
+
+  revalidatePath(`/d/${orgSlug}/payments`);
+  revalidatePath(`/d/${orgSlug}`);
+  return { success: true };
+}

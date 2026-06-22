@@ -16,6 +16,7 @@ export type PaymentListItem = {
   status: PaymentStatus;
   bankReference: string | null;
   receiptFileUrl: string | null;
+  paymentDate: string | null;
   createdAt: string;
 };
 
@@ -28,6 +29,7 @@ type PaymentRow = {
   status: PaymentStatus;
   bank_reference: string | null;
   receipt_file_url: string | null;
+  payment_date: string | null;
   created_at: string;
   units: { unit_code: string } | { unit_code: string }[] | null;
   leases?: never;
@@ -91,6 +93,7 @@ function mapPaymentRow(
     status: row.status,
     bankReference: row.bank_reference,
     receiptFileUrl: row.receipt_file_url,
+    paymentDate: row.payment_date,
     createdAt: row.created_at,
   };
 }
@@ -105,7 +108,7 @@ export async function listPaymentsForOrg(
   const { data, error } = await supabase
     .from("payments")
     .select(
-      "id, unit_id, amount_ngn, period_label, payment_method, status, bank_reference, receipt_file_url, created_at, units!inner(unit_code)"
+      "id, unit_id, amount_ngn, period_label, payment_method, status, bank_reference, receipt_file_url, payment_date, created_at, units!inner(unit_code)"
     )
     .eq("organization_id", orgId)
     .order("created_at", { ascending: false });
@@ -116,7 +119,7 @@ export async function listPaymentsForOrg(
       const { data: adminRows } = await admin
         .from("payments")
         .select(
-          "id, unit_id, amount_ngn, period_label, payment_method, status, bank_reference, receipt_file_url, created_at, units!inner(unit_code)"
+          "id, unit_id, amount_ngn, period_label, payment_method, status, bank_reference, receipt_file_url, payment_date, created_at, units!inner(unit_code)"
         )
         .eq("organization_id", orgId)
         .order("created_at", { ascending: false });
