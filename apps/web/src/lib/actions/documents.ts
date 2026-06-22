@@ -192,68 +192,77 @@ export async function generateStatement(
   orgSlug: string,
   unitId: string
 ): Promise<DocumentActionState> {
-  const ctx = await requireStaffContext(orgSlug);
-  if (!canManageLeases(ctx.role)) {
-    return { error: "You don't have permission to generate statements." };
-  }
+  try {
+    const ctx = await requireStaffContext(orgSlug);
+    if (!canManageLeases(ctx.role)) {
+      return { error: "You don't have permission to generate statements." };
+    }
 
-  const admin = createAdminClient();
+    const admin = createAdminClient();
 
-  const { data: unit } = await admin
-    .from("units")
-    .select("unit_code, organization_id")
-    .eq("id", unitId)
-    .eq("organization_id", ctx.org.id)
-    .maybeSingle();
+    const { data: unit } = await admin
+      .from("units")
+      .select("unit_code, organization_id")
+      .eq("id", unitId)
+      .eq("organization_id", ctx.org.id)
+      .maybeSingle();
 
-  if (!unit) return { error: "Unit not found." };
+    if (!unit) return { error: "Unit not found." };
 
-  const { data: lease } = await admin
-    .from("leases")
-    .select("id, tenant_display_name")
-    .eq("unit_id", unitId)
-    .eq("status", "active")
-    .maybeSingle();
+    const { data: lease } = await admin
+      .from("leases")
+      .select("id, tenant_display_name")
+      .eq("unit_id", unitId)
+      .eq("status", "active")
+      .maybeSingle();
 
-  const { lines, balance } = await getTenantLedger(ctx.org.id, unitId);
-  const issuedAt = new Date().toISOString().slice(0, 10);
-  const title = `Rent statement · Unit ${unit.unit_code} · ${issuedAt}`;
+    const { lines, balance } = await getTenantLedger(ctx.org.id, unitId);
+    const issuedAt = new Date().toISOString().slice(0, 10);
+    const title = `Rent statement · Unit ${unit.unit_code} · ${issuedAt}`;
 
-  const pdfBytes = await buildStatementPdf({
-    orgName: ctx.org.name,
-    unitCode: unit.unit_code,
-    tenantName: lease?.tenant_display_name ?? "Tenant",
-    balance,
-    lines,
-    issuedAt,
-  });
-
-  const path = `${ctx.org.id}/${unitId}/statement-${issuedAt}-${crypto.randomUUID()}.pdf`;
-  const { error: uploadError } = await admin.storage
-    .from("documents")
-    .upload(path, pdfBytes, {
-      upsert: false,
-      contentType: "application/pdf",
+    const pdfBytes = await buildStatementPdf({
+      orgName: ctx.org.name,
+      unitCode: unit.unit_code,
+      tenantName: lease?.tenant_display_name ?? "Tenant",
+      balance,
+      lines,
+      issuedAt,
     });
 
-  if (uploadError) return { error: uploadError.message };
+    const path = `${ctx.org.id}/${unitId}/statement-${issuedAt}-${crypto.randomUUID()}.pdf`;
+    const { error: uploadError } = await admin.storage
+      .from("documents")
+      .upload(path, pdfBytes, {
+        upsert: false,
+        contentType: "application/pdf",
+      });
 
-  const { error: insertError } = await admin.from("management_documents").insert({
-    organization_id: ctx.org.id,
-    unit_id: unitId,
-    lease_id: lease?.id ?? null,
-    doc_type: "statement",
-    title,
-    file_url: path,
-    issued_by: ctx.user.id,
-  });
+    if (uploadError) return { error: uploadError.message };
 
-  if (insertError) {
-    await admin.storage.from("documents").remove([path]);
-    return { error: insertError.message };
+    const { error: insertError } = await admin.from("management_documents").insert({
+      organization_id: ctx.org.id,
+      unit_id: unitId,
+      lease_id: lease?.id ?? null,
+      doc_type: "statement",
+      title,
+      file_url: path,
+      issued_by: ctx.user.id,
+    });
+
+    if (insertError) {
+      await admin.storage.from("documents").remove([path]);
+      return { error: insertError.message };
+    }
+
+    revalidatePath(`/d/${orgSlug}/documents`);
+    revalidatePath(`/t/${orgSlug}/documents`);
+    return { success: true };
+  } catch (err) {
+    return {
+      error:
+        err instanceof Error
+          ? err.message
+          : "Could not generate statement. Try again.",
+    };
   }
-
-  revalidatePath(`/d/${orgSlug}/documents`);
-  revalidatePath(`/t/${orgSlug}/documents`);
-  return { success: true };
 }

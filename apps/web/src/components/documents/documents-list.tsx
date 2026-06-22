@@ -46,6 +46,7 @@ export function DocumentsList({
   const [search, setSearch] = useState("");
   const [typeFilter, setTypeFilter] = useState("all");
   const [scopeFilter, setScopeFilter] = useState("all");
+  const [unitFilter, setUnitFilter] = useState("all");
   const [showIssueForm, setShowIssueForm] = useState(false);
   const [downloadingId, setDownloadingId] = useState<string | null>(null);
   const [generatingUnitId, setGeneratingUnitId] = useState<string | null>(null);
@@ -63,9 +64,13 @@ export function DocumentsList({
         scopeFilter === "all" ||
         (scopeFilter === "plaza" && !d.unitCode) ||
         (scopeFilter === "unit" && !!d.unitCode);
-      return matchSearch && matchType && matchScope;
+      const matchUnit =
+        unitFilter === "all" ||
+        (unitFilter === "plaza" && !d.unitId) ||
+        d.unitId === unitFilter;
+      return matchSearch && matchType && matchScope && matchUnit;
     });
-  }, [documents, search, typeFilter, scopeFilter]);
+  }, [documents, search, typeFilter, scopeFilter, unitFilter]);
 
   const { page, setPage, totalPages, slice, pageSize } = usePagination(
     filtered,
@@ -192,6 +197,24 @@ export function DocumentsList({
                 { value: "all", label: "All scope" },
                 { value: "unit", label: "Unit-specific" },
                 { value: "plaza", label: "Plaza-wide" },
+              ]}
+            />
+          )}
+          {!tenantOnly && units.length > 0 && (
+            <FilterSelect
+              label="Unit"
+              value={unitFilter}
+              onChange={(v) => {
+                setUnitFilter(v);
+                setPage(1);
+              }}
+              options={[
+                { value: "all", label: "All units" },
+                { value: "plaza", label: "Plaza-wide only" },
+                ...units.map((u) => ({
+                  value: u.id,
+                  label: `Unit ${u.unitCode}`,
+                })),
               ]}
             />
           )}

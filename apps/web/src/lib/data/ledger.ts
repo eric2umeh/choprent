@@ -13,9 +13,21 @@ export async function getTenantLedger(
   orgId: string,
   unitId: string
 ): Promise<{ lines: LedgerLineItem[]; balance: number }> {
-  const supabase = await createClient();
+  try {
+    return await fetchTenantLedger(orgId, unitId, false);
+  } catch {
+    return fetchTenantLedger(orgId, unitId, true);
+  }
+}
 
-  const { data: periods } = await supabase
+async function fetchTenantLedger(
+  orgId: string,
+  unitId: string,
+  useAdmin: boolean
+): Promise<{ lines: LedgerLineItem[]; balance: number }> {
+  const client = useAdmin ? createAdminClient() : await createClient();
+
+  const { data: periods } = await client
     .from("ledger_periods")
     .select("id, period_start, expected_total_ngn, paid_total_ngn, arrears_opening_ngn")
     .eq("unit_id", unitId)
@@ -25,7 +37,7 @@ export async function getTenantLedger(
   let ledgerLines: LedgerLineItem[] = [];
 
   if (periodIds.length > 0) {
-    const { data: lines } = await supabase
+    const { data: lines } = await client
       .from("ledger_lines")
       .select("id, description, amount_ngn, kind, created_at")
       .in("ledger_period_id", periodIds)
@@ -40,7 +52,7 @@ export async function getTenantLedger(
     }));
   }
 
-  const { data: payments } = await supabase
+  const { data: payments } = await client
     .from("payments")
     .select("id, amount_ngn, payment_date, status, created_at, period_label")
     .eq("unit_id", unitId)
@@ -62,7 +74,7 @@ export async function getTenantLedger(
     b.date.localeCompare(a.date)
   );
 
-  const { data: unit } = await supabase
+  const { data: unit } = await client
     .from("units")
     .select("arrears_balance_ngn")
     .eq("id", unitId)
@@ -80,18 +92,8 @@ export async function getTenantLedger(
     }
   }
 
-  if (combined.length === 0 && balance === 0) {
-    try {
-      const admin = createAdminClient();
-      const { data: adminUnit } = await admin
-        .from("units")
-        .select("arrears_balance_ngn")
-        .eq("id", unitId)
-        .maybeSingle();
-      balance = Number(adminUnit?.arrears_balance_ngn ?? 0);
-    } catch {
-      /* ignore */
-    }
+  if (combined.length === 0 && balance === 0 && !useAdmin) {
+    return fetchTenantLedger(orgId, unitId, true);
   }
 
   return { lines: combined, balance };
