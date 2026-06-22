@@ -124,6 +124,14 @@ export function LoginForm() {
           return;
         }
         clearLoginDraft();
+        if (linkResult.awaitingInvite) {
+          toast.success(
+            "Account created. Ask your landlord to invite you by email, then sign in again."
+          );
+          router.push("/access-pending");
+          router.refresh();
+          return;
+        }
         toast.success("Account created — opening your dashboard…");
         router.push("/auth/redirect");
         router.refresh();
