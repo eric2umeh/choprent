@@ -12,12 +12,13 @@ import { ViewToggle, type ViewMode } from "@/components/ui/view-toggle";
 import { RecordCashForm } from "@/components/payments/record-cash-form";
 import { TenantPaymentStatusBadge } from "@/components/tenants/tenant-payment-status-badge";
 import { rejectPayment, verifyPayment } from "@/lib/actions/payments";
+import { EditCashForm } from "@/components/payments/edit-cash-form";
 import { getReceiptDownloadUrl } from "@/lib/actions/documents";
 import type { PaymentListItem } from "@/lib/data/payments";
 import { formatNaira } from "@/lib/auth/roles";
 import { toast } from "@/components/ui/toast";
 import { Spinner } from "@/components/ui/spinner";
-import { Check, X, FileImage } from "lucide-react";
+import { Check, X, FileImage, Pencil } from "lucide-react";
 
 function methodLabel(m: string) {
   const map: Record<string, string> = {
@@ -52,6 +53,7 @@ export function PaymentsList({
   const [rentStatusFilter, setRentStatusFilter] = useState("all");
   const [methodFilter, setMethodFilter] = useState("all");
   const [showCashForm, setShowCashForm] = useState(false);
+  const [editingPayment, setEditingPayment] = useState<PaymentListItem | null>(null);
   const [actingId, setActingId] = useState<string | null>(null);
   const [actingType, setActingType] = useState<"verify" | "reject" | null>(null);
   const [receiptLoadingId, setReceiptLoadingId] = useState<string | null>(null);
@@ -208,42 +210,68 @@ export function PaymentsList({
     {
       key: "actions",
       header: "",
-      render: (p) =>
-        canVerify && p.status === "pending" ? (
-          <div className="flex gap-1">
+      render: (p) => {
+        const canEdit =
+          canVerify &&
+          p.paymentMethod === "cash_recorded" &&
+          p.status !== "rejected";
+
+        if (canVerify && p.status === "pending") {
+          return (
+            <div className="flex gap-1">
+              <button
+                type="button"
+                disabled={actingId !== null}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleVerify(p.id);
+                }}
+                className="inline-flex items-center gap-1 rounded-lg bg-green-600 px-2 py-1 text-[11px] font-semibold text-white transition-all duration-200 hover:bg-green-700 active:scale-95 disabled:opacity-60"
+              >
+                {actingId === p.id && actingType === "verify" ? (
+                  <Spinner size="sm" className="text-white" />
+                ) : (
+                  <Check className="h-3 w-3" />
+                )}
+                Verify
+              </button>
+              <button
+                type="button"
+                disabled={actingId !== null}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleReject(p.id);
+                }}
+                className="inline-flex items-center gap-1 rounded-lg border border-red-200 px-2 py-1 text-[11px] font-semibold text-red-600 transition-all duration-200 hover:bg-red-50 active:scale-95 disabled:opacity-60"
+              >
+                {actingId === p.id && actingType === "reject" ? (
+                  <Spinner size="sm" className="text-red-600" />
+                ) : (
+                  <X className="h-3 w-3" />
+                )}
+              </button>
+            </div>
+          );
+        }
+
+        if (canEdit) {
+          return (
             <button
               type="button"
-              disabled={actingId !== null}
+              className="btn-ghost inline-flex gap-1 px-2 py-1 text-xs"
               onClick={(e) => {
                 e.stopPropagation();
-                handleVerify(p.id);
+                setEditingPayment(p);
               }}
-              className="inline-flex items-center gap-1 rounded-lg bg-green-600 px-2 py-1 text-[11px] font-semibold text-white transition-all duration-200 hover:bg-green-700 active:scale-95 disabled:opacity-60"
             >
-              {actingId === p.id && actingType === "verify" ? (
-                <Spinner size="sm" className="text-white" />
-              ) : (
-                <Check className="h-3 w-3" />
-              )}
-              Verify
+              <Pencil className="h-3.5 w-3.5" />
+              Edit
             </button>
-            <button
-              type="button"
-              disabled={actingId !== null}
-              onClick={(e) => {
-                e.stopPropagation();
-                handleReject(p.id);
-              }}
-              className="inline-flex items-center gap-1 rounded-lg border border-red-200 px-2 py-1 text-[11px] font-semibold text-red-600 transition-all duration-200 hover:bg-red-50 active:scale-95 disabled:opacity-60"
-            >
-              {actingId === p.id && actingType === "reject" ? (
-                <Spinner size="sm" className="text-red-600" />
-              ) : (
-                <X className="h-3 w-3" />
-              )}
-            </button>
-          </div>
-        ) : null,
+          );
+        }
+
+        return null;
+      },
     },
   ];
 
@@ -371,6 +399,13 @@ export function PaymentsList({
         units={units}
         open={showCashForm}
         onClose={() => setShowCashForm(false)}
+      />
+
+      <EditCashForm
+        orgSlug={orgSlug}
+        payment={editingPayment}
+        open={!!editingPayment}
+        onClose={() => setEditingPayment(null)}
       />
     </>
   );

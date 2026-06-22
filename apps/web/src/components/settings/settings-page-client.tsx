@@ -7,37 +7,38 @@ import {
   ProfileSettingsForm,
   PasswordSettingsForm,
 } from "@/components/settings/account-settings-form";
-import { TeamInviteForm, TeamMembersList } from "@/components/settings/team-panel";
+import { KeyRound, LogOut, UserRound } from "lucide-react";
+import { StaffDisplayNameForm, ResignationForm } from "@/components/settings/staff-settings-form";
 import type { OrgProfile } from "@/lib/data/org-profile";
-import type { TeamMember } from "@/lib/actions/team";
-import { KeyRound, UserPlus, UserRound } from "lucide-react";
 
 export function SettingsPageClient({
   orgSlug,
   profile,
   userEmail,
   canEditProfile,
-  teamMembers,
-  showTeam,
+  staffDisplayName,
+  staffRole,
 }: {
   orgSlug: string;
   profile: OrgProfile;
   userEmail: string | null;
   canEditProfile: boolean;
-  teamMembers: TeamMember[];
-  showTeam: boolean;
+  staffDisplayName?: string | null;
+  staffRole?: "manager" | "agent" | null;
 }) {
   const [profileOpen, setProfileOpen] = useState(false);
   const [passwordOpen, setPasswordOpen] = useState(false);
-  const [inviteOpen, setInviteOpen] = useState(false);
+  const [staffNameOpen, setStaffNameOpen] = useState(false);
+  const [resignationOpen, setResignationOpen] = useState(false);
+  const isStaff = staffRole === "manager" || staffRole === "agent";
 
   return (
     <div className="space-y-4 px-3 py-4 lg:px-0">
-      <SettingsSectionCard
-        title="Profile"
-        description="Company name, logo, and your display name — visible to tenants and staff."
-        action={
-          canEditProfile ? (
+      {canEditProfile ? (
+        <SettingsSectionCard
+          title="Profile"
+          description="Company name, logo, and your display name — visible to tenants and staff."
+          action={
             <button
               type="button"
               className="btn-ghost inline-flex shrink-0 items-center gap-1.5 px-3 py-1.5"
@@ -46,30 +47,46 @@ export function SettingsPageClient({
               <UserRound className="h-4 w-4" />
               Edit profile
             </button>
-          ) : (
-            <span className="text-list-meta text-sm">Owner only</span>
-          )
-        }
-      >
-        <dl className="grid gap-3 sm:grid-cols-2">
-          <div>
-            <dt className="text-label normal-case">Your name</dt>
-            <dd className="mt-0.5 text-list-primary">
-              {profile.ownerDisplayName || "—"}
-            </dd>
-          </div>
-          <div>
-            <dt className="text-label normal-case">Company</dt>
-            <dd className="mt-0.5 text-list-primary">
-              {profile.companyName || "—"}
-            </dd>
-          </div>
-          <div className="sm:col-span-2">
-            <dt className="text-label normal-case">Sign-in email</dt>
-            <dd className="mt-0.5 text-list-secondary">{userEmail ?? "—"}</dd>
-          </div>
-        </dl>
-      </SettingsSectionCard>
+          }
+        >
+          <dl className="grid gap-3 sm:grid-cols-2">
+            <div>
+              <dt className="text-label normal-case">Your name</dt>
+              <dd className="mt-0.5 text-list-primary">
+                {profile.ownerDisplayName || "—"}
+              </dd>
+            </div>
+            <div>
+              <dt className="text-label normal-case">Company</dt>
+              <dd className="mt-0.5 text-list-primary">
+                {profile.companyName || "—"}
+              </dd>
+            </div>
+            <div className="sm:col-span-2">
+              <dt className="text-label normal-case">Sign-in email</dt>
+              <dd className="mt-0.5 text-list-secondary">{userEmail ?? "—"}</dd>
+            </div>
+          </dl>
+        </SettingsSectionCard>
+      ) : isStaff ? (
+        <SettingsSectionCard
+          title="Your name"
+          description="How your landlord and tenants see you on this team."
+          action={
+            <button
+              type="button"
+              className="btn-ghost inline-flex shrink-0 items-center gap-1.5 px-3 py-1.5"
+              onClick={() => setStaffNameOpen(true)}
+            >
+              <UserRound className="h-4 w-4" />
+              Edit name
+            </button>
+          }
+        >
+          <p className="text-list-primary">{staffDisplayName || "—"}</p>
+          <p className="mt-1 text-list-meta">Sign-in: {userEmail ?? "—"}</p>
+        </SettingsSectionCard>
+      ) : null}
 
       <SettingsSectionCard
         title="Password"
@@ -86,23 +103,21 @@ export function SettingsPageClient({
         }
       />
 
-      {showTeam && (
+      {isStaff && (
         <SettingsSectionCard
-          title="Team"
-          description="Managers run day-to-day ops. Agents verify payments on assigned sites."
+          title="Leave this team"
+          description="Request to resign. Your landlord must accept before access is removed."
           action={
             <button
               type="button"
-              className="btn-primary inline-flex shrink-0 items-center gap-1.5 px-3 py-1.5"
-              onClick={() => setInviteOpen(true)}
+              className="btn-ghost inline-flex shrink-0 items-center gap-1.5 px-3 py-1.5 text-red-600"
+              onClick={() => setResignationOpen(true)}
             >
-              <UserPlus className="h-4 w-4" />
-              Invite member
+              <LogOut className="h-4 w-4" />
+              Request resignation
             </button>
           }
-        >
-          <TeamMembersList orgSlug={orgSlug} members={teamMembers} />
-        </SettingsSectionCard>
+        />
       )}
 
       <Modal
@@ -121,6 +136,19 @@ export function SettingsPageClient({
       </Modal>
 
       <Modal
+        open={staffNameOpen}
+        onClose={() => setStaffNameOpen(false)}
+        title="Edit your name"
+        description="This name is shown to your landlord and tenants."
+      >
+        <StaffDisplayNameForm
+          orgSlug={orgSlug}
+          displayName={staffDisplayName ?? ""}
+          onSaved={() => setStaffNameOpen(false)}
+        />
+      </Modal>
+
+      <Modal
         open={passwordOpen}
         onClose={() => setPasswordOpen(false)}
         title="Change password"
@@ -133,12 +161,12 @@ export function SettingsPageClient({
       </Modal>
 
       <Modal
-        open={inviteOpen}
-        onClose={() => setInviteOpen(false)}
-        title="Invite team member"
-        description="They must sign up at /login first, then you add them by email."
+        open={resignationOpen}
+        onClose={() => setResignationOpen(false)}
+        title="Request resignation"
+        description="Your landlord will review before your access is removed."
       >
-        <TeamInviteForm orgSlug={orgSlug} onSaved={() => setInviteOpen(false)} />
+        <ResignationForm orgSlug={orgSlug} onSaved={() => setResignationOpen(false)} />
       </Modal>
     </div>
   );

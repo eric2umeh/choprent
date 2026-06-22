@@ -16,12 +16,12 @@ const ROLES: { value: MembershipRole; label: string; hint: string }[] = [
   {
     value: "manager",
     label: "Manager",
-    hint: "Join a landlord's team (demo: pilot plaza until invites ship)",
+    hint: "Ask your landlord to invite you by email after you sign up",
   },
   {
     value: "agent",
     label: "Agent",
-    hint: "Verify receipts on site (demo: pilot plaza until invites ship)",
+    hint: "Ask your landlord to invite you — you'll verify payments on assigned sites",
   },
 ];
 
@@ -38,6 +38,14 @@ export function CompleteSetupForm({ email }: { email: string }) {
       const result = await linkPlazaAccount(role);
       if (result?.error) {
         toast.error(result.error);
+        setLoading(false);
+        return;
+      }
+
+      if (result.awaitingInvite) {
+        toast.success(
+          "Account ready. Ask your landlord to invite you by email, then sign in again."
+        );
         setLoading(false);
         return;
       }

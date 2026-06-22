@@ -6,8 +6,6 @@ import { provisionLandlordOrganization } from "@/lib/auth/org-provision";
 import { getSessionUser } from "@/lib/auth/session";
 import {
   createAdminClient,
-  PILOT_ORG_ID,
-  PILOT_SITE_ID,
 } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 import type { MembershipRole } from "@/types/database";
@@ -18,31 +16,6 @@ export type AuthActionState = {
 };
 
 const STAFF_ROLES: MembershipRole[] = ["owner", "manager", "agent"];
-
-async function ensurePilotSiteExists(admin: ReturnType<typeof createAdminClient>) {
-  const { count } = await admin
-    .from("sites")
-    .select("*", { count: "exact", head: true })
-    .eq("organization_id", PILOT_ORG_ID);
-
-  if ((count ?? 0) > 0) return;
-
-  const { error } = await admin.from("sites").insert({
-    organization_id: PILOT_ORG_ID,
-    name: "Eri Plaza",
-    site_type: "plaza",
-    address: {
-      line1: "12 Allen Avenue",
-      city: "Ikeja",
-      state: "Lagos",
-      country: "NG",
-    },
-  });
-
-  if (error && error.code !== "23505") {
-    throw new Error(error.message);
-  }
-}
 
 async function getExistingStaffMembership(userId: string) {
   const admin = createAdminClient();
@@ -55,45 +28,13 @@ async function getExistingStaffMembership(userId: string) {
     .maybeSingle();
 }
 
-async function linkToPilotOrg(
-  userId: string,
-  role: Extract<MembershipRole, "manager" | "agent">
-): Promise<AuthActionState> {
-  const admin = createAdminClient();
-  await ensurePilotSiteExists(admin);
-
-  const { error: membershipError } = await admin.from("memberships").insert({
-    user_id: userId,
-    organization_id: PILOT_ORG_ID,
-    role,
-  });
-
-  if (membershipError) {
-    return { error: membershipError.message };
-  }
-
-  if (role === "agent") {
-    const { error: assignError } = await admin.from("site_assignments").insert({
-      user_id: userId,
-      site_id: PILOT_SITE_ID,
-    });
-    if (assignError && assignError.code !== "23505") {
-      return { error: assignError.message };
-    }
-  }
-
-  revalidatePath("/access-pending");
-  revalidatePath("/d/eri-plaza");
-  return { success: true };
-}
-
 /**
  * Link a signed-in user to ChopRent staff access.
- * Landlords get a new organization. Managers/agents join the demo pilot org until invites ship.
+ * Landlords get a new organization. Managers/agents wait for a landlord invite.
  */
 export async function linkPlazaAccount(
   role: MembershipRole
-): Promise<AuthActionState> {
+): Promise<AuthActionState & { awaitingInvite?: boolean }> {
   const user = await getSessionUser();
   if (!user) {
     return { error: "Please sign in first, then choose your role." };
@@ -130,7 +71,10 @@ export async function linkPlazaAccount(
       return { success: true };
     }
 
-    return linkToPilotOrg(user.id, role);
+    return {
+      success: true,
+      awaitingInvite: true,
+    };
   } catch (err) {
     return {
       error:

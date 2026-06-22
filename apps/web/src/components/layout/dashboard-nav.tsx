@@ -13,6 +13,7 @@ import {
   BarChart3,
   PanelLeftClose,
   PanelLeft,
+  UserCog,
   X,
   Landmark,
   Receipt,
@@ -45,6 +46,7 @@ const navItems: {
   { href: "/expenses", label: "Expenses", icon: Receipt },
   { href: "/analytics", label: "Analytics", icon: TrendingUp },
   { href: "/documents", label: "Documents", icon: FileText },
+  { href: "/users", label: "Users", icon: UserCog, hint: "Managers & agents" },
   { href: "/reports", label: "Reports", icon: BarChart3, hint: "Exports & snapshots" },
   { href: "/account", label: "Account", icon: Landmark },
   { href: "/settings", label: "Settings", icon: Settings },
@@ -69,6 +71,7 @@ function NavLinks({
   const filteredNav = navItems.filter((item) => {
     if (collapsed && item.href === "") return false;
     if (item.href === "/settings" && role === "agent") return false;
+    if (item.href === "/users" && role !== "owner") return false;
     if (item.href === "/account" && role === "agent") return false;
     if (item.href === "/reports" && role === "agent") return false;
     if (item.href === "/expenses" && role === "agent") return false;

@@ -95,7 +95,7 @@ export default async function DashboardHomePage({
         <SectionHeader title="Recent activity" />
         <div className="space-y-2">
           {activity.length === 0 ? (
-            <p className="text-empty-state list-row">No payment activity yet.</p>
+            <p className="text-empty-state list-row">No payment activity yet</p>
           ) : (
             activity.map((item) => (
               <ListRow key={item.id} className="flex items-center justify-between gap-3">
