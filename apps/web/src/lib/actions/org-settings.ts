@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { requireStaffContext } from "@/lib/auth/session";
 import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 
 export type OrgSettingsActionState = {
   error?: string;
@@ -26,13 +27,24 @@ export async function updateOrgProfile(
   const logo = formData.get("logo");
 
   const supabase = await createClient();
-  const { data: org } = await supabase
+  const { data: org, error: readError } = await supabase
     .from("organizations")
     .select("settings")
     .eq("id", ctx.org.id)
     .maybeSingle();
 
-  const settings = (org?.settings ?? {}) as Record<string, unknown>;
+  let orgRow = org;
+  if (readError || !org) {
+    const admin = createAdminClient();
+    const { data: adminOrg } = await admin
+      .from("organizations")
+      .select("settings")
+      .eq("id", ctx.org.id)
+      .maybeSingle();
+    orgRow = adminOrg;
+  }
+
+  const settings = (orgRow?.settings ?? {}) as Record<string, unknown>;
   settings.owner_display_name = ownerDisplayName || null;
   settings.company_name = companyName || null;
 
@@ -58,11 +70,45 @@ export async function updateOrgProfile(
     .update({ name: orgDisplayName, settings })
     .eq("id", ctx.org.id);
 
-  if (error) return { error: error.message };
+  if (error) {
+    const admin = createAdminClient();
+    const { error: adminError } = await admin
+      .from("organizations")
+      .update({ name: orgDisplayName, settings })
+      .eq("id", ctx.org.id);
+    if (adminError) return { error: adminError.message };
+  }
 
   revalidatePath(`/d/${orgSlug}/settings`);
   revalidatePath(`/d/${orgSlug}`, "layout");
   revalidatePath(`/t/${orgSlug}`, "layout");
+  return { success: true };
+}
+
+/** Managers and agents can update their own display name for this org. */
+export async function updateStaffDisplayName(
+  orgSlug: string,
+  _prev: OrgSettingsActionState,
+  formData: FormData
+): Promise<OrgSettingsActionState> {
+  const ctx = await requireStaffContext(orgSlug);
+  if (ctx.role === "owner") {
+    return { error: "Landlords update their name in the profile section above." };
+  }
+
+  const displayName = String(formData.get("display_name") ?? "").trim();
+  if (!displayName) return { error: "Name is required." };
+
+  const admin = createAdminClient();
+  const { error } = await admin
+    .from("memberships")
+    .update({ display_name: displayName })
+    .eq("organization_id", ctx.org.id)
+    .eq("user_id", ctx.user.id);
+
+  if (error) return { error: error.message };
+
+  revalidatePath(`/d/${orgSlug}/settings`);
   return { success: true };
 }
 

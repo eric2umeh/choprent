@@ -2,7 +2,7 @@ import { PageHeader } from "@/components/ui/page-header";
 import { SettingsPageClient } from "@/components/settings/settings-page-client";
 import { requireStaffContext } from "@/lib/auth/session";
 import { getOrgProfile } from "@/lib/data/org-profile";
-import { listTeamMembers } from "@/lib/actions/team";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { notFound } from "next/navigation";
 
 export default async function SettingsPage({
@@ -15,22 +15,31 @@ export default async function SettingsPage({
   const profile = await getOrgProfile(ctx.org.id);
   if (!profile) notFound();
 
-  const teamMembers =
-    ctx.role === "owner" ? await listTeamMembers(orgSlug) : [];
+  let staffDisplayName: string | null = null;
+  if (ctx.role === "manager" || ctx.role === "agent") {
+    const admin = createAdminClient();
+    const { data } = await admin
+      .from("memberships")
+      .select("display_name")
+      .eq("organization_id", ctx.org.id)
+      .eq("user_id", ctx.user.id)
+      .maybeSingle();
+    staffDisplayName = data?.display_name ?? null;
+  }
 
   return (
     <div>
       <PageHeader
         title="Settings"
-        description="Your account profile, team, and password"
+        description="Your account profile and password"
       />
       <SettingsPageClient
         orgSlug={orgSlug}
         profile={profile}
         userEmail={ctx.user.email}
         canEditProfile={ctx.role === "owner"}
-        teamMembers={teamMembers}
-        showTeam={ctx.role === "owner"}
+        staffDisplayName={staffDisplayName}
+        staffRole={ctx.role === "manager" || ctx.role === "agent" ? ctx.role : null}
       />
     </div>
   );
