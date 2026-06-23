@@ -3,7 +3,7 @@ import { Card } from "@/components/ui/card";
 import { UnitDetailClient } from "@/components/units/unit-detail-client";
 import { UnitHistorySections } from "@/components/units/unit-history-sections";
 import { requireStaffContext } from "@/lib/auth/session";
-import { canAddUnits } from "@/lib/auth/roles";
+import { canAddUnits, canEditUnits } from "@/lib/auth/roles";
 import { resolveProperty } from "@/lib/data/sites";
 import { resolveUnit } from "@/lib/data/units";
 import { getUnitHistory } from "@/lib/data/leases";
@@ -52,7 +52,7 @@ export default async function PropertyUnitDetailPage({
     redirect(unitPath(orgSlug, property.slug, unit.unitCode));
   }
 
-  const canManage = canAddUnits(ctx.role);
+  const canEdit = canEditUnits(ctx.role);
 
   const [history, expenses] = await Promise.all([
     getUnitHistory(ctx.org.id, unit.id),
@@ -78,7 +78,8 @@ export default async function PropertyUnitDetailPage({
         orgSlug={orgSlug}
         propertyId={property.id}
         unit={unit}
-        canManage={canManage}
+        canEdit={canEdit}
+        canDelete={canAddUnits(ctx.role)}
       >
         <div className="space-y-0">
           <Card className="rounded-none border-x-0 border-t-0 shadow-none">
