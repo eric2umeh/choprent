@@ -23,11 +23,13 @@ export function UnitEditForm({
   orgSlug,
   propertyId,
   unit,
+  canDelete = false,
   onSaved,
 }: {
   orgSlug: string;
   propertyId: string;
   unit: UnitDetail;
+  canDelete?: boolean;
   onSaved?: () => void;
 }) {
   const router = useRouter();
@@ -200,15 +202,17 @@ export function UnitEditForm({
         >
           Save unit
         </LoadingButton>
-        <button
-          type="button"
-          onClick={handleDelete}
-          disabled={pending || deleting}
-          className="inline-flex items-center gap-1.5 rounded-lg border border-red-200 px-4 py-2.5 text-sm font-semibold text-red-600 hover:bg-red-50 disabled:opacity-60"
-        >
-          <Trash2 className="h-4 w-4" />
-          Delete unit
-        </button>
+        {canDelete && (
+          <button
+            type="button"
+            onClick={handleDelete}
+            disabled={pending || deleting}
+            className="inline-flex items-center gap-1.5 rounded-lg border border-red-200 px-4 py-2.5 text-sm font-semibold text-red-600 hover:bg-red-50 disabled:opacity-60"
+          >
+            <Trash2 className="h-4 w-4" />
+            Delete unit
+          </button>
+        )}
       </div>
       </form>
     </FormPanel>

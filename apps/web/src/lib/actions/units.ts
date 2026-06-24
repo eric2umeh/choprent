@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import { canAddUnits } from "@/lib/auth/roles";
+import { canAddUnits, canEditUnits } from "@/lib/auth/roles";
 import { requireStaffContext } from "@/lib/auth/session";
 import { getPropertyForOrg } from "@/lib/data/sites";
 import { unitPath, propertyPath } from "@/lib/routes/dashboard-paths";
@@ -92,8 +92,8 @@ export async function setupUnitDetails(
   formData: FormData
 ): Promise<UnitActionState> {
   const ctx = await requireStaffContext(orgSlug);
-  if (!canAddUnits(ctx.role)) {
-    return { error: "Only the landlord can edit units." };
+  if (!canEditUnits(ctx.role)) {
+    return { error: "You don't have permission to edit units." };
   }
 
   const unitCode = String(formData.get("unit_code") ?? "").trim();

@@ -10,20 +10,22 @@ export function UnitDetailClient({
   orgSlug,
   propertyId,
   unit,
-  canManage,
+  canEdit,
+  canDelete = false,
   children,
 }: {
   orgSlug: string;
   propertyId: string;
   unit: UnitDetail;
-  canManage: boolean;
+  canEdit: boolean;
+  canDelete?: boolean;
   children: React.ReactNode;
 }) {
   const [editing, setEditing] = useState(false);
 
   return (
     <>
-      {canManage && (
+      {canEdit && (
         <div className="border-b border-border bg-white px-3 py-2">
           <button
             type="button"
@@ -48,6 +50,7 @@ export function UnitDetailClient({
           orgSlug={orgSlug}
           propertyId={propertyId}
           unit={unit}
+          canDelete={canDelete}
           onSaved={() => setEditing(false)}
         />
       </Modal>

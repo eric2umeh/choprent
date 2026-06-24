@@ -1,6 +1,23 @@
 import { PDFDocument, StandardFonts, rgb } from "pdf-lib";
-import { formatNaira } from "@/lib/auth/roles";
 import type { LedgerLineItem } from "@/lib/data/ledger";
+
+/** Standard PDF fonts only support WinAnsi — not ₦ or other Unicode symbols. */
+function formatNairaForPdf(amount: number): string {
+  const formatted = new Intl.NumberFormat("en-NG", {
+    maximumFractionDigits: 0,
+  }).format(amount);
+  return `NGN ${formatted}`;
+}
+
+/** Strip/replace characters Helvetica cannot encode (WinAnsi). */
+function pdfSafeText(text: string): string {
+  return text
+    .replace(/₦/g, "NGN ")
+    .replace(/[\u2212\u2013\u2014]/g, "-")
+    .normalize("NFKD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^\u0000-\u00FF]/g, "");
+}
 
 export async function buildStatementPdf(input: {
   orgName: string;
@@ -17,7 +34,7 @@ export async function buildStatementPdf(input: {
 
   let y = 800;
   const draw = (text: string, size = 11, useBold = false) => {
-    page.drawText(text, {
+    page.drawText(pdfSafeText(text), {
       x: 50,
       y,
       size,
@@ -33,14 +50,14 @@ export async function buildStatementPdf(input: {
   draw(`Unit: ${input.unitCode}`);
   draw(`Tenant: ${input.tenantName}`);
   draw(`Issued: ${input.issuedAt}`);
-  draw(`Balance due: ${formatNaira(input.balance)}`, 12, true);
+  draw(`Balance due: ${formatNairaForPdf(input.balance)}`, 12, true);
   y -= 8;
   draw("Activity", 12, true);
 
   for (const line of input.lines.slice(0, 40)) {
-    const sign = line.kind === "payment" ? "+" : "−";
+    const sign = line.kind === "payment" ? "+" : "-";
     draw(
-      `${line.date}  ${line.description.slice(0, 42)}  ${sign}${formatNaira(Math.abs(line.amount))}`,
+      `${line.date}  ${line.description.slice(0, 42)}  ${sign}${formatNairaForPdf(Math.abs(line.amount))}`,
       10,
     );
     if (y < 60) break;
