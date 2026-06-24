@@ -4,6 +4,10 @@ export function canAddUnits(role: MembershipRole | null | undefined): boolean {
   return role === "owner";
 }
 
+export function canEditUnits(role: MembershipRole | null | undefined): boolean {
+  return role === "owner" || role === "manager";
+}
+
 export function canManageLeases(role: MembershipRole | null | undefined): boolean {
   return role === "owner" || role === "manager";
 }
