@@ -34,7 +34,7 @@ const navItems: {
   badge?: boolean;
   comingSoon?: boolean;
 }[] = [
-  { href: "", label: "Dashboard", icon: LayoutDashboard },
+  { href: "", label: "Dashboard", icon: LayoutDashboard, badge: true },
   { href: "/tenants", label: "Tenants", icon: Users },
   {
     href: "/properties",
@@ -56,12 +56,14 @@ function NavLinks({
   orgSlug,
   role,
   pendingCount,
+  notificationCount,
   collapsed,
   onNavigate,
 }: {
   orgSlug: string;
   role: MembershipRole;
   pendingCount: number;
+  notificationCount: number;
   collapsed?: boolean;
   onNavigate?: () => void;
 }) {
@@ -85,6 +87,12 @@ function NavLinks({
         const path = `${base}${href}`;
         const active =
           href === "" ? pathname === base : pathname.startsWith(path);
+        const count =
+          href === "/payments"
+            ? pendingCount
+            : href === ""
+              ? notificationCount
+              : 0;
 
         return (
           <Link
@@ -112,9 +120,9 @@ function NavLinks({
                 )}
               </span>
             )}
-            {!collapsed && badge && pendingCount > 0 && (
+            {!collapsed && badge && count > 0 && (
               <span className="flex h-5 min-w-5 items-center justify-center rounded-full bg-amber-500 px-1 text-[10px] font-bold text-white">
-                {pendingCount}
+                {count > 9 ? "9+" : count}
               </span>
             )}
             {!collapsed && comingSoon && (
@@ -135,6 +143,7 @@ export function DashboardSidebar({
   userName,
   userInitials,
   pendingCount = 0,
+  notificationCount = 0,
   collapsed,
   mobileOpen,
   onCloseMobile,
@@ -145,6 +154,7 @@ export function DashboardSidebar({
   userName: string;
   userInitials: string;
   pendingCount?: number;
+  notificationCount?: number;
   collapsed: boolean;
   mobileOpen: boolean;
   onCloseMobile: () => void;
@@ -232,6 +242,7 @@ export function DashboardSidebar({
           orgSlug={orgSlug}
           role={role}
           pendingCount={pendingCount}
+          notificationCount={notificationCount}
           collapsed={collapsed}
           onNavigate={onCloseMobile}
         />
@@ -290,9 +301,11 @@ export function DashboardSidebar({
 export function DashboardTopBar({
   onOpenSidebar,
   title,
+  notificationCount = 0,
 }: {
   onOpenSidebar: () => void;
   title?: string;
+  notificationCount?: number;
 }) {
   return (
     <header className="sticky top-0 z-30 flex h-11 items-center gap-2 border-b border-border bg-white/90 px-3 backdrop-blur-md transition-shadow lg:hidden">
@@ -305,7 +318,12 @@ export function DashboardTopBar({
         <PanelLeft className="h-4 w-4" />
       </button>
       {title && <span className="truncate text-sm font-semibold">{title}</span>}
-      <form action={signOutAction} className="ml-auto">
+      {notificationCount > 0 && (
+        <span className="ml-auto flex h-5 min-w-5 items-center justify-center rounded-full bg-amber-500 px-1 text-[10px] font-bold text-white">
+          {notificationCount > 9 ? "9+" : notificationCount}
+        </span>
+      )}
+      <form action={signOutAction} className={notificationCount > 0 ? "" : "ml-auto"}>
         <button type="submit" className="text-xs font-medium text-muted">
           Sign out
         </button>
@@ -317,15 +335,17 @@ export function DashboardTopBar({
 export function DashboardMobileNav({
   orgSlug,
   pendingCount = 0,
+  notificationCount = 0,
 }: {
   orgSlug: string;
   pendingCount?: number;
+  notificationCount?: number;
 }) {
   const pathname = usePathname();
   const base = `/d/${orgSlug}`;
 
   const items = [
-    { href: "", label: "Home", icon: LayoutDashboard },
+    { href: "", label: "Home", icon: LayoutDashboard, badge: notificationCount },
     { href: "/tenants", label: "Tenants", icon: Users },
     { href: "/properties", label: "Properties", icon: Building2 },
     { href: "/payments", label: "Pay", icon: CreditCard, badge: pendingCount },

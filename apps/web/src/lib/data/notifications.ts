@@ -8,6 +8,22 @@ export type NotificationItem = {
   read: boolean;
 };
 
+export async function countUnreadNotifications(
+  userId: string,
+  orgId?: string
+): Promise<number> {
+  const supabase = await createClient();
+  let query = supabase
+    .from("notifications")
+    .select("id", { count: "exact", head: true })
+    .eq("user_id", userId)
+    .is("read_at", null);
+
+  if (orgId) query = query.eq("organization_id", orgId);
+  const { count } = await query;
+  return count ?? 0;
+}
+
 export async function listNotificationsForUser(
   userId: string,
   orgId?: string
