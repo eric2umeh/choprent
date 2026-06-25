@@ -23,12 +23,14 @@ export function PropertiesPageClient({
   canManage,
   singleProperty,
   units = [],
+  paystackDvaEnabled = false,
 }: {
   orgSlug: string;
   properties: PropertySummary[];
   canManage: boolean;
   singleProperty?: PropertySummary | null;
   units?: UnitListItem[];
+  paystackDvaEnabled?: boolean;
 }) {
   const router = useRouter();
   const [showAddProperty, setShowAddProperty] = useState(false);
@@ -107,6 +109,7 @@ export function PropertiesPageClient({
           canAdd={canManage}
           units={units}
           onAddUnit={canManage ? () => setShowAddUnit(true) : undefined}
+          showShopAccountColumn={paystackDvaEnabled}
         />
 
         <Modal

@@ -1,10 +1,12 @@
 import { createClient } from "@/lib/supabase/server";
 import { getTenantLedger } from "@/lib/data/ledger";
+import { isPaystackDvaEnabled } from "@/lib/paystack/client";
 
 export type SettlementAccount = {
   bankName: string;
   accountNumber: string;
   accountName: string;
+  isDva?: boolean;
 };
 
 export type TenantHomeSummary = {
@@ -28,14 +30,18 @@ export async function getTenantHomeSummary(
   const { lines, balance } = await getTenantLedger(orgId, unitId);
   const supabase = await createClient();
 
-  const [{ count: pendingCount }, settlement] = await Promise.all([
+  const dvaEnabled = isPaystackDvaEnabled();
+  const [{ count: pendingCount }, settlement, dva] = await Promise.all([
     supabase
       .from("payments")
       .select("id", { count: "exact", head: true })
       .eq("unit_id", unitId)
       .eq("status", "pending"),
     resolveSettlementAccount(supabase, leaseId, unitId),
+    dvaEnabled ? resolveDvaAccount(supabase, unitId) : Promise.resolve(null),
   ]);
+
+  const payAccount = dva ?? settlement;
 
   const { data: openPeriod } = await supabase
     .from("ledger_periods")
@@ -49,7 +55,7 @@ export async function getTenantHomeSummary(
   return {
     balance,
     periodLabel: openPeriod?.period_label ?? openPeriod?.period_start?.slice(0, 4) ?? null,
-    settlement,
+    settlement: payAccount,
     pendingPayments: pendingCount ?? 0,
     recentLines: lines.slice(0, 3).map((l) => ({
       id: l.id,
@@ -105,6 +111,25 @@ async function resolveSettlementAccount(
   }
 
   return defaultSettlementForSite(supabase, siteId);
+}
+
+async function resolveDvaAccount(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  unitId: string
+): Promise<SettlementAccount | null> {
+  const { data: va } = await supabase
+    .from("virtual_accounts")
+    .select("account_number, bank_name, account_name")
+    .eq("unit_id", unitId)
+    .maybeSingle();
+
+  if (!va) return null;
+  return {
+    bankName: va.bank_name,
+    accountNumber: va.account_number,
+    accountName: va.account_name,
+    isDva: true,
+  };
 }
 
 async function defaultSettlementForSite(

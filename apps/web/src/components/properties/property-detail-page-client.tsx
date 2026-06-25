@@ -26,12 +26,14 @@ export function PropertyDetailPageClient({
   units,
   expenses,
   canManage,
+  paystackDvaEnabled = false,
 }: {
   orgSlug: string;
   property: PropertySummary;
   units: UnitListItem[];
   expenses: ExpenseListItem[];
   canManage: boolean;
+  paystackDvaEnabled?: boolean;
 }) {
   const router = useRouter();
   const [showAddUnit, setShowAddUnit] = useState(false);
@@ -113,6 +115,7 @@ export function PropertyDetailPageClient({
         canAdd={canManage}
         units={units}
         onAddUnit={canManage ? () => setShowAddUnit(true) : undefined}
+        showShopAccountColumn={paystackDvaEnabled}
       />
 
       <ListPanel>
