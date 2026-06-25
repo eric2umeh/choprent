@@ -21,7 +21,11 @@ export default async function PaymentsPage({
     listUnitsForOrg(ctx.org.id),
   ]);
 
-  const unitOptions = units.map((u) => ({ id: u.id, unitCode: u.unitCode }));
+  const unitOptions = units.map((u) => ({
+    id: u.id,
+    unitCode: u.unitCode,
+    tenantName: u.tenantName,
+  }));
 
   return (
     <div>
@@ -33,6 +37,7 @@ export default async function PaymentsPage({
         <PaymentsPageClient
           orgSlug={orgSlug}
           canVerify={canVerify}
+          isOwner={ctx.role === "owner"}
           payments={payments}
           units={unitOptions}
         />
