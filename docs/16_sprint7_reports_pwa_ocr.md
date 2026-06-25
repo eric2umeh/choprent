@@ -14,8 +14,8 @@
 | 2 | **Tenant engagement events** — receipt, ledger view, document download | ✓ |
 | 3 | **Dashboard stats fix** — admin client for accurate collected/arrears | ✓ |
 | 4 | **PWA manifest + Add to Home Screen** prompt on tenant portal | ✓ |
-| 5 | **Receipt OCR pre-fill** (Tesseract.js) | Next |
-| 6 | **Arrears reminder rules** (email + in-app) | Next |
+| 5 | **Receipt OCR pre-fill** (Tesseract.js) | ✓ |
+| 6 | **Arrears reminder rules** (email + in-app) | ✓ |
 
 ---
 
@@ -23,8 +23,11 @@
 
 ```bash
 supabase db push   # 20260620100000_sprint7_tenant_engagement.sql
+                   # 20260622100000_sprint7_8_reminders_dva.sql
 npm run dev
 ```
+
+Set `CRON_SECRET` and optionally `RESEND_API_KEY` (see `.env.example`). Vercel runs `/api/cron/reminders` daily at 08:00 UTC.
 
 ---
 
@@ -55,6 +58,9 @@ A tenant qualifies if they have **any** of:
 4. **Tenant** → Documents → download → check Reports shows documents = Yes
 5. **Reports** → Save snapshot → appears under Saved snapshots
 6. **Tenant mobile** → see Add to Home Screen banner (iOS: Share instructions)
+7. **Tenant** → Pay → upload JPG receipt → amount/reference pre-fill → submit → OCR metadata on payment row
+8. **Settings** → Arrears reminders → toggle rules on/off
+9. **Cron** → `curl -H "Authorization: Bearer $CRON_SECRET" http://localhost:3000/api/cron/reminders`
 
 ---
 
@@ -68,12 +74,14 @@ A tenant qualifies if they have **any** of:
 | Engagement | `components/reports/tenant-engagement-beacon.tsx` |
 | Dashboard fix | `lib/data/dashboard-stats.ts` |
 | PWA | `app/manifest.ts`, `components/pwa/add-to-home-screen.tsx` |
+| OCR | `lib/ocr/extract-receipt-fields.ts`, `components/tenant/tenant-pay-form.tsx` |
+| Reminders | `lib/reminders/evaluate-arrears.ts`, `api/cron/reminders/route.ts`, `components/settings/reminder-rules-panel.tsx` |
+| Tenant notifications | `lib/data/notifications.ts`, `components/tenant/tenant-notifications-list.tsx` |
 
 ---
 
 ## Out of scope (Sprint 8+)
 
-- Paystack DVA + webhooks
 - WhatsApp reminders
 - External rent benchmark API
 

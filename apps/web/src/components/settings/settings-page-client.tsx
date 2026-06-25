@@ -9,6 +9,8 @@ import {
 } from "@/components/settings/account-settings-form";
 import { KeyRound, LogOut, UserRound } from "lucide-react";
 import { StaffDisplayNameForm, ResignationForm } from "@/components/settings/staff-settings-form";
+import { ReminderRulesPanel } from "@/components/settings/reminder-rules-panel";
+import type { ReminderRule } from "@/lib/actions/reminders";
 import type { OrgProfile } from "@/lib/data/org-profile";
 
 export function SettingsPageClient({
@@ -18,6 +20,7 @@ export function SettingsPageClient({
   canEditProfile,
   staffDisplayName,
   staffRole,
+  reminderRules = [],
 }: {
   orgSlug: string;
   profile: OrgProfile;
@@ -25,6 +28,7 @@ export function SettingsPageClient({
   canEditProfile: boolean;
   staffDisplayName?: string | null;
   staffRole?: "manager" | "agent" | null;
+  reminderRules?: ReminderRule[];
 }) {
   const [profileOpen, setProfileOpen] = useState(false);
   const [passwordOpen, setPasswordOpen] = useState(false);
@@ -118,6 +122,19 @@ export function SettingsPageClient({
             </button>
           }
         />
+      )}
+
+      {canEditProfile && reminderRules.length > 0 && (
+        <SettingsSectionCard
+          title="Arrears reminders"
+          description="Email and in-app reminders when tenants owe rent. Runs daily via cron."
+        >
+          <ReminderRulesPanel orgSlug={orgSlug} rules={reminderRules} />
+          <p className="mt-3 text-form-hint">
+            Cron: POST <code className="text-xs">/api/cron/reminders</code> with{" "}
+            <code className="text-xs">Authorization: Bearer CRON_SECRET</code>
+          </p>
+        </SettingsSectionCard>
       )}
 
       <Modal
