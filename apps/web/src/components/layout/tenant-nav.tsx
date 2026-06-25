@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { FileText, Home, Receipt, Wallet } from "lucide-react";
+import { FileText, HelpCircle, Home, Receipt, Wallet } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 export function TenantMobileNav({ orgSlug }: { orgSlug: string }) {
@@ -13,6 +13,7 @@ export function TenantMobileNav({ orgSlug }: { orgSlug: string }) {
     { href: "", label: "Home", icon: Home },
     { href: "/pay", label: "Pay", icon: Wallet },
     { href: "/ledger", label: "Ledger", icon: Receipt },
+    { href: "/help", label: "Help", icon: HelpCircle },
     { href: "/documents", label: "Docs", icon: FileText },
   ];
 

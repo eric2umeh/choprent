@@ -11,6 +11,11 @@ import { listPaymentsForOrg } from "@/lib/data/payments";
 import { listUnitsForOrg } from "@/lib/data/units";
 import { unitPath } from "@/lib/routes/dashboard-paths";
 import { formatPropertyType } from "@/lib/data/unit-types";
+import {
+  countUnreadNotifications,
+  listNotificationsForUser,
+} from "@/lib/data/notifications";
+import { StaffNotificationsPanel } from "@/components/notifications/staff-notification-bell";
 import { formatNaira } from "@/lib/auth/roles";
 
 export default async function DashboardHomePage({
@@ -21,11 +26,12 @@ export default async function DashboardHomePage({
   const { orgSlug } = await params;
   const ctx = await requireStaffContext(orgSlug);
 
-  const [stats, payments, units, activity] = await Promise.all([
+  const [stats, payments, units, activity, notifications] = await Promise.all([
     getDashboardStats(ctx.org.id),
     listPaymentsForOrg(ctx.org.id),
     listUnitsForOrg(ctx.org.id),
     getActivityFeed(ctx.org.id, 8),
+    listNotificationsForUser(ctx.user.id, ctx.org.id),
   ]);
 
   const pending = payments.filter((p) => p.status === "pending");
@@ -34,6 +40,8 @@ export default async function DashboardHomePage({
     <div>
       <DashboardLiveSync orgId={ctx.org.id} />
       <PageHeader title="Dashboard" description={ctx.org.name} />
+
+      <StaffNotificationsPanel notifications={notifications} />
 
       <div className="grid grid-cols-2 gap-2.5 border-b border-border bg-white px-3 py-3 xl:grid-cols-4">
         <StatCard

@@ -9,7 +9,11 @@ import { unitPath, propertyPath } from "@/lib/routes/dashboard-paths";
 import { revalidatePropertyDashboardPaths } from "@/lib/routes/revalidate-dashboard";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
-import type { PropertyType } from "@/types/database";
+import {
+  parseBillingProfileFromForm,
+} from "@/lib/charges/billing-profile";
+import { regenerateLedgerForUnit } from "@/lib/charges/generate-ledger";
+import type { BillingCadence, PropertyType } from "@/types/database";
 
 export type UnitActionState = {
   error?: string;
@@ -109,6 +113,10 @@ export async function setupUnitDetails(
   const annualRentRaw = String(formData.get("annual_rent_ngn") ?? "").trim();
   const annualRent = annualRentRaw === "" ? NaN : Number(annualRentRaw);
   const arrears = Number(formData.get("arrears_ngn"));
+  const billingCadence = String(
+    formData.get("billing_cadence") ?? "annual"
+  ) as BillingCadence;
+  const billingProfile = parseBillingProfileFromForm(formData);
 
   if (!unitCode) return { error: "Unit code is required." };
   if (!Number.isFinite(arrears) || arrears < 0) {
@@ -208,14 +216,26 @@ export async function setupUnitDetails(
         return { error: leaseError?.message ?? "Could not create lease." };
       }
 
-      if (Number.isFinite(annualRent) && annualRent > 0) {
-        await upsertUnitRentLedger(admin, ctx.org.id, unitId, newLease.id, annualRent);
+      await admin
+        .from("leases")
+        .update({ billing_cadence: billingCadence })
+        .eq("id", newLease.id);
+
+      if (billingProfile.baseRentNgn > 0) {
+        await regenerateLedgerForUnit(admin, ctx.org.id, unitId, billingProfile);
       }
     }
   }
 
-  if (activeLease && annualRentRaw && Number.isFinite(annualRent) && annualRent >= 0) {
-    await upsertUnitRentLedger(admin, ctx.org.id, unitId, activeLease.id, annualRent);
+  if (activeLease) {
+    await admin
+      .from("leases")
+      .update({ billing_cadence: billingCadence })
+      .eq("id", activeLease.id);
+
+    if (billingProfile.baseRentNgn > 0 || annualRentRaw) {
+      await regenerateLedgerForUnit(admin, ctx.org.id, unitId, billingProfile);
+    }
   }
 
   await revalidatePropertyDashboardPaths(
@@ -226,79 +246,6 @@ export async function setupUnitDetails(
   );
   revalidatePath(`/d/${orgSlug}/tenants`);
   return { success: true };
-}
-
-async function upsertUnitRentLedger(
-  admin: ReturnType<typeof createAdminClient>,
-  orgId: string,
-  unitId: string,
-  leaseId: string,
-  annualRent: number
-) {
-  const { start, end } = currentYearRange();
-
-  const { data: existingPeriod } = await admin
-    .from("ledger_periods")
-    .select("id, paid_total_ngn")
-    .eq("unit_id", unitId)
-    .eq("period_start", start)
-    .eq("billing_cadence", "annual")
-    .maybeSingle();
-
-  await admin
-    .from("charge_templates")
-    .delete()
-    .eq("organization_id", orgId)
-    .eq("scope", "unit")
-    .eq("scope_id", unitId)
-    .eq("charge_kind", "rent");
-
-  const { data: template } = await admin
-    .from("charge_templates")
-    .insert({
-      organization_id: orgId,
-      scope: "unit",
-      scope_id: unitId,
-      charge_kind: "rent",
-      calculation: "fixed",
-      amount: annualRent,
-      billing_period: "annual",
-      effective_from: start,
-      priority: 10,
-    })
-    .select("id")
-    .single();
-
-  const { data: period } = await admin
-    .from("ledger_periods")
-    .upsert(
-      {
-        unit_id: unitId,
-        lease_id: leaseId,
-        period_start: start,
-        period_end: end,
-        billing_cadence: "annual",
-        status: "open",
-        expected_total_ngn: annualRent,
-        paid_total_ngn: Number(existingPeriod?.paid_total_ngn ?? 0),
-        arrears_opening_ngn: 0,
-        arrears_closing_ngn: 0,
-      },
-      { onConflict: "unit_id,period_start,billing_cadence" }
-    )
-    .select("id")
-    .single();
-
-  if (period && template) {
-    await admin.from("ledger_lines").delete().eq("ledger_period_id", period.id);
-    await admin.from("ledger_lines").insert({
-      ledger_period_id: period.id,
-      charge_template_id: template.id,
-      description: "Annual rent",
-      amount_ngn: annualRent,
-      kind: "expected",
-    });
-  }
 }
 
 export async function deleteUnit(

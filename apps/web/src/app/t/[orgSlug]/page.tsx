@@ -8,7 +8,7 @@ import { getTenantHomeSummary } from "@/lib/data/tenant-home";
 import { listNotificationsForUser } from "@/lib/data/notifications";
 import { TenantNotificationsList } from "@/components/tenant/tenant-notifications-list";
 import { formatNaira } from "@/lib/auth/roles";
-import { Upload } from "lucide-react";
+import { Upload, HelpCircle } from "lucide-react";
 
 export default async function TenantHomePage({
   params,
@@ -60,7 +60,7 @@ export default async function TenantHomePage({
         </Card>
       )}
 
-      <div className="grid grid-cols-2 gap-2 border-b border-border bg-white px-3 py-3">
+      <div className="grid grid-cols-3 gap-2 border-b border-border bg-white px-3 py-3">
         <Link
           href={`/t/${orgSlug}/pay`}
           className="btn-primary flex flex-col items-center gap-1.5 py-3 text-center text-xs"
@@ -73,6 +73,13 @@ export default async function TenantHomePage({
           className="btn-ghost flex flex-col items-center gap-1.5 py-3 text-center text-xs"
         >
           View ledger
+        </Link>
+        <Link
+          href={`/t/${orgSlug}/help`}
+          className="btn-ghost flex flex-col items-center gap-1.5 py-3 text-center text-xs"
+        >
+          <HelpCircle className="h-4 w-4" />
+          Rent help
         </Link>
       </div>
 

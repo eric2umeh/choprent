@@ -11,14 +11,14 @@ import { ResponsiveDataTable, type Column } from "@/components/ui/responsive-tab
 import { ViewToggle, type ViewMode } from "@/components/ui/view-toggle";
 import { RecordCashForm } from "@/components/payments/record-cash-form";
 import { TenantPaymentStatusBadge } from "@/components/tenants/tenant-payment-status-badge";
-import { rejectPayment, verifyPayment } from "@/lib/actions/payments";
+import { rejectPayment, unverifyPayment, verifyPayment } from "@/lib/actions/payments";
 import { EditCashForm } from "@/components/payments/edit-cash-form";
 import { getReceiptDownloadUrl } from "@/lib/actions/documents";
 import type { PaymentListItem } from "@/lib/data/payments";
 import { formatNaira } from "@/lib/auth/roles";
 import { toast } from "@/components/ui/toast";
 import { Spinner } from "@/components/ui/spinner";
-import { Check, X, FileImage, Pencil } from "lucide-react";
+import { Check, X, FileImage, Pencil, Undo2 } from "lucide-react";
 
 function methodLabel(m: string) {
   const map: Record<string, string> = {
@@ -38,13 +38,15 @@ function statusBadge(status: string) {
 export function PaymentsList({
   orgSlug,
   canVerify,
+  isOwner,
   payments,
   units,
 }: {
   orgSlug: string;
   canVerify: boolean;
+  isOwner: boolean;
   payments: PaymentListItem[];
-  units: { id: string; unitCode: string }[];
+  units: { id: string; unitCode: string; tenantName?: string | null }[];
 }) {
   const router = useRouter();
   const [view, setView] = useState<ViewMode>("table");
@@ -55,7 +57,7 @@ export function PaymentsList({
   const [showCashForm, setShowCashForm] = useState(false);
   const [editingPayment, setEditingPayment] = useState<PaymentListItem | null>(null);
   const [actingId, setActingId] = useState<string | null>(null);
-  const [actingType, setActingType] = useState<"verify" | "reject" | null>(null);
+  const [actingType, setActingType] = useState<"verify" | "reject" | "unverify" | null>(null);
   const [receiptLoadingId, setReceiptLoadingId] = useState<string | null>(null);
   const [, startTransition] = useTransition();
 
@@ -107,6 +109,21 @@ export function PaymentsList({
       if (result.error) toast.error(result.error);
       else {
         toast.info("Payment rejected.");
+        router.refresh();
+      }
+    });
+  }
+
+  function handleUnverify(paymentId: string) {
+    setActingId(paymentId);
+    setActingType("unverify");
+    startTransition(async () => {
+      const result = await unverifyPayment(orgSlug, paymentId);
+      setActingId(null);
+      setActingType(null);
+      if (result.error) toast.error(result.error);
+      else {
+        toast.info("Payment unverified — back in pending queue.");
         router.refresh();
       }
     });
@@ -251,6 +268,31 @@ export function PaymentsList({
                 )}
               </button>
             </div>
+          );
+        }
+
+        if (
+          isOwner &&
+          p.status === "verified" &&
+          p.paymentMethod !== "dedicated_account"
+        ) {
+          return (
+            <button
+              type="button"
+              disabled={actingId !== null}
+              className="btn-ghost inline-flex gap-1 px-2 py-1 text-xs text-amber-800"
+              onClick={(e) => {
+                e.stopPropagation();
+                handleUnverify(p.id);
+              }}
+            >
+              {actingId === p.id && actingType === "unverify" ? (
+                <Spinner size="sm" />
+              ) : (
+                <Undo2 className="h-3.5 w-3.5" />
+              )}
+              Unverify
+            </button>
           );
         }
 

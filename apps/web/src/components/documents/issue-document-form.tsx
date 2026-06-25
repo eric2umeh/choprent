@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { issueDocument } from "@/lib/actions/documents";
 import { LoadingButton } from "@/components/ui/loading-button";
 import { Modal } from "@/components/ui/modal";
+import { SearchableSelect } from "@/components/ui/searchable-select";
 import { toast } from "@/components/ui/toast";
 
 export function IssueDocumentForm({
@@ -77,18 +78,17 @@ export function IssueDocumentForm({
           </div>
           <div>
             <label className="text-label normal-case">Unit (optional)</label>
-            <select
+            <SearchableSelect
               name="unit_id"
-              className="input-field mt-1"
+              options={[
+                { value: "", label: "Plaza-wide" },
+                ...units.map((u) => ({ value: u.id, label: u.unitCode })),
+              ]}
+              emptyLabel="Plaza-wide"
+              placeholder="Search unit…"
               disabled={loading}
-            >
-              <option value="">Plaza-wide</option>
-              {units.map((u) => (
-                <option key={u.id} value={u.id}>
-                  {u.unitCode}
-                </option>
-              ))}
-            </select>
+              className="mt-1"
+            />
           </div>
         </div>
         <div>
