@@ -70,6 +70,16 @@ export async function submitTransferPayment(
     return { error: `Receipt upload failed: ${uploadError.message}` };
   }
 
+  const ocrPayload = String(formData.get("ocr_payload") ?? "").trim();
+  let metadata: Record<string, unknown> = {};
+  if (ocrPayload) {
+    try {
+      metadata.ocr = JSON.parse(ocrPayload);
+    } catch {
+      metadata.ocr_note = "invalid_payload";
+    }
+  }
+
   const { error: insertError } = await supabase.from("payments").insert({
     organization_id: ctx.org.id,
     tenant_id: ctx.user.id,
@@ -81,6 +91,7 @@ export async function submitTransferPayment(
     payment_method: "bank_transfer",
     status: "pending",
     payment_date: new Date().toISOString().slice(0, 10),
+    metadata,
   });
 
   if (insertError) {
