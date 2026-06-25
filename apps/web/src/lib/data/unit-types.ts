@@ -20,6 +20,15 @@ export type UnitDetail = UnitListItem & {
   leaseId: string | null;
   tenantPhone: string | null;
   tenantEmail: string | null;
+  billingCadence: import("@/types/database").BillingCadence;
+  billingProfile: {
+    baseRentNgn: number;
+    servicePct: number;
+    agencyFeeNgn: number;
+    vatPct: number;
+    dieselNgn: number;
+    securityNgn: number;
+  };
 };
 
 export const PROPERTY_TYPE_OPTIONS: { value: PropertyType; label: string }[] = [

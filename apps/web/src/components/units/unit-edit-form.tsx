@@ -71,7 +71,8 @@ export function UnitEditForm({
     <FormPanel>
       <form action={formAction} className="space-y-4">
         <p className="text-form-hint">
-          Set tenant, annual rent, and opening arrears here after adding the unit.
+          Set tenant, annual rent, service charge %, VAT, and billing cadence. Ledger
+          periods regenerate when you save (monthly, quarterly, or annual).
         </p>
 
       <div className="grid gap-3 sm:grid-cols-2">
@@ -173,23 +174,107 @@ export function UnitEditForm({
                 name="annual_rent_ngn"
                 type="number"
                 step="any"
-                defaultValue={unit.annualRent > 0 ? unit.annualRent : ""}
+                defaultValue={
+                  unit.billingProfile.baseRentNgn > 0
+                    ? unit.billingProfile.baseRentNgn
+                    : unit.annualRent > 0
+                      ? unit.annualRent
+                      : ""
+                }
                 className="input-field mt-1"
                 placeholder="1200000"
                 disabled={pending}
               />
             </div>
             <div>
-              <label className="text-label normal-case">Opening arrears (₦)</label>
+              <label className="text-label normal-case">Billing cadence</label>
+              <select
+                name="billing_cadence"
+                defaultValue={unit.billingCadence}
+                className="input-field mt-1"
+                disabled={pending}
+              >
+                <option value="annual">Annual</option>
+                <option value="quarterly">Quarterly</option>
+                <option value="monthly">Monthly</option>
+              </select>
+            </div>
+          </div>
+          <div className="grid gap-3 sm:grid-cols-2">
+            <div>
+              <label className="text-label normal-case">Service charge (%)</label>
               <input
-                name="arrears_ngn"
+                name="service_pct"
                 type="number"
                 step="any"
-                defaultValue={unit.arrears}
+                defaultValue={unit.billingProfile.servicePct || ""}
                 className="input-field mt-1"
+                placeholder="10"
                 disabled={pending}
               />
             </div>
+            <div>
+              <label className="text-label normal-case">Agency fee (₦ / year)</label>
+              <input
+                name="agency_fee_ngn"
+                type="number"
+                step="any"
+                defaultValue={unit.billingProfile.agencyFeeNgn || ""}
+                className="input-field mt-1"
+                placeholder="50000"
+                disabled={pending}
+              />
+            </div>
+          </div>
+          <div className="grid gap-3 sm:grid-cols-3">
+            <div>
+              <label className="text-label normal-case">VAT (%)</label>
+              <input
+                name="vat_pct"
+                type="number"
+                step="any"
+                defaultValue={unit.billingProfile.vatPct || ""}
+                className="input-field mt-1"
+                placeholder="7.5"
+                disabled={pending}
+              />
+            </div>
+            <div>
+              <label className="text-label normal-case">Diesel (₦ / year)</label>
+              <input
+                name="diesel_ngn"
+                type="number"
+                step="any"
+                defaultValue={unit.billingProfile.dieselNgn || ""}
+                className="input-field mt-1"
+                placeholder="120000"
+                disabled={pending}
+              />
+            </div>
+            <div>
+              <label className="text-label normal-case">Security (₦)</label>
+              <input
+                name="security_ngn"
+                type="number"
+                step="any"
+                defaultValue={unit.billingProfile.securityNgn || ""}
+                className="input-field mt-1"
+                placeholder="100000"
+                disabled={pending}
+              />
+              <p className="mt-0.5 text-[11px] text-muted">Charged on first period only</p>
+            </div>
+          </div>
+          <div>
+            <label className="text-label normal-case">Opening arrears (₦)</label>
+            <input
+              name="arrears_ngn"
+              type="number"
+              step="any"
+              defaultValue={unit.arrears}
+              className="input-field mt-1"
+              disabled={pending}
+            />
           </div>
         </div>
       </div>

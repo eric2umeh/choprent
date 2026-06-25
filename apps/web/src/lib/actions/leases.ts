@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { canManageLeases } from "@/lib/auth/roles";
 import { requireStaffContext } from "@/lib/auth/session";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { regenerateLedgerForUnit } from "@/lib/charges/generate-ledger";
 import type { BillingCadence } from "@/types/database";
 
 export type LeaseActionState = {
@@ -78,7 +79,7 @@ export async function createLease(
     }
   }
 
-  const { error: insertError } = await admin.from("leases").insert({
+  const { data: newLease, error: insertError } = await admin.from("leases").insert({
     unit_id: unitId,
     tenant_user_id: tenantUserId,
     tenant_display_name: tenantName,
@@ -89,11 +90,13 @@ export async function createLease(
     end_date: endDate,
     billing_cadence: billingCadence,
     status: "active",
-  });
+  }).select("id").single();
 
-  if (insertError) return { error: insertError.message };
+  if (insertError || !newLease) return { error: insertError?.message ?? "Could not create lease." };
 
   await admin.from("units").update({ status: "occupied" }).eq("id", unitId);
+
+  await regenerateLedgerForUnit(admin, ctx.org.id, unitId);
 
   const { syncDvaAccountNameForUnit } = await import("@/lib/paystack/provision-unit-dva");
   const { isPaystackDvaEnabled } = await import("@/lib/paystack/client");
@@ -155,7 +158,7 @@ export async function renewLease(
 
   if (endError) return { error: endError.message };
 
-  const { error: insertError } = await admin.from("leases").insert({
+  const { data: newLease, error: insertError } = await admin.from("leases").insert({
     unit_id: current.unit_id,
     tenant_user_id: current.tenant_user_id,
     tenant_display_name: current.tenant_display_name,
@@ -167,9 +170,11 @@ export async function renewLease(
     billing_cadence: billingCadence,
     status: "active",
     renewed_from_lease_id: leaseId,
-  });
+  }).select("id").single();
 
-  if (insertError) return { error: insertError.message };
+  if (insertError || !newLease) return { error: insertError?.message ?? "Could not renew lease." };
+
+  await regenerateLedgerForUnit(admin, ctx.org.id, current.unit_id);
 
   const { syncDvaAccountNameForUnit } = await import("@/lib/paystack/provision-unit-dva");
   const { isPaystackDvaEnabled } = await import("@/lib/paystack/client");

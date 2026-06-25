@@ -203,16 +203,35 @@ async function fetchUnitDetail(
     const admin = createAdminClient();
     const { data: lease } = await admin
       .from("leases")
-      .select("id, tenant_phone, tenant_email")
+      .select("id, tenant_phone, tenant_email, billing_cadence")
       .eq("unit_id", base.id)
       .eq("status", "active")
       .maybeSingle();
+
+    const { data: profile } = await admin
+      .from("unit_billing_profiles")
+      .select(
+        "base_rent_ngn, service_pct, agency_fee_ngn, vat_pct, diesel_ngn, security_ngn"
+      )
+      .eq("unit_id", base.id)
+      .maybeSingle();
+
+    const billingProfile = {
+      baseRentNgn: Number(profile?.base_rent_ngn ?? base.annualRent),
+      servicePct: Number(profile?.service_pct ?? 0),
+      agencyFeeNgn: Number(profile?.agency_fee_ngn ?? 0),
+      vatPct: Number(profile?.vat_pct ?? 0),
+      dieselNgn: Number(profile?.diesel_ngn ?? 0),
+      securityNgn: Number(profile?.security_ngn ?? 0),
+    };
 
     return {
       ...base,
       leaseId: lease?.id ?? null,
       tenantPhone: lease?.tenant_phone ?? null,
       tenantEmail: lease?.tenant_email ?? null,
+      billingCadence: lease?.billing_cadence ?? "annual",
+      billingProfile,
     };
   } catch {
     return {
@@ -220,6 +239,15 @@ async function fetchUnitDetail(
       leaseId: null,
       tenantPhone: null,
       tenantEmail: null,
+      billingCadence: "annual" as const,
+      billingProfile: {
+        baseRentNgn: base.annualRent,
+        servicePct: 0,
+        agencyFeeNgn: 0,
+        vatPct: 0,
+        dieselNgn: 0,
+        securityNgn: 0,
+      },
     };
   }
 }

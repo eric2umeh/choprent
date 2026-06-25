@@ -145,7 +145,7 @@ Counts toward “tenants self-serving” when tenant account has:
 | 6      | Expenses, analytics, Realtime dashboards                          | ✓ See `15_sprint6_expenses_analytics_realtime.md` |
 | 7      | Client OCR + reminder rules + mobile polish                       |
 | **8**  | **Paystack DVA per unit + webhooks**                              |
-| **9**  | Electricity metering design spike / partner API                   |
+| **9**  | **MVP hardening** — charge engine, late fees, WhatsApp, FAQ (meters paused) | See `18_sprint9_mvp_hardening.md` |
 
 ---
 
