@@ -10,6 +10,7 @@ import {
 } from "@/lib/data/expenses";
 import type { PropertySummary } from "@/lib/data/property-types";
 import { FormPanel } from "@/components/ui/form-panel";
+import { SearchableSelect } from "@/components/ui/searchable-select";
 import { LoadingButton } from "@/components/ui/loading-button";
 import { toast } from "@/components/ui/toast";
 
@@ -82,19 +83,21 @@ export function ExpenseForm({
         {selectedSiteId && unitsForProperty.length > 0 && (
           <div>
             <label className="text-label normal-case">Unit (optional)</label>
-            <select
+            <SearchableSelect
               name="unit_id"
-              className="input-field mt-1.5"
+              options={[
+                { value: "", label: "Whole property" },
+                ...unitsForProperty.map((u) => ({
+                  value: u.id,
+                  label: u.unitCode,
+                })),
+              ]}
               defaultValue={expense?.unitId ?? ""}
+              emptyLabel="Whole property"
+              placeholder="Search unit…"
               disabled={pending}
-            >
-              <option value="">Whole property</option>
-              {unitsForProperty.map((u) => (
-                <option key={u.id} value={u.id}>
-                  {u.unitCode}
-                </option>
-              ))}
-            </select>
+              className="mt-1.5"
+            />
           </div>
         )}
 

@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { createLease, renewLease } from "@/lib/actions/leases";
 import { LoadingButton } from "@/components/ui/loading-button";
 import { Modal } from "@/components/ui/modal";
+import { SearchableSelect } from "@/components/ui/searchable-select";
 import { toast } from "@/components/ui/toast";
 import type { LeaseListItem } from "@/lib/data/leases";
 import type { SettlementAccountItem } from "@/lib/data/settlement-accounts";
@@ -83,21 +84,20 @@ export function LeaseForm({
           <>
             <div>
               <label className="text-label normal-case">Unit</label>
-              <select
+              <SearchableSelect
                 name="unit_id"
-                required
-                className="input-field mt-1"
-                disabled={loading}
+                options={vacantUnits.map((u) => ({
+                  value: u.id,
+                  label: u.unitCode,
+                }))}
                 value={selectedUnitId}
-                onChange={(e) => setSelectedUnitId(e.target.value)}
-              >
-                <option value="">Select unit…</option>
-                {vacantUnits.map((u) => (
-                  <option key={u.id} value={u.id}>
-                    {u.unitCode}
-                  </option>
-                ))}
-              </select>
+                onValueChange={setSelectedUnitId}
+                emptyLabel="Search unit…"
+                placeholder="Type unit code…"
+                required
+                disabled={loading}
+                className="mt-1"
+              />
             </div>
             {accountsForUnit.length > 0 && (
               <div>
