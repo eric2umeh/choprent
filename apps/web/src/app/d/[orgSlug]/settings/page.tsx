@@ -1,6 +1,7 @@
 import { PageHeader } from "@/components/ui/page-header";
 import { SettingsPageClient } from "@/components/settings/settings-page-client";
 import { requireStaffContext } from "@/lib/auth/session";
+import { listReminderRules } from "@/lib/actions/reminders";
 import { getOrgProfile } from "@/lib/data/org-profile";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { notFound } from "next/navigation";
@@ -16,6 +17,9 @@ export default async function SettingsPage({
   if (!profile) notFound();
 
   let staffDisplayName: string | null = null;
+  const reminderRules =
+    ctx.role === "owner" ? await listReminderRules(orgSlug) : [];
+
   if (ctx.role === "manager" || ctx.role === "agent") {
     const admin = createAdminClient();
     const { data } = await admin
@@ -40,6 +44,7 @@ export default async function SettingsPage({
         canEditProfile={ctx.role === "owner"}
         staffDisplayName={staffDisplayName}
         staffRole={ctx.role === "manager" || ctx.role === "agent" ? ctx.role : null}
+        reminderRules={reminderRules}
       />
     </div>
   );

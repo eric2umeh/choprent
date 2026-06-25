@@ -32,6 +32,7 @@ export function UnitsList({
   canAdd,
   units,
   onAddUnit,
+  showShopAccountColumn = false,
 }: {
   orgSlug: string;
   propertyId: string;
@@ -39,6 +40,7 @@ export function UnitsList({
   canAdd: boolean;
   units: UnitListItem[];
   onAddUnit?: () => void;
+  showShopAccountColumn?: boolean;
 }) {
   const router = useRouter();
 
@@ -133,15 +135,19 @@ export function UnitsList({
         </span>
       ),
     },
-    {
-      key: "dva",
-      header: "Shop account",
-      render: (u) => (
-        <span className="font-mono text-[11px] text-table-cell-muted">
-          {u.virtualAccount ?? "—"}
-        </span>
-      ),
-    },
+    ...(showShopAccountColumn
+      ? [
+          {
+            key: "dva",
+            header: "Shop account",
+            render: (u: UnitListItem) => (
+              <span className="font-mono text-[11px] text-table-cell-muted">
+                {u.virtualAccount ?? "—"}
+              </span>
+            ),
+          } satisfies Column<UnitListItem>,
+        ]
+      : []),
   ];
 
   return (

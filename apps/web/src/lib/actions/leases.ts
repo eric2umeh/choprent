@@ -95,6 +95,12 @@ export async function createLease(
 
   await admin.from("units").update({ status: "occupied" }).eq("id", unitId);
 
+  const { syncDvaAccountNameForUnit } = await import("@/lib/paystack/provision-unit-dva");
+  const { isPaystackDvaEnabled } = await import("@/lib/paystack/client");
+  if (isPaystackDvaEnabled()) {
+    await syncDvaAccountNameForUnit(unitId);
+  }
+
   revalidatePath(`/d/${orgSlug}/tenants`);
   revalidatePath(`/d/${orgSlug}/properties`);
   return { success: true };
@@ -164,6 +170,12 @@ export async function renewLease(
   });
 
   if (insertError) return { error: insertError.message };
+
+  const { syncDvaAccountNameForUnit } = await import("@/lib/paystack/provision-unit-dva");
+  const { isPaystackDvaEnabled } = await import("@/lib/paystack/client");
+  if (isPaystackDvaEnabled()) {
+    await syncDvaAccountNameForUnit(current.unit_id);
+  }
 
   revalidatePath(`/d/${orgSlug}/tenants`);
   return { success: true };

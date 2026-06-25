@@ -11,6 +11,7 @@ import { listExpensesForUnit } from "@/lib/data/expenses";
 import { propertyPath, unitPath, unitCodeFromUrlRef } from "@/lib/routes/dashboard-paths";
 import { formatNaira } from "@/lib/auth/roles";
 import { formatPropertyType } from "@/lib/data/unit-types";
+import { isPaystackDvaEnabled } from "@/lib/paystack/client";
 import { isUuid } from "@/lib/utils/slug";
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
@@ -53,6 +54,7 @@ export default async function PropertyUnitDetailPage({
   }
 
   const canEdit = canEditUnits(ctx.role);
+  const paystackDvaEnabled = isPaystackDvaEnabled();
 
   const [history, expenses] = await Promise.all([
     getUnitHistory(ctx.org.id, unit.id),
@@ -109,7 +111,7 @@ export default async function PropertyUnitDetailPage({
             </dl>
           </Card>
 
-          {unit.virtualAccount && (
+          {paystackDvaEnabled && unit.virtualAccount && (
             <Card className="rounded-none border-x-0 border-t-0 border-green-200 bg-green-50 shadow-none">
               <p className="text-label normal-case text-green-800">Shop account (DVA)</p>
               <p className="mt-1 font-mono text-lg font-bold text-green-900">

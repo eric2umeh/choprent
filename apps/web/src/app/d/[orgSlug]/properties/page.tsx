@@ -3,6 +3,7 @@ import { requireStaffContext } from "@/lib/auth/session";
 import { canAddUnits } from "@/lib/auth/roles";
 import { listPropertiesForOrg } from "@/lib/data/sites";
 import { listUnitsForOrg } from "@/lib/data/units";
+import { isPaystackDvaEnabled } from "@/lib/paystack/client";
 
 export default async function PropertiesPage({
   params,
@@ -24,6 +25,7 @@ export default async function PropertiesPage({
       canManage={canAddUnits(ctx.role)}
       singleProperty={singleProperty}
       units={units}
+      paystackDvaEnabled={isPaystackDvaEnabled()}
     />
   );
 }

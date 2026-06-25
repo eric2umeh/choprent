@@ -5,6 +5,7 @@ import { canAddUnits } from "@/lib/auth/roles";
 import { resolveProperty } from "@/lib/data/sites";
 import { listUnitsForOrg } from "@/lib/data/units";
 import { listExpensesForProperty } from "@/lib/data/expenses";
+import { isPaystackDvaEnabled } from "@/lib/paystack/client";
 import { propertyPath } from "@/lib/routes/dashboard-paths";
 import { isUuid } from "@/lib/utils/slug";
 
@@ -24,6 +25,7 @@ export default async function PropertyDetailPage({
 
   const units = await listUnitsForOrg(ctx.org.id, property.id);
   const expenses = await listExpensesForProperty(ctx.org.id, property.id);
+  const paystackDvaEnabled = isPaystackDvaEnabled();
 
   return (
     <PropertyDetailPageClient
@@ -32,6 +34,7 @@ export default async function PropertyDetailPage({
       units={units}
       expenses={expenses}
       canManage={canAddUnits(ctx.role)}
+      paystackDvaEnabled={paystackDvaEnabled}
     />
   );
 }

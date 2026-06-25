@@ -5,6 +5,8 @@ import { CopyAccountButton } from "@/components/tenant/copy-account-button";
 import { TenantInstallAppCard } from "@/components/pwa/add-to-home-screen";
 import { requireTenantContext } from "@/lib/auth/session";
 import { getTenantHomeSummary } from "@/lib/data/tenant-home";
+import { listNotificationsForUser } from "@/lib/data/notifications";
+import { TenantNotificationsList } from "@/components/tenant/tenant-notifications-list";
 import { formatNaira } from "@/lib/auth/roles";
 import { Upload } from "lucide-react";
 
@@ -20,10 +22,13 @@ export default async function TenantHomePage({
     ctx.unitId,
     ctx.leaseId
   );
+  const notifications = await listNotificationsForUser(ctx.user.id, ctx.org.id);
 
   return (
     <div className="space-y-0">
       <TenantInstallAppCard orgSlug={orgSlug} />
+
+      <TenantNotificationsList notifications={notifications} />
 
       <div className="border-b border-green-200 bg-green-50 px-3 py-3">
         <p className="text-stat-label text-green-800">Balance due</p>
@@ -36,7 +41,9 @@ export default async function TenantHomePage({
 
       {summary.settlement ? (
         <Card className="rounded-none border-x-0 border-t-0 shadow-none">
-          <p className="text-stat-label">Pay to shop account</p>
+          <p className="text-stat-label">
+            {summary.settlement.isDva ? "Pay to your shop account (DVA)" : "Pay to shop account"}
+          </p>
           <p className="mt-1 font-mono text-lg font-bold tracking-wide text-foreground">
             {summary.settlement.accountNumber}
           </p>
