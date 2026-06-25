@@ -9,13 +9,15 @@ import type { PaymentListItem } from "@/lib/data/payments";
 export function PaymentsPageClient({
   orgSlug,
   canVerify,
+  isOwner,
   payments,
   units,
 }: {
   orgSlug: string;
   canVerify: boolean;
+  isOwner: boolean;
   payments: PaymentListItem[];
-  units: { id: string; unitCode: string }[];
+  units: { id: string; unitCode: string; tenantName?: string | null }[];
 }) {
   const pendingCount = payments.filter((p) => p.status === "pending").length;
   const [tab, setTab] = useState(pendingCount > 0 ? "queue" : "all");
@@ -45,6 +47,7 @@ export function PaymentsPageClient({
           <PaymentsList
             orgSlug={orgSlug}
             canVerify={canVerify}
+            isOwner={isOwner}
             payments={payments}
             units={units}
           />

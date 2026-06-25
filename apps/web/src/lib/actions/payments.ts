@@ -4,6 +4,12 @@ import { revalidatePath } from "next/cache";
 import { canVerifyPayments } from "@/lib/auth/roles";
 import { requireStaffContext } from "@/lib/auth/session";
 import { runPaymentAllocation } from "@/lib/charges/allocate-payment";
+import { getUnitBalanceBreakdown } from "@/lib/data/unit-balance-breakdown";
+import {
+  notifyPaymentSubmitted,
+  notifyPaymentVerified,
+} from "@/lib/notifications/staff-notify";
+import { uploadPaymentAttachments } from "@/lib/storage/payment-attachments";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 
@@ -11,6 +17,15 @@ export type PaymentActionState = {
   error?: string;
   success?: boolean;
 };
+
+export async function fetchUnitBalanceBreakdown(
+  orgSlug: string,
+  unitId: string
+) {
+  const ctx = await requireStaffContext(orgSlug);
+  if (!unitId) return { rows: [], total: 0 };
+  return getUnitBalanceBreakdown(ctx.org.id, unitId);
+}
 
 export async function verifyPayment(
   orgSlug: string,
@@ -26,7 +41,7 @@ export async function verifyPayment(
 
   const { data: payment } = await admin
     .from("payments")
-    .select("id, status, organization_id")
+    .select("id, status, organization_id, unit_id, amount_ngn, units(unit_code)")
     .eq("id", paymentId)
     .eq("organization_id", ctx.org.id)
     .maybeSingle();
@@ -64,6 +79,21 @@ export async function verifyPayment(
       error: err instanceof Error ? err.message : "Verified but allocation failed.",
     };
   }
+
+  const unitRaw = payment.units;
+  const unitCode =
+    unitRaw && typeof unitRaw === "object" && !Array.isArray(unitRaw) && "unit_code" in unitRaw
+      ? String((unitRaw as { unit_code: string }).unit_code)
+      : "Unit";
+
+  await notifyPaymentVerified({
+    orgId: ctx.org.id,
+    unitCode,
+    amount: Number(payment.amount_ngn),
+    paymentId,
+    verifiedByUserId: ctx.user.id,
+    verifierRole: ctx.role,
+  });
 
   revalidatePath(`/d/${orgSlug}/payments`);
   revalidatePath(`/d/${orgSlug}`);
@@ -124,6 +154,10 @@ export async function recordCashPayment(
   const amount = Number(formData.get("amount_ngn"));
   const periodLabel = String(formData.get("period_label") ?? "").trim() || null;
   const paymentDate = String(formData.get("payment_date") ?? "").trim() || null;
+  const paymentNote = String(formData.get("payment_note") ?? "").trim() || null;
+  const attachmentFiles = formData
+    .getAll("attachments")
+    .filter((f): f is File => f instanceof File && f.size > 0);
 
   if (!unitId || !Number.isFinite(amount) || amount <= 0) {
     return { error: "Unit and a valid amount are required." };
@@ -147,6 +181,7 @@ export async function recordCashPayment(
       amount_ngn: amount,
       period_label: periodLabel,
       payment_date: paymentDate,
+      payment_note: paymentNote,
       payment_method: "cash_recorded",
       status: "verified",
       verified_by: ctx.user.id,
@@ -159,6 +194,29 @@ export async function recordCashPayment(
     return { error: insertError?.message ?? "Could not record payment." };
   }
 
+  if (attachmentFiles.length > 0) {
+    const uploadResult = await uploadPaymentAttachments(
+      payment.id,
+      ctx.org.id,
+      unitId,
+      attachmentFiles,
+      ctx.user.id
+    );
+    if (uploadResult.error) return { error: uploadResult.error };
+
+    const { data: attachments } = await admin
+      .from("payment_attachments")
+      .select("file_url")
+      .eq("payment_id", payment.id)
+      .limit(1);
+    if (attachments?.[0]?.file_url) {
+      await admin
+        .from("payments")
+        .update({ receipt_file_url: attachments[0].file_url })
+        .eq("id", payment.id);
+    }
+  }
+
   try {
     await runPaymentAllocation(payment.id);
   } catch (err) {
@@ -166,6 +224,52 @@ export async function recordCashPayment(
       error: err instanceof Error ? err.message : "Recorded but allocation failed.",
     };
   }
+
+  revalidatePath(`/d/${orgSlug}/payments`);
+  revalidatePath(`/d/${orgSlug}`);
+  return { success: true };
+}
+
+export async function unverifyPayment(
+  orgSlug: string,
+  paymentId: string
+): Promise<PaymentActionState> {
+  const ctx = await requireStaffContext(orgSlug);
+  if (ctx.role !== "owner") {
+    return { error: "Only the landlord can unverify a payment." };
+  }
+
+  const admin = createAdminClient();
+  const { data: payment } = await admin
+    .from("payments")
+    .select("id, status, organization_id, payment_method")
+    .eq("id", paymentId)
+    .eq("organization_id", ctx.org.id)
+    .maybeSingle();
+
+  if (!payment) return { error: "Payment not found." };
+  if (payment.status !== "verified" && payment.status !== "auto_matched") {
+    return { error: "Only verified payments can be unverified." };
+  }
+  if (payment.payment_method === "dedicated_account") {
+    return { error: "DVA auto-matched payments cannot be unverified here." };
+  }
+
+  const { error: deallocError } = await admin.rpc("deallocate_payment", {
+    p_payment_id: paymentId,
+  });
+  if (deallocError) return { error: deallocError.message };
+
+  const { error: updateError } = await admin
+    .from("payments")
+    .update({
+      status: "pending",
+      verified_by: null,
+      verified_at: null,
+    })
+    .eq("id", paymentId);
+
+  if (updateError) return { error: updateError.message };
 
   revalidatePath(`/d/${orgSlug}/payments`);
   revalidatePath(`/d/${orgSlug}`);

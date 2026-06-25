@@ -13,35 +13,39 @@ export function TenantPayForm({ orgSlug }: { orgSlug: string }) {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [scanning, setScanning] = useState(false);
-  const [fileName, setFileName] = useState<string | null>(null);
+  const [fileNames, setFileNames] = useState<string[]>([]);
   const [ocrHint, setOcrHint] = useState<string | null>(null);
   const [amount, setAmount] = useState("");
   const [bankRef, setBankRef] = useState("");
   const [period, setPeriod] = useState("");
   const [ocrPayload, setOcrPayload] = useState("");
 
-  async function handleFileChange(file: File | undefined) {
-    if (!file) {
-      setFileName(null);
+  async function handleFilesChange(fileList: FileList | null) {
+    if (!fileList?.length) {
+      setFileNames([]);
       setOcrPayload("");
       return;
     }
-    if (file.size > 10 * 1024 * 1024) {
-      toast.error("Receipt must be 10MB or less.");
-      return;
+    const files = Array.from(fileList);
+    for (const file of files) {
+      if (file.size > 10 * 1024 * 1024) {
+        toast.error(`${file.name} must be 10MB or less.`);
+        return;
+      }
     }
-    setFileName(file.name);
+    setFileNames(files.map((f) => f.name));
     setOcrHint(null);
 
-    if (file.type === "application/pdf") {
-      setOcrHint("PDF uploaded — enter amount and reference manually.");
+    const firstImage = files.find((f) => f.type.startsWith("image/"));
+    if (!firstImage) {
+      setOcrHint("Documents uploaded — enter amount and reference manually.");
       setOcrPayload("");
       return;
     }
 
     setScanning(true);
     try {
-      const result = await extractReceiptFields(file);
+      const result = await extractReceiptFields(firstImage);
       if (result.amount) setAmount(String(result.amount));
       if (result.bankReference) setBankRef(result.bankReference);
       if (result.paymentDate) setPeriod(result.paymentDate);
@@ -54,7 +58,7 @@ export function TenantPayForm({ orgSlug }: { orgSlug: string }) {
         })
       );
       if (result.amount || result.bankReference) {
-        setOcrHint("Fields pre-filled from receipt — please review before submitting.");
+        setOcrHint("Fields pre-filled from first image — please review before submitting.");
       } else {
         setOcrHint("Could not read receipt clearly — enter details manually.");
       }
@@ -80,7 +84,7 @@ export function TenantPayForm({ orgSlug }: { orgSlug: string }) {
 
     toast.success("Receipt submitted — management will verify shortly.");
     e.currentTarget.reset();
-    setFileName(null);
+    setFileNames([]);
     setOcrHint(null);
     setAmount("");
     setBankRef("");
@@ -98,21 +102,23 @@ export function TenantPayForm({ orgSlug }: { orgSlug: string }) {
           <Upload className="mx-auto h-8 w-8 text-green-600" />
         )}
         <p className="mt-2 text-sm font-medium text-foreground">
-          {fileName ?? "Tap to upload receipt"}
+          {fileNames.length > 0
+            ? `${fileNames.length} file${fileNames.length === 1 ? "" : "s"} selected`
+            : "Tap to upload proof of payment"}
         </p>
         <p className="mt-0.5 text-cell-muted">
-          JPG, PNG or PDF · max 10MB · OCR pre-fills amount on images
+          JPG, PNG or PDF · multiple files · OCR on first image
         </p>
         <input
           type="file"
-          name="receipt"
+          name="receipts"
+          multiple
           accept="image/jpeg,image/png,image/webp,application/pdf"
           className="sr-only"
           required
           disabled={loading || scanning}
           onChange={(ev) => {
-            const file = ev.target.files?.[0];
-            void handleFileChange(file);
+            void handleFilesChange(ev.target.files);
           }}
         />
       </label>
@@ -159,6 +165,17 @@ export function TenantPayForm({ orgSlug }: { orgSlug: string }) {
           placeholder="2026 partial"
           value={period}
           onChange={(e) => setPeriod(e.target.value)}
+        />
+      </div>
+
+      <div>
+        <label className="text-label normal-case">Note (optional)</label>
+        <textarea
+          name="payment_note"
+          rows={2}
+          disabled={loading || scanning}
+          className="input-field mt-1 resize-none"
+          placeholder="e.g. Paid via GTB transfer for 2025 rent"
         />
       </div>
 
