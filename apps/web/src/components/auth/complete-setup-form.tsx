@@ -28,6 +28,7 @@ const ROLES: { value: MembershipRole; label: string; hint: string }[] = [
 export function CompleteSetupForm({ email }: { email: string }) {
   const router = useRouter();
   const [role, setRole] = useState<MembershipRole>("owner");
+  const [workspaceName, setWorkspaceName] = useState("");
   const [loading, setLoading] = useState(false);
 
   async function handleSubmit(e: React.FormEvent) {
@@ -35,7 +36,10 @@ export function CompleteSetupForm({ email }: { email: string }) {
     setLoading(true);
 
     try {
-      const result = await linkPlazaAccount(role);
+      const result = await linkPlazaAccount(
+        role,
+        role === "owner" ? workspaceName.trim() || undefined : undefined
+      );
       if (result?.error) {
         toast.error(result.error);
         setLoading(false);
@@ -94,6 +98,24 @@ export function CompleteSetupForm({ email }: { email: string }) {
           </label>
         ))}
       </div>
+
+      {role === "owner" && (
+        <div>
+          <label className="text-label normal-case">Workspace / company name</label>
+          <input
+            type="text"
+            value={workspaceName}
+            onChange={(e) => setWorkspaceName(e.target.value)}
+            className="input-field mt-1"
+            placeholder="e.g. Eri Plaza, Lekki Properties"
+            disabled={loading}
+          />
+          <p className="mt-1 text-[11px] text-muted">
+            You can change this later in Settings. We&apos;ll show a setup checklist on
+            your dashboard.
+          </p>
+        </div>
+      )}
 
       <p className="text-[11px] text-muted">
         Shop tenants: your manager adds you when your lease is active — no setup

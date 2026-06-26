@@ -20,8 +20,8 @@ export async function saveUnitBillingProfile(
     service_pct: profile.servicePct,
     agency_fee_ngn: profile.agencyFeeNgn,
     vat_pct: profile.vatPct,
-    diesel_ngn: profile.dieselNgn,
-    security_ngn: profile.securityNgn,
+    diesel_ngn: 0,
+    security_ngn: 0,
   });
 }
 
@@ -43,8 +43,6 @@ export async function loadUnitBillingProfile(
     servicePct: Number(data.service_pct),
     agencyFeeNgn: Number(data.agency_fee_ngn),
     vatPct: Number(data.vat_pct),
-    dieselNgn: Number(data.diesel_ngn),
-    securityNgn: Number(data.security_ngn),
   };
 }
 
@@ -87,11 +85,7 @@ export async function generateLedgerForLease(
           ? profile.baseRentNgn * (profile.servicePct / 100)
           : line.chargeKind === "agency"
             ? profile.agencyFeeNgn
-            : line.chargeKind === "diesel"
-              ? profile.dieselNgn
-              : line.chargeKind === "security"
-                ? profile.securityNgn
-                : 0;
+            : 0;
 
     const { data: tpl } = await admin
       .from("charge_templates")

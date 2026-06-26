@@ -10,6 +10,7 @@ import {
 import { KeyRound, LogOut, UserRound } from "lucide-react";
 import { StaffDisplayNameForm, ResignationForm } from "@/components/settings/staff-settings-form";
 import { ReminderRulesPanel } from "@/components/settings/reminder-rules-panel";
+import { PilotSetupSettingsCard } from "@/components/onboarding/pilot-setup-settings-card";
 import type { ReminderRule } from "@/lib/actions/reminders";
 import type { OrgProfile } from "@/lib/data/org-profile";
 
@@ -39,6 +40,8 @@ export function SettingsPageClient({
   return (
     <div className="space-y-4 px-3 py-4 lg:px-0">
       {canEditProfile ? (
+        <>
+        <PilotSetupSettingsCard orgSlug={orgSlug} />
         <SettingsSectionCard
           title="Profile"
           description="Company name, logo, and your display name — visible to tenants and staff."
@@ -72,6 +75,7 @@ export function SettingsPageClient({
             </div>
           </dl>
         </SettingsSectionCard>
+        </>
       ) : isStaff ? (
         <SettingsSectionCard
           title="Your name"

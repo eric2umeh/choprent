@@ -2,6 +2,7 @@ import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import type { PaymentMethod, PaymentStatus } from "@/types/database";
 import type { TenantPaymentStatus } from "@/lib/data/tenant-payment-status";
+import { paymentNoteFromRow } from "@/lib/payments/payment-note";
 
 export type PaymentListItem = {
   id: string;
@@ -17,6 +18,7 @@ export type PaymentListItem = {
   bankReference: string | null;
   receiptFileUrl: string | null;
   paymentDate: string | null;
+  paymentNote: string | null;
   createdAt: string;
 };
 
@@ -30,6 +32,8 @@ type PaymentRow = {
   bank_reference: string | null;
   receipt_file_url: string | null;
   payment_date: string | null;
+  payment_note?: string | null;
+  metadata?: unknown;
   created_at: string;
   units: { unit_code: string } | { unit_code: string }[] | null;
   leases?: never;
@@ -94,6 +98,7 @@ function mapPaymentRow(
     bankReference: row.bank_reference,
     receiptFileUrl: row.receipt_file_url,
     paymentDate: row.payment_date,
+    paymentNote: paymentNoteFromRow(row),
     createdAt: row.created_at,
   };
 }
@@ -108,7 +113,7 @@ export async function listPaymentsForOrg(
   const { data, error } = await supabase
     .from("payments")
     .select(
-      "id, unit_id, amount_ngn, period_label, payment_method, status, bank_reference, receipt_file_url, payment_date, created_at, units!inner(unit_code)"
+      "id, unit_id, amount_ngn, period_label, payment_method, status, bank_reference, receipt_file_url, payment_date, payment_note, metadata, created_at, units!inner(unit_code)"
     )
     .eq("organization_id", orgId)
     .order("created_at", { ascending: false });
@@ -119,7 +124,7 @@ export async function listPaymentsForOrg(
       const { data: adminRows } = await admin
         .from("payments")
         .select(
-          "id, unit_id, amount_ngn, period_label, payment_method, status, bank_reference, receipt_file_url, payment_date, created_at, units!inner(unit_code)"
+          "id, unit_id, amount_ngn, period_label, payment_method, status, bank_reference, receipt_file_url, payment_date, payment_note, metadata, created_at, units!inner(unit_code)"
         )
         .eq("organization_id", orgId)
         .order("created_at", { ascending: false });

@@ -89,12 +89,20 @@ export function TenantHeader({
             </p>
           </div>
         </div>
-        <Link
-          href={`/t/${orgSlug}/documents`}
-          className="interactive-lift rounded-lg bg-green-50 px-3 py-1.5 text-xs font-medium text-green-700 hover:bg-green-100"
-        >
-          Letters
-        </Link>
+        <div className="flex shrink-0 items-center gap-2">
+          <Link
+            href={`/t/${orgSlug}/help`}
+            className="interactive-lift rounded-lg border border-border px-3 py-1.5 text-xs font-medium text-foreground hover:bg-surface-subtle"
+          >
+            Help
+          </Link>
+          <Link
+            href={`/t/${orgSlug}/documents`}
+            className="interactive-lift rounded-lg bg-green-50 px-3 py-1.5 text-xs font-medium text-green-700 hover:bg-green-100"
+          >
+            Letters
+          </Link>
+        </div>
       </div>
     </header>
   );

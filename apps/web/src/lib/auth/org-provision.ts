@@ -37,10 +37,13 @@ async function uniqueOrgSlug(
 }
 
 /** Create a fresh organization and owner membership for a new landlord. */
-export async function provisionLandlordOrganization(user: AuthUser) {
+export async function provisionLandlordOrganization(
+  user: AuthUser,
+  workspaceName?: string
+) {
   const admin = createAdminClient();
   const slug = await uniqueOrgSlug(admin, orgSlugCandidate(user));
-  const name = orgDisplayName(user);
+  const name = workspaceName?.trim() || orgDisplayName(user);
 
   const { data: org, error: orgError } = await admin
     .from("organizations")

@@ -140,6 +140,11 @@ export function VerificationQueue({
                     Ref: {p.bankReference}
                   </p>
                 )}
+                {p.paymentNote && (
+                  <p className="mt-1 text-xs text-muted">
+                    Note: {p.paymentNote}
+                  </p>
+                )}
               </div>
 
               <div className="flex shrink-0 flex-wrap gap-2">

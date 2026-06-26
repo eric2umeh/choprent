@@ -71,8 +71,9 @@ export function UnitEditForm({
     <FormPanel>
       <form action={formAction} className="space-y-4">
         <p className="text-form-hint">
-          Set tenant, annual rent, service charge %, VAT, and billing cadence. Ledger
-          periods regenerate when you save (monthly, quarterly, or annual).
+          Set tenant, annual rent, service charge % (covers security &amp; common
+          areas), VAT, and billing cadence. Diesel and repairs belong under
+          Expenses, not unit billing.
         </p>
 
       <div className="grid gap-3 sm:grid-cols-2">
@@ -212,6 +213,9 @@ export function UnitEditForm({
                 placeholder="10"
                 disabled={pending}
               />
+              <p className="mt-0.5 text-[11px] text-muted">
+                Includes security, cleaning &amp; shared plaza costs
+              </p>
             </div>
             <div>
               <label className="text-label normal-case">Agency fee (₦ / year)</label>
@@ -226,7 +230,7 @@ export function UnitEditForm({
               />
             </div>
           </div>
-          <div className="grid gap-3 sm:grid-cols-3">
+          <div className="grid gap-3 sm:grid-cols-2">
             <div>
               <label className="text-label normal-case">VAT (%)</label>
               <input
@@ -240,41 +244,16 @@ export function UnitEditForm({
               />
             </div>
             <div>
-              <label className="text-label normal-case">Diesel (₦ / year)</label>
+              <label className="text-label normal-case">Opening arrears (₦)</label>
               <input
-                name="diesel_ngn"
+                name="arrears_ngn"
                 type="number"
                 step="any"
-                defaultValue={unit.billingProfile.dieselNgn || ""}
+                defaultValue={unit.arrears}
                 className="input-field mt-1"
-                placeholder="120000"
                 disabled={pending}
               />
             </div>
-            <div>
-              <label className="text-label normal-case">Security (₦)</label>
-              <input
-                name="security_ngn"
-                type="number"
-                step="any"
-                defaultValue={unit.billingProfile.securityNgn || ""}
-                className="input-field mt-1"
-                placeholder="100000"
-                disabled={pending}
-              />
-              <p className="mt-0.5 text-[11px] text-muted">Charged on first period only</p>
-            </div>
-          </div>
-          <div>
-            <label className="text-label normal-case">Opening arrears (₦)</label>
-            <input
-              name="arrears_ngn"
-              type="number"
-              step="any"
-              defaultValue={unit.arrears}
-              className="input-field mt-1"
-              disabled={pending}
-            />
           </div>
         </div>
       </div>

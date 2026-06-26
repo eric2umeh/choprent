@@ -18,10 +18,11 @@ create policy unit_billing_profiles_select on unit_billing_profiles for select u
     select 1 from units u
     where u.id = unit_billing_profiles.unit_id
       and (
-        public.is_org_member(u.organization_id)
+        public.is_org_staff(u.organization_id)
+        or public.tenant_has_active_lease(u.id)
         or exists (
-          select 1 from leases l
-          where l.unit_id = u.id and l.tenant_user_id = auth.uid() and l.status = 'active'
+          select 1 from site_assignments sa
+          where sa.site_id = u.site_id and sa.user_id = auth.uid()
         )
       )
   )
