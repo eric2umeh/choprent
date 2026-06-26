@@ -181,7 +181,22 @@ export default function HomePage() {
       </section>
 
       <footer className="border-t border-border bg-white py-8 text-center text-xs text-muted-foreground">
-        © {new Date().getFullYear()} ChopRent · Next.js · Supabase · Vercel
+        <p>© {new Date().getFullYear()} ChopRent</p>
+        <p className="mt-2 space-x-3">
+          <a
+            href={`mailto:${process.env.NEXT_PUBLIC_CONTACT_EMAIL ?? "choprent.tech@gmail.com"}`}
+            className="hover:text-foreground"
+          >
+            {process.env.NEXT_PUBLIC_CONTACT_EMAIL ?? "choprent.tech@gmail.com"}
+          </a>
+          <span aria-hidden>·</span>
+          <a
+            href={`tel:${(process.env.NEXT_PUBLIC_CONTACT_PHONE ?? "+2348180329799").replace(/\s/g, "")}`}
+            className="hover:text-foreground"
+          >
+            {process.env.NEXT_PUBLIC_CONTACT_PHONE ?? "+234 818 032 9799"}
+          </a>
+        </p>
       </footer>
     </div>
   );
