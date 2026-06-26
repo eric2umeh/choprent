@@ -5,8 +5,6 @@ export type UnitBillingProfile = {
   servicePct: number;
   agencyFeeNgn: number;
   vatPct: number;
-  dieselNgn: number;
-  securityNgn: number;
 };
 
 export const EMPTY_BILLING_PROFILE: UnitBillingProfile = {
@@ -14,8 +12,6 @@ export const EMPTY_BILLING_PROFILE: UnitBillingProfile = {
   servicePct: 0,
   agencyFeeNgn: 0,
   vatPct: 0,
-  dieselNgn: 0,
-  securityNgn: 0,
 };
 
 export function parseBillingProfileFromForm(formData: FormData): UnitBillingProfile {
@@ -31,8 +27,6 @@ export function parseBillingProfileFromForm(formData: FormData): UnitBillingProf
     servicePct: num("service_pct"),
     agencyFeeNgn: num("agency_fee_ngn"),
     vatPct: num("vat_pct"),
-    dieselNgn: num("diesel_ngn"),
-    securityNgn: num("security_ngn"),
   };
 }
 
@@ -56,15 +50,13 @@ export type ChargeLineDraft = {
 export function buildPeriodChargeLines(
   profile: UnitBillingProfile,
   cadence: BillingCadence,
-  isFirstPeriod: boolean
+  _isFirstPeriod: boolean
 ): ChargeLineDraft[] {
   const div = periodsPerYear(cadence);
   const rent = profile.baseRentNgn / div;
   const service = rent * (profile.servicePct / 100);
   const agency = profile.agencyFeeNgn / div;
-  const diesel = profile.dieselNgn / div;
-  const security = isFirstPeriod ? profile.securityNgn : 0;
-  const taxable = rent + service + agency + diesel + security;
+  const taxable = rent + service + agency;
   const vat = taxable * (profile.vatPct / 100);
 
   const lines: ChargeLineDraft[] = [];
@@ -93,28 +85,12 @@ export function buildPeriodChargeLines(
       priority: 30,
     });
   }
-  if (diesel > 0) {
-    lines.push({
-      chargeKind: "diesel",
-      description: "Diesel / generator",
-      amountNgn: roundMoney(diesel),
-      priority: 40,
-    });
-  }
-  if (security > 0) {
-    lines.push({
-      chargeKind: "security",
-      description: "Security deposit",
-      amountNgn: roundMoney(security),
-      priority: 50,
-    });
-  }
   if (vat > 0) {
     lines.push({
       chargeKind: "vat",
       description: `VAT (${profile.vatPct}%)`,
       amountNgn: roundMoney(vat),
-      priority: 60,
+      priority: 40,
     });
   }
 
