@@ -221,8 +221,6 @@ async function fetchUnitDetail(
       servicePct: Number(profile?.service_pct ?? 0),
       agencyFeeNgn: Number(profile?.agency_fee_ngn ?? 0),
       vatPct: Number(profile?.vat_pct ?? 0),
-      dieselNgn: Number(profile?.diesel_ngn ?? 0),
-      securityNgn: Number(profile?.security_ngn ?? 0),
     };
 
     return {
@@ -245,8 +243,6 @@ async function fetchUnitDetail(
         servicePct: 0,
         agencyFeeNgn: 0,
         vatPct: 0,
-        dieselNgn: 0,
-        securityNgn: 0,
       },
     };
   }
