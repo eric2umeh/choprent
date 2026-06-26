@@ -16,7 +16,9 @@ import {
   listNotificationsForUser,
 } from "@/lib/data/notifications";
 import { StaffNotificationsPanel } from "@/components/notifications/staff-notification-bell";
+import { PilotSetupChecklist } from "@/components/onboarding/pilot-setup-checklist";
 import { formatNaira } from "@/lib/auth/roles";
+import { getPilotOnboardingStatus } from "@/lib/data/pilot-onboarding";
 
 export default async function DashboardHomePage({
   params,
@@ -26,12 +28,16 @@ export default async function DashboardHomePage({
   const { orgSlug } = await params;
   const ctx = await requireStaffContext(orgSlug);
 
-  const [stats, payments, units, activity, notifications] = await Promise.all([
+  const [stats, payments, units, activity, notifications, onboarding] =
+    await Promise.all([
     getDashboardStats(ctx.org.id),
     listPaymentsForOrg(ctx.org.id),
     listUnitsForOrg(ctx.org.id),
     getActivityFeed(ctx.org.id, 8),
     listNotificationsForUser(ctx.user.id, ctx.org.id),
+    ctx.role === "owner"
+      ? getPilotOnboardingStatus(ctx.org.id, orgSlug)
+      : Promise.resolve(null),
   ]);
 
   const pending = payments.filter((p) => p.status === "pending");
@@ -42,6 +48,8 @@ export default async function DashboardHomePage({
       <PageHeader title="Dashboard" description={ctx.org.name} />
 
       <StaffNotificationsPanel notifications={notifications} />
+
+      {onboarding && <PilotSetupChecklist orgSlug={orgSlug} status={onboarding} />}
 
       <div className="grid grid-cols-2 gap-2.5 border-b border-border bg-white px-3 py-3 xl:grid-cols-4">
         <StatCard
