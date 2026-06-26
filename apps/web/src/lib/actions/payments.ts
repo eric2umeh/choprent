@@ -9,6 +9,7 @@ import {
   notifyPaymentSubmitted,
   notifyPaymentVerified,
 } from "@/lib/notifications/staff-notify";
+import { metadataWithPaymentNote } from "@/lib/payments/payment-metadata";
 import { uploadPaymentAttachments } from "@/lib/storage/payment-attachments";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
@@ -181,11 +182,11 @@ export async function recordCashPayment(
       amount_ngn: amount,
       period_label: periodLabel,
       payment_date: paymentDate,
-      payment_note: paymentNote,
       payment_method: "cash_recorded",
       status: "verified",
       verified_by: ctx.user.id,
       verified_at: new Date().toISOString(),
+      metadata: metadataWithPaymentNote({}, paymentNote),
     })
     .select("id")
     .single();
@@ -204,16 +205,28 @@ export async function recordCashPayment(
     );
     if (uploadResult.error) return { error: uploadResult.error };
 
-    const { data: attachments } = await admin
-      .from("payment_attachments")
-      .select("file_url")
-      .eq("payment_id", payment.id)
-      .limit(1);
-    if (attachments?.[0]?.file_url) {
-      await admin
-        .from("payments")
-        .update({ receipt_file_url: attachments[0].file_url })
-        .eq("id", payment.id);
+    const firstPath = uploadResult.paths[0];
+    if (firstPath) {
+      const update: Record<string, unknown> = { receipt_file_url: firstPath };
+      if (!uploadResult.attachmentsInDb && uploadResult.paths.length > 0) {
+        update.metadata = metadataWithPaymentNote(
+          { attachment_paths: uploadResult.paths },
+          paymentNote
+        );
+      }
+      await admin.from("payments").update(update).eq("id", payment.id);
+    } else if (uploadResult.attachmentsInDb) {
+      const { data: attachments } = await admin
+        .from("payment_attachments")
+        .select("file_url")
+        .eq("payment_id", payment.id)
+        .limit(1);
+      if (attachments?.[0]?.file_url) {
+        await admin
+          .from("payments")
+          .update({ receipt_file_url: attachments[0].file_url })
+          .eq("id", payment.id);
+      }
     }
   }
 
