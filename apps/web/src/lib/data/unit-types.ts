@@ -26,8 +26,6 @@ export type UnitDetail = UnitListItem & {
     servicePct: number;
     agencyFeeNgn: number;
     vatPct: number;
-    dieselNgn: number;
-    securityNgn: number;
   };
 };
 
