@@ -10,7 +10,7 @@
 |---|---------|--------|
 | 1 | Payment UX — notes, multi-receipt, balance breakdown, searchable units | ✓ |
 | 2 | Staff notifications + sound + landlord unverify | ✓ |
-| 3 | **Full charge engine** — rent, service %, agency, VAT, diesel, security; monthly/quarterly/annual | ✓ |
+| 3 | **Full charge engine** — rent, service %, agency, VAT; monthly/quarterly/annual | ✓ |
 | 4 | **Rent FAQ chatbot** — keyword bot on tenant Help tab | ✓ |
 | 5 | Late fees automation | Deferred (Sprint 10) |
 | 6 | WhatsApp reminders | Paused |
@@ -36,11 +36,9 @@ Configure on **Unit edit → Tenant & billing**:
 |-------|-----------|
 | Annual rent | Base rent; split by cadence (÷12 monthly, ÷4 quarterly) |
 | Billing cadence | Annual, quarterly, or monthly ledger periods within lease dates |
-| Service % | Percent of period rent |
+| Service % | Percent of period rent (includes security & shared plaza costs) |
 | Agency fee | Annual fixed, prorated per period |
-| VAT % | Percent of rent + service + agency + diesel (+ security on first period) |
-| Diesel | Annual fixed, prorated per period |
-| Security | Charged on **first period only** |
+| VAT % | Percent of rent + service + agency |
 
 Saving the unit regenerates `charge_templates`, `ledger_periods`, and `ledger_lines` for the active lease (preserves `paid_total_ngn` on existing periods).
 
