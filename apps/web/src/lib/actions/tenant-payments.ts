@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { requireTenantContext } from "@/lib/auth/session";
 import { notifyPaymentSubmitted } from "@/lib/notifications/staff-notify";
+import { metadataWithPaymentNote } from "@/lib/payments/payment-metadata";
 import { uploadPaymentAttachments } from "@/lib/storage/payment-attachments";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
@@ -77,6 +78,8 @@ export async function submitTransferPayment(
     }
   }
 
+  metadata = metadataWithPaymentNote(metadata, paymentNote);
+
   const { data: payment, error: insertError } = await supabase
     .from("payments")
     .insert({
@@ -86,7 +89,6 @@ export async function submitTransferPayment(
       amount_ngn: amount,
       period_label: periodLabel,
       bank_reference: bankReference,
-      payment_note: paymentNote,
       payment_method: "bank_transfer",
       status: "pending",
       payment_date: new Date().toISOString().slice(0, 10),
@@ -112,19 +114,33 @@ export async function submitTransferPayment(
     return { error: uploadResult.error };
   }
 
-  const { data: firstAttachment } = await admin
-    .from("payment_attachments")
-    .select("file_url")
-    .eq("payment_id", payment.id)
-    .order("created_at", { ascending: true })
-    .limit(1)
-    .maybeSingle();
+  const firstPath = uploadResult.paths[0];
+  if (firstPath) {
+    const receiptUpdate: Record<string, unknown> = {
+      receipt_file_url: firstPath,
+    };
+    if (!uploadResult.attachmentsInDb && uploadResult.paths.length > 0) {
+      receiptUpdate.metadata = {
+        ...metadata,
+        attachment_paths: uploadResult.paths,
+      };
+    }
+    await admin.from("payments").update(receiptUpdate).eq("id", payment.id);
+  } else if (uploadResult.attachmentsInDb) {
+    const { data: firstAttachment } = await admin
+      .from("payment_attachments")
+      .select("file_url")
+      .eq("payment_id", payment.id)
+      .order("created_at", { ascending: true })
+      .limit(1)
+      .maybeSingle();
 
-  if (firstAttachment?.file_url) {
-    await admin
-      .from("payments")
-      .update({ receipt_file_url: firstAttachment.file_url })
-      .eq("id", payment.id);
+    if (firstAttachment?.file_url) {
+      await admin
+        .from("payments")
+        .update({ receipt_file_url: firstAttachment.file_url })
+        .eq("id", payment.id);
+    }
   }
 
   revalidatePath(`/t/${orgSlug}`);
