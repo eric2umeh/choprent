@@ -41,7 +41,7 @@ Pilot starts with **one landlord / one plaza**; schema is multi-tenant for year-
 2. **Plaza → unit** CRUD (**landlord only** for create) with composite unit codes (`14/16`, `14 & 16`)
 3. Property types: shop, flat, office, warehouse, kiosk, parking, restaurant, other — **type change history** (e.g. shop → office)
 4. **Full leases** with renewal; billing **monthly / quarterly / annual** (annual default)
-5. Charge engine: rent + service % + agency fixed + VAT, diesel, security, other
+5. Charge engine: rent + service % (incl. security) + agency fixed + VAT; diesel via **expenses**
 6. **Arrears carry forward** year to year; **partial payments** allocated oldest-first
 7. **Bank transfer + cash** (manager-recorded); receipt upload → verify queue (landlord/manager/agent)
 8. **Multiple settlement bank accounts** per plaza
@@ -145,7 +145,8 @@ Counts toward “tenants self-serving” when tenant account has:
 | 6      | Expenses, analytics, Realtime dashboards                          | ✓ See `15_sprint6_expenses_analytics_realtime.md` |
 | 7      | Client OCR + reminder rules + mobile polish                       |
 | **8**  | **Paystack DVA per unit + webhooks**                              |
-| **9**  | **MVP hardening** — charge engine, late fees, WhatsApp, FAQ (meters paused) | See `18_sprint9_mvp_hardening.md` |
+| **9**  | **MVP hardening** — charge engine, payment UX, FAQ (meters paused) | See `18_sprint9_mvp_hardening.md` |
+| **10** | **Production pilot** — setup checklist, onboarding, bug fixes | See `19_sprint10_pilot_hardening.md` |
 
 ---
 
@@ -169,4 +170,4 @@ choprent/
 
 ## Next step
 
-Sprint 1: follow [`docs/08_sprint1_auth_setup.md`](08_sprint1_auth_setup.md) → push migrations → create landlord membership → onboard pilot plaza units live.
+Sprint 10: follow [`docs/19_sprint10_pilot_hardening.md`](19_sprint10_pilot_hardening.md) → onboard first live plaza using the dashboard checklist → verify end-to-end rent collection.
