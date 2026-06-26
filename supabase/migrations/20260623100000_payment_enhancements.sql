@@ -18,13 +18,14 @@ alter table payment_attachments enable row level security;
 create policy payment_attachments_select on payment_attachments for select using (
   exists (
     select 1 from payments p
-    join units u on u.id = p.unit_id
     where p.id = payment_attachments.payment_id
       and (
-        public.is_org_member(u.organization_id)
+        p.tenant_id = auth.uid()
+        or public.is_org_staff(p.organization_id)
         or exists (
-          select 1 from leases l
-          where l.unit_id = u.id and l.tenant_user_id = auth.uid() and l.status = 'active'
+          select 1 from units u
+          join site_assignments sa on sa.site_id = u.site_id
+          where u.id = p.unit_id and sa.user_id = auth.uid()
         )
       )
   )
@@ -33,9 +34,16 @@ create policy payment_attachments_select on payment_attachments for select using
 create policy payment_attachments_insert on payment_attachments for insert with check (
   exists (
     select 1 from payments p
-    join units u on u.id = p.unit_id
     where p.id = payment_attachments.payment_id
-      and public.is_org_member(u.organization_id)
+      and (
+        (p.tenant_id = auth.uid() and public.tenant_has_active_lease(p.unit_id))
+        or public.is_org_staff(p.organization_id)
+        or exists (
+          select 1 from units u
+          join site_assignments sa on sa.site_id = u.site_id
+          where u.id = p.unit_id and sa.user_id = auth.uid()
+        )
+      )
   )
 );
 
