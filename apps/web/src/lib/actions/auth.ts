@@ -33,7 +33,8 @@ async function getExistingStaffMembership(userId: string) {
  * Landlords get a new organization. Managers/agents wait for a landlord invite.
  */
 export async function linkPlazaAccount(
-  role: MembershipRole
+  role: MembershipRole,
+  workspaceName?: string
 ): Promise<AuthActionState & { awaitingInvite?: boolean }> {
   const user = await getSessionUser();
   if (!user) {
@@ -64,7 +65,7 @@ export async function linkPlazaAccount(
     }
 
     if (role === "owner") {
-      const org = await provisionLandlordOrganization(user);
+      const org = await provisionLandlordOrganization(user, workspaceName);
       revalidatePath("/access-pending");
       revalidatePath(`/d/${org.slug}`);
       revalidatePath(`/d/${org.slug}/settings`);
