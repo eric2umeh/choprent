@@ -28,9 +28,13 @@ Dashboard → **Authentication → Providers**:
 1. **Email** — enable **Email + password** (recommended for pilot)
 2. **Confirm email** — **disable** for pilot (avoids using the 2/hour email quota on sign-up)
 3. **Phone** — optional; requires paid SMS provider (Twilio, etc.) — not free
-4. **URL configuration** — add redirect URLs:
+4. **URL configuration** — add redirect URLs (Authentication → URL Configuration):
    - `http://localhost:3000/auth/callback`
+   - `http://localhost:3000/auth/callback?type=recovery`
+   - `http://localhost:3000/auth/reset-password`
    - `https://YOUR_VERCEL_DOMAIN/auth/callback`
+   - `https://YOUR_VERCEL_DOMAIN/auth/callback?type=recovery`
+   - `https://YOUR_VERCEL_DOMAIN/auth/reset-password`
 4. **Rate limits** (Authentication → Rate Limits) — for dev/pilot testing:
    - **Rate limit for sending emails** — increase from **2** to e.g. **30** or **120** (this is what blocks magic links; sign-ups/sign-ins limits are separate)
    - Click **Save changes**
@@ -107,7 +111,8 @@ on conflict (user_id, organization_id) do update set role = 'owner';
 #### Forgot password
 
 1. Login → **Password** → **Forgot password?** → enter email → **Send reset link**
-2. Click the email link → set a new password (min **6** characters) → `/d/pilot-plaza`
+2. Click the email link → you should land on **Set a new password** (not the sign-in page)
+3. Enter a new password (min **6** characters) → save → dashboard opens
 
 **Note:** Reset emails count toward the **2/hour** Supabase email limit.
 

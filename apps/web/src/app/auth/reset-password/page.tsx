@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { Logo } from "@/components/logo";
+import { RecoveryHashHandler } from "@/components/auth/recovery-hash-handler";
 import { ResetPasswordForm } from "@/components/auth/reset-password-form";
 
 export default function ResetPasswordPage() {
@@ -12,6 +13,7 @@ export default function ResetPasswordPage() {
           Choose a new password for your ChopRent account.
         </p>
         <div className="mt-6">
+          <RecoveryHashHandler />
           <ResetPasswordForm />
         </div>
       </div>

@@ -61,9 +61,28 @@ export async function updateSession(request: NextRequest) {
 
   if (pathname === "/login" && user) {
     const error = request.nextUrl.searchParams.get("error");
+    const recoveryPending =
+      request.cookies.get("password_recovery_pending")?.value === "1";
+    if (recoveryPending) {
+      const url = request.nextUrl.clone();
+      url.pathname = "/auth/reset-password";
+      url.search = "";
+      return NextResponse.redirect(url);
+    }
     if (!error) {
       const url = request.nextUrl.clone();
       url.pathname = "/auth/redirect";
+      url.search = "";
+      return NextResponse.redirect(url);
+    }
+  }
+
+  if (pathname === "/auth/redirect" && user) {
+    const recoveryPending =
+      request.cookies.get("password_recovery_pending")?.value === "1";
+    if (recoveryPending) {
+      const url = request.nextUrl.clone();
+      url.pathname = "/auth/reset-password";
       url.search = "";
       return NextResponse.redirect(url);
     }
