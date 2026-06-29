@@ -80,7 +80,7 @@ export function LoginForm() {
         const { error: resetError } = await supabase.auth.resetPasswordForEmail(
           trimmedEmail,
           {
-            redirectTo: `${appUrl()}/auth/callback?next=${encodeURIComponent("/auth/reset-password")}`,
+            redirectTo: `${appUrl()}/auth/callback?type=recovery`,
           }
         );
         if (resetError) throw resetError;

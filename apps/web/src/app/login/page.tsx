@@ -3,6 +3,7 @@ import Link from "next/link";
 import { Logo } from "@/components/logo";
 import { LoginForm } from "@/components/auth/login-form";
 import { LoginAuthAlerts } from "@/components/auth/login-auth-alerts";
+import { RecoveryHashHandler } from "@/components/auth/recovery-hash-handler";
 import { LoadingState } from "@/components/ui/loading-state";
 
 export default function LoginPage() {
@@ -42,6 +43,7 @@ export default function LoginPage() {
           </p>
 
           <div className="animate-fade-up mt-8">
+            <RecoveryHashHandler />
             <Suspense fallback={<LoadingState label="Loading…" className="py-4" />}>
               <LoginAuthAlerts />
             </Suspense>

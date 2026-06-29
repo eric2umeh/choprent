@@ -1,8 +1,9 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { clearPasswordRecoveryCookie } from "@/lib/actions/recovery";
 import { createClient } from "@/lib/supabase/client";
 import { formatAuthError } from "@/lib/auth/messages";
 import { PasswordInput } from "@/components/ui/password-input";
@@ -14,9 +15,40 @@ export function ResetPasswordForm() {
   const [password, setPassword] = useState("");
   const [confirm, setConfirm] = useState("");
   const [loading, setLoading] = useState(false);
+  const [sessionReady, setSessionReady] = useState(false);
+  const [checking, setChecking] = useState(true);
+
+  useEffect(() => {
+    const supabase = createClient();
+
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((event, session) => {
+      if (event === "PASSWORD_RECOVERY" || session) {
+        setSessionReady(true);
+        setChecking(false);
+      }
+    });
+
+    void supabase.auth.getSession().then(({ data: { session } }) => {
+      if (session) {
+        setSessionReady(true);
+      }
+      setChecking(false);
+    });
+
+    return () => subscription.unsubscribe();
+  }, []);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
+
+    if (!sessionReady) {
+      toast.error(
+        "Reset link expired or already used. Request a new link from the login page."
+      );
+      return;
+    }
 
     if (password.length < 6) {
       toast.error("Password must be at least 6 characters.");
@@ -31,8 +63,17 @@ export function ResetPasswordForm() {
     const supabase = createClient();
 
     try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        throw new Error(
+          "Reset link expired. Go to login → Forgot password and request a new link."
+        );
+      }
+
       const { error: updateError } = await supabase.auth.updateUser({ password });
       if (updateError) throw updateError;
+
+      await clearPasswordRecoveryCookie();
       toast.success("Password updated — opening your dashboard…");
       router.push("/auth/redirect");
       router.refresh();
@@ -42,6 +83,26 @@ export function ResetPasswordForm() {
       );
       setLoading(false);
     }
+  }
+
+  if (checking) {
+    return (
+      <p className="text-center text-sm text-muted">Verifying your reset link…</p>
+    );
+  }
+
+  if (!sessionReady) {
+    return (
+      <div className="space-y-4 text-center">
+        <p className="text-sm text-muted">
+          This reset link has expired or was already used. Request a fresh link
+          from the login page.
+        </p>
+        <Link href="/login" className="btn-primary inline-flex px-4 py-2 text-sm">
+          Back to login
+        </Link>
+      </div>
+    );
   }
 
   return (
