@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { linkPlazaAccount } from "@/lib/actions/auth";
-import { createClient } from "@/lib/supabase/client";
+import { createClient, createRecoveryClient } from "@/lib/supabase/client";
 import { formatAuthError, MAGIC_LINK_COOLDOWN_SEC } from "@/lib/auth/messages";
 import {
   clearLoginDraft,
@@ -77,7 +77,8 @@ export function LoginForm() {
 
     try {
       if (mode === "forgot_password") {
-        const { error: resetError } = await supabase.auth.resetPasswordForEmail(
+        const recovery = createRecoveryClient();
+        const { error: resetError } = await recovery.auth.resetPasswordForEmail(
           trimmedEmail,
           {
             redirectTo: `${appUrl()}/auth/reset-password`,

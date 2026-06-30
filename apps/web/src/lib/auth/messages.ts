@@ -10,6 +10,10 @@ export function formatAuthError(message: string): string {
     return "Magic link expired. Use Password sign-in instead (no email limit).";
   }
 
+  if (lower.includes("code challenge") || lower.includes("code verifier")) {
+    return "This reset link was opened in a different browser. Request a new link on this device (login → Forgot password) and open that email here.";
+  }
+
   if (lower.includes("invalid login credentials")) {
     return "Wrong email or password. Use Forgot password, or create an account with 6+ characters.";
   }

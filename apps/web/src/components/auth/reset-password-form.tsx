@@ -8,7 +8,7 @@ import {
   clearPasswordRecoveryCookie,
   setPasswordRecoveryCookie,
 } from "@/lib/actions/recovery";
-import { createClient } from "@/lib/supabase/client";
+import { createClient, createRecoveryClient } from "@/lib/supabase/client";
 import { formatAuthError } from "@/lib/auth/messages";
 import {
   isSameAsCurrentPassword,
@@ -29,19 +29,6 @@ async function establishRecoverySession(
 ): Promise<{ ok: boolean; error?: string }> {
   const { tokenHash, type, code, hash } = params;
 
-  if (tokenHash && type) {
-    const { error } = await supabase.auth.verifyOtp({
-      token_hash: tokenHash,
-      type: type as EmailOtpType,
-    });
-    return error ? { ok: false, error: error.message } : { ok: true };
-  }
-
-  if (code) {
-    const { error } = await supabase.auth.exchangeCodeForSession(code);
-    return error ? { ok: false, error: error.message } : { ok: true };
-  }
-
   if (hash) {
     const hashParams = new URLSearchParams(hash);
     const accessToken = hashParams.get("access_token");
@@ -53,6 +40,28 @@ async function establishRecoverySession(
       });
       return error ? { ok: false, error: error.message } : { ok: true };
     }
+  }
+
+  if (tokenHash && type) {
+    const { error } = await supabase.auth.verifyOtp({
+      token_hash: tokenHash,
+      type: type as EmailOtpType,
+    });
+    return error ? { ok: false, error: error.message } : { ok: true };
+  }
+
+  if (code) {
+    const { error } = await supabase.auth.exchangeCodeForSession(code);
+    if (error) {
+      const pkce = error.message.toLowerCase().includes("code challenge");
+      return {
+        ok: false,
+        error: pkce
+          ? "pkce_mismatch"
+          : error.message,
+      };
+    }
+    return { ok: true };
   }
 
   const { data: { session } } = await supabase.auth.getSession();
@@ -72,7 +81,7 @@ export function ResetPasswordForm() {
   const [linkError, setLinkError] = useState<string | null>(null);
 
   useEffect(() => {
-    const supabase = createClient();
+    const supabase = createRecoveryClient();
 
     const {
       data: { subscription },
@@ -114,7 +123,9 @@ export function ResetPasswordForm() {
       } else {
         const msg = result.error ?? "Could not verify reset link.";
         setLinkError(
-          msg.toLowerCase().includes("pkce") || msg.toLowerCase().includes("code verifier")
+          result.error === "pkce_mismatch"
+            ? "This reset link was opened in a different browser than where you requested it. Go to login → Forgot password and send a new link, then open it on this device."
+            : msg.toLowerCase().includes("pkce") || msg.toLowerCase().includes("code challenge")
             ? "Open the reset link in the same browser where you clicked “Send reset link”, or request a new email."
             : formatAuthError(msg)
         );
@@ -146,7 +157,7 @@ export function ResetPasswordForm() {
     }
 
     setLoading(true);
-    const supabase = createClient();
+    const supabase = createRecoveryClient();
 
     try {
       const { data: { session } } = await supabase.auth.getSession();
