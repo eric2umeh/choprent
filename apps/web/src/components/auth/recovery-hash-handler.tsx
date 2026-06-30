@@ -1,35 +1,38 @@
 "use client";
 
 import { useEffect } from "react";
-import { usePathname, useRouter } from "next/navigation";
-import { createClient } from "@/lib/supabase/client";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 
-/**
- * Supabase recovery emails sometimes land on /login with tokens in the URL hash.
- * Middleware cannot read the hash — move recovery flows to /auth/reset-password.
- */
+/** Send auth tokens from /login to the reset page (middleware cannot read URL hash). */
 export function RecoveryHashHandler() {
   const router = useRouter();
   const pathname = usePathname();
+  const searchParams = useSearchParams();
 
   useEffect(() => {
+    if (pathname === "/auth/reset-password") return;
+
+    const code = searchParams.get("code");
+    const tokenHash = searchParams.get("token_hash");
+    const type = searchParams.get("type");
     const hash = window.location.hash.replace(/^#/, "");
-    if (!hash) return;
 
-    const params = new URLSearchParams(hash);
-    const type = params.get("type");
-    const accessToken = params.get("access_token");
-
-    if (type !== "recovery" && !accessToken) return;
-
-    if (pathname !== "/auth/reset-password") {
-      router.replace(`/auth/reset-password${window.location.hash}`);
+    if (code || tokenHash) {
+      const q = new URLSearchParams();
+      if (code) q.set("code", code);
+      if (tokenHash) q.set("token_hash", tokenHash);
+      if (type) q.set("type", type);
+      router.replace(`/auth/reset-password?${q.toString()}`);
       return;
     }
 
-    const supabase = createClient();
-    void supabase.auth.getSession();
-  }, [pathname, router]);
+    if (hash) {
+      const params = new URLSearchParams(hash);
+      if (params.get("access_token") || params.get("type") === "recovery") {
+        router.replace(`/auth/reset-password${window.location.hash}`);
+      }
+    }
+  }, [pathname, router, searchParams]);
 
   return null;
 }

@@ -25,10 +25,10 @@ export async function GET(request: Request) {
   }
 
   const type = searchParams.get("type");
-  const isRecovery = type === "recovery";
-  const next = isRecovery
-    ? "/auth/reset-password"
-    : (searchParams.get("next") ?? "/auth/redirect");
+  const nextParam = searchParams.get("next") ?? "/auth/redirect";
+  const isRecovery =
+    type === "recovery" || nextParam === "/auth/reset-password";
+  const next = isRecovery ? "/auth/reset-password" : nextParam;
 
   const tokenHash = searchParams.get("token_hash");
   if (tokenHash && type) {
