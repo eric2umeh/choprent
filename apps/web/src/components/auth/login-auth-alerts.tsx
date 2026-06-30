@@ -21,8 +21,11 @@ export function LoginAuthAlerts() {
     if (shown) return;
 
     const queryError = searchParams.get("error");
+    const detail = searchParams.get("message");
     if (queryError && ERROR_MESSAGES[queryError]) {
-      toast.error(ERROR_MESSAGES[queryError]);
+      toast.error(
+        detail ? formatAuthError(detail) : ERROR_MESSAGES[queryError]
+      );
       setShown(true);
       return;
     }

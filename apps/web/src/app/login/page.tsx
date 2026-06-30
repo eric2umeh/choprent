@@ -43,7 +43,9 @@ export default function LoginPage() {
           </p>
 
           <div className="animate-fade-up mt-8">
-            <RecoveryHashHandler />
+            <Suspense fallback={null}>
+              <RecoveryHashHandler />
+            </Suspense>
             <Suspense fallback={<LoadingState label="Loading…" className="py-4" />}>
               <LoginAuthAlerts />
             </Suspense>

@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { Suspense } from "react";
 import { Logo } from "@/components/logo";
 import { RecoveryHashHandler } from "@/components/auth/recovery-hash-handler";
 import { ResetPasswordForm } from "@/components/auth/reset-password-form";
@@ -13,8 +14,12 @@ export default function ResetPasswordPage() {
           Choose a new password for your ChopRent account.
         </p>
         <div className="mt-6">
-          <RecoveryHashHandler />
-          <ResetPasswordForm />
+          <Suspense fallback={null}>
+            <RecoveryHashHandler />
+          </Suspense>
+          <Suspense fallback={<p className="text-sm text-muted">Loading…</p>}>
+            <ResetPasswordForm />
+          </Suspense>
         </div>
       </div>
     </div>

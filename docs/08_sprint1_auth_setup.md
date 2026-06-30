@@ -30,12 +30,12 @@ Dashboard → **Authentication → Providers**:
 3. **Phone** — optional; requires paid SMS provider (Twilio, etc.) — not free
 4. **URL configuration** — add redirect URLs (Authentication → URL Configuration):
    - `http://localhost:3000/auth/callback`
-   - `http://localhost:3000/auth/callback?type=recovery`
+   - `http://localhost:3000/auth/callback/recovery`
    - `http://localhost:3000/auth/reset-password`
    - `https://YOUR_VERCEL_DOMAIN/auth/callback`
-   - `https://YOUR_VERCEL_DOMAIN/auth/callback?type=recovery`
+   - `https://YOUR_VERCEL_DOMAIN/auth/callback/recovery`
    - `https://YOUR_VERCEL_DOMAIN/auth/reset-password`
-4. **Rate limits** (Authentication → Rate Limits) — for dev/pilot testing:
+5. **Rate limits** (Authentication → Rate Limits) — for dev/pilot testing:
    - **Rate limit for sending emails** — increase from **2** to e.g. **30** or **120** (this is what blocks magic links; sign-ups/sign-ins limits are separate)
    - Click **Save changes**
 
@@ -111,8 +111,24 @@ on conflict (user_id, organization_id) do update set role = 'owner';
 #### Forgot password
 
 1. Login → **Password** → **Forgot password?** → enter email → **Send reset link**
-2. Click the email link → you should land on **Set a new password** (not the sign-in page)
+2. Click the email link → **Set a new password** page (not the sign-in page)
 3. Enter a new password (min **6** characters) → save → dashboard opens
+
+**Supabase redirect URLs** (Authentication → URL Configuration) must include:
+- `http://localhost:3000/auth/reset-password`
+- `https://YOUR_DOMAIN/auth/reset-password`
+
+**Email template (recommended)** — Dashboard → Authentication → Email Templates → **Reset password**. Replace the link body so the button uses `token_hash` (works in any browser, not only the one that requested reset):
+
+```html
+<a href="{{ .SiteURL }}/auth/reset-password?token_hash={{ .TokenHash }}&type=recovery">
+  Reset password
+</a>
+```
+
+Set **Site URL** in Supabase to your app origin (e.g. `http://localhost:3000` or `https://your-app.vercel.app`) — not `/login`.
+
+**Same browser:** If you keep the default Supabase email link, open the reset email in the **same browser** where you clicked “Send reset link”.
 
 **Note:** Reset emails count toward the **2/hour** Supabase email limit.
 
