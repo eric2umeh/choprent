@@ -2,21 +2,74 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { clearPasswordRecoveryCookie } from "@/lib/actions/recovery";
+import { useRouter, useSearchParams } from "next/navigation";
+import type { EmailOtpType } from "@supabase/supabase-js";
+import {
+  clearPasswordRecoveryCookie,
+  setPasswordRecoveryCookie,
+} from "@/lib/actions/recovery";
 import { createClient } from "@/lib/supabase/client";
 import { formatAuthError } from "@/lib/auth/messages";
+import {
+  isSameAsCurrentPassword,
+  SAME_PASSWORD_MESSAGE,
+} from "@/lib/auth/password-validation";
 import { PasswordInput } from "@/components/ui/password-input";
 import { LoadingButton } from "@/components/ui/loading-button";
 import { toast } from "@/components/ui/toast";
 
+async function establishRecoverySession(
+  supabase: ReturnType<typeof createClient>,
+  params: {
+    tokenHash: string | null;
+    type: string | null;
+    code: string | null;
+    hash: string;
+  }
+): Promise<{ ok: boolean; error?: string }> {
+  const { tokenHash, type, code, hash } = params;
+
+  if (tokenHash && type) {
+    const { error } = await supabase.auth.verifyOtp({
+      token_hash: tokenHash,
+      type: type as EmailOtpType,
+    });
+    return error ? { ok: false, error: error.message } : { ok: true };
+  }
+
+  if (code) {
+    const { error } = await supabase.auth.exchangeCodeForSession(code);
+    return error ? { ok: false, error: error.message } : { ok: true };
+  }
+
+  if (hash) {
+    const hashParams = new URLSearchParams(hash);
+    const accessToken = hashParams.get("access_token");
+    const refreshToken = hashParams.get("refresh_token");
+    if (accessToken && refreshToken) {
+      const { error } = await supabase.auth.setSession({
+        access_token: accessToken,
+        refresh_token: refreshToken,
+      });
+      return error ? { ok: false, error: error.message } : { ok: true };
+    }
+  }
+
+  const { data: { session } } = await supabase.auth.getSession();
+  if (session) return { ok: true };
+
+  return { ok: false, error: "missing_token" };
+}
+
 export function ResetPasswordForm() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [password, setPassword] = useState("");
   const [confirm, setConfirm] = useState("");
   const [loading, setLoading] = useState(false);
   const [sessionReady, setSessionReady] = useState(false);
   const [checking, setChecking] = useState(true);
+  const [linkError, setLinkError] = useState<string | null>(null);
 
   useEffect(() => {
     const supabase = createClient();
@@ -27,26 +80,59 @@ export function ResetPasswordForm() {
       if (event === "PASSWORD_RECOVERY" || session) {
         setSessionReady(true);
         setChecking(false);
+        setLinkError(null);
       }
     });
 
-    void supabase.auth.getSession().then(({ data: { session } }) => {
-      if (session) {
+    async function init() {
+      const tokenHash = searchParams.get("token_hash");
+      const type = searchParams.get("type");
+      const code = searchParams.get("code");
+      const hash = window.location.hash.replace(/^#/, "");
+
+      const result = await establishRecoverySession(supabase, {
+        tokenHash,
+        type,
+        code,
+        hash,
+      });
+
+      if (result.ok) {
+        await setPasswordRecoveryCookie();
         setSessionReady(true);
+        setLinkError(null);
+        window.history.replaceState(null, "", "/auth/reset-password");
+      } else if (result.error === "missing_token") {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (session) {
+          setSessionReady(true);
+        } else {
+          setLinkError(
+            "This reset link is invalid or has expired. Request a new one from the login page."
+          );
+        }
+      } else {
+        const msg = result.error ?? "Could not verify reset link.";
+        setLinkError(
+          msg.toLowerCase().includes("pkce") || msg.toLowerCase().includes("code verifier")
+            ? "Open the reset link in the same browser where you clicked “Send reset link”, or request a new email."
+            : formatAuthError(msg)
+        );
       }
+
       setChecking(false);
-    });
+    }
+
+    void init();
 
     return () => subscription.unsubscribe();
-  }, []);
+  }, [searchParams]);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
 
     if (!sessionReady) {
-      toast.error(
-        "Reset link expired or already used. Request a new link from the login page."
-      );
+      toast.error("Reset link expired. Request a new link from the login page.");
       return;
     }
 
@@ -65,9 +151,17 @@ export function ResetPasswordForm() {
     try {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) {
-        throw new Error(
-          "Reset link expired. Go to login → Forgot password and request a new link."
-        );
+        throw new Error("Session expired. Request a new reset link.");
+      }
+
+      const email = session.user.email;
+      if (email) {
+        const sameAsOld = await isSameAsCurrentPassword(supabase, email, password);
+        if (sameAsOld) {
+          toast.error(SAME_PASSWORD_MESSAGE);
+          setLoading(false);
+          return;
+        }
       }
 
       const { error: updateError } = await supabase.auth.updateUser({ password });
@@ -91,12 +185,13 @@ export function ResetPasswordForm() {
     );
   }
 
-  if (!sessionReady) {
+  if (linkError || !sessionReady) {
     return (
       <div className="space-y-4 text-center">
-        <p className="text-sm text-muted">
-          This reset link has expired or was already used. Request a fresh link
-          from the login page.
+        <p className="text-sm text-red-700">{linkError ?? "Reset link not valid."}</p>
+        <p className="text-xs text-muted">
+          Tip: use <strong>Forgot password?</strong> on the login page and click the
+          newest email only.
         </p>
         <Link href="/login" className="btn-primary inline-flex px-4 py-2 text-sm">
           Back to login
@@ -115,9 +210,12 @@ export function ResetPasswordForm() {
           value={password}
           onChange={(e) => setPassword(e.target.value)}
           autoComplete="new-password"
-          placeholder="At least 6 characters"
+          placeholder="At least 6 characters — different from your old password"
         />
       </div>
+      <p className="text-[11px] text-muted">
+        Must be different from your previous password.
+      </p>
       <div>
         <label className="text-label normal-case">Confirm password</label>
         <PasswordInput
