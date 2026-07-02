@@ -3,12 +3,10 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import type { EmailOtpType } from "@supabase/supabase-js";
 import {
   clearPasswordRecoveryCookie,
-  setPasswordRecoveryCookie,
 } from "@/lib/actions/recovery";
-import { createClient, createRecoveryClient } from "@/lib/supabase/client";
+import { createClient } from "@/lib/supabase/client";
 import { formatAuthError } from "@/lib/auth/messages";
 import {
   isSameAsCurrentPassword,
@@ -17,58 +15,6 @@ import {
 import { PasswordInput } from "@/components/ui/password-input";
 import { LoadingButton } from "@/components/ui/loading-button";
 import { toast } from "@/components/ui/toast";
-
-async function establishRecoverySession(
-  supabase: ReturnType<typeof createClient>,
-  params: {
-    tokenHash: string | null;
-    type: string | null;
-    code: string | null;
-    hash: string;
-  }
-): Promise<{ ok: boolean; error?: string }> {
-  const { tokenHash, type, code, hash } = params;
-
-  if (hash) {
-    const hashParams = new URLSearchParams(hash);
-    const accessToken = hashParams.get("access_token");
-    const refreshToken = hashParams.get("refresh_token");
-    if (accessToken && refreshToken) {
-      const { error } = await supabase.auth.setSession({
-        access_token: accessToken,
-        refresh_token: refreshToken,
-      });
-      return error ? { ok: false, error: error.message } : { ok: true };
-    }
-  }
-
-  if (tokenHash && type) {
-    const { error } = await supabase.auth.verifyOtp({
-      token_hash: tokenHash,
-      type: type as EmailOtpType,
-    });
-    return error ? { ok: false, error: error.message } : { ok: true };
-  }
-
-  if (code) {
-    const { error } = await supabase.auth.exchangeCodeForSession(code);
-    if (error) {
-      const pkce = error.message.toLowerCase().includes("code challenge");
-      return {
-        ok: false,
-        error: pkce
-          ? "pkce_mismatch"
-          : error.message,
-      };
-    }
-    return { ok: true };
-  }
-
-  const { data: { session } } = await supabase.auth.getSession();
-  if (session) return { ok: true };
-
-  return { ok: false, error: "missing_token" };
-}
 
 export function ResetPasswordForm() {
   const router = useRouter();
@@ -81,7 +27,14 @@ export function ResetPasswordForm() {
   const [linkError, setLinkError] = useState<string | null>(null);
 
   useEffect(() => {
-    const supabase = createRecoveryClient();
+    const supabase = createClient();
+    const urlError = searchParams.get("error");
+
+    if (urlError) {
+      setLinkError(formatAuthError(decodeURIComponent(urlError)));
+      setChecking(false);
+      return;
+    }
 
     const {
       data: { subscription },
@@ -94,43 +47,42 @@ export function ResetPasswordForm() {
     });
 
     async function init() {
-      const tokenHash = searchParams.get("token_hash");
-      const type = searchParams.get("type");
-      const code = searchParams.get("code");
       const hash = window.location.hash.replace(/^#/, "");
-
-      const result = await establishRecoverySession(supabase, {
-        tokenHash,
-        type,
-        code,
-        hash,
-      });
-
-      if (result.ok) {
-        await setPasswordRecoveryCookie();
-        setSessionReady(true);
-        setLinkError(null);
-        window.history.replaceState(null, "", "/auth/reset-password");
-      } else if (result.error === "missing_token") {
-        const { data: { session } } = await supabase.auth.getSession();
-        if (session) {
-          setSessionReady(true);
-        } else {
-          setLinkError(
-            "This reset link is invalid or has expired. Request a new one from the login page."
-          );
+      if (hash) {
+        const hashParams = new URLSearchParams(hash);
+        const accessToken = hashParams.get("access_token");
+        const refreshToken = hashParams.get("refresh_token");
+        if (accessToken && refreshToken) {
+          const { error } = await supabase.auth.setSession({
+            access_token: accessToken,
+            refresh_token: refreshToken,
+          });
+          if (!error) {
+            setSessionReady(true);
+            window.history.replaceState(null, "", "/auth/reset-password");
+            setChecking(false);
+            return;
+          }
         }
-      } else {
-        const msg = result.error ?? "Could not verify reset link.";
-        setLinkError(
-          result.error === "pkce_mismatch"
-            ? "This reset link was opened in a different browser than where you requested it. Go to login → Forgot password and send a new link, then open it on this device."
-            : msg.toLowerCase().includes("pkce") || msg.toLowerCase().includes("code challenge")
-            ? "Open the reset link in the same browser where you clicked “Send reset link”, or request a new email."
-            : formatAuthError(msg)
-        );
       }
 
+      const code = searchParams.get("code");
+      if (code) {
+        setLinkError(
+          "This is an old-style reset link. Go to login → Forgot password and request a new email."
+        );
+        setChecking(false);
+        return;
+      }
+
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session) {
+        setSessionReady(true);
+      } else {
+        setLinkError(
+          "Reset link invalid or expired. Request a new one from the login page."
+        );
+      }
       setChecking(false);
     }
 
@@ -157,7 +109,7 @@ export function ResetPasswordForm() {
     }
 
     setLoading(true);
-    const supabase = createRecoveryClient();
+    const supabase = createClient();
 
     try {
       const { data: { session } } = await supabase.auth.getSession();
@@ -200,10 +152,6 @@ export function ResetPasswordForm() {
     return (
       <div className="space-y-4 text-center">
         <p className="text-sm text-red-700">{linkError ?? "Reset link not valid."}</p>
-        <p className="text-xs text-muted">
-          Tip: use <strong>Forgot password?</strong> on the login page and click the
-          newest email only.
-        </p>
         <Link href="/login" className="btn-primary inline-flex px-4 py-2 text-sm">
           Back to login
         </Link>

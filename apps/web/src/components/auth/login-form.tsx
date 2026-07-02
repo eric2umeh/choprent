@@ -4,7 +4,8 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { linkPlazaAccount } from "@/lib/actions/auth";
-import { createClient, createRecoveryClient } from "@/lib/supabase/client";
+import { requestPasswordReset } from "@/lib/actions/password-reset";
+import { createClient } from "@/lib/supabase/client";
 import { formatAuthError, MAGIC_LINK_COOLDOWN_SEC } from "@/lib/auth/messages";
 import {
   clearLoginDraft,
@@ -36,6 +37,7 @@ export function LoginForm() {
   const [loading, setLoading] = useState(false);
   const [cooldown, setCooldown] = useState(0);
   const [draftReady, setDraftReady] = useState(false);
+  const [devResetUrl, setDevResetUrl] = useState<string | null>(null);
 
   useEffect(() => {
     const draft = readLoginDraft();
@@ -77,17 +79,19 @@ export function LoginForm() {
 
     try {
       if (mode === "forgot_password") {
-        const recovery = createRecoveryClient();
-        const { error: resetError } = await recovery.auth.resetPasswordForEmail(
-          trimmedEmail,
-          {
-            redirectTo: `${appUrl()}/auth/reset-password`,
-          }
-        );
-        if (resetError) throw resetError;
-        toast.success(
-          "If we have that email on file, you'll receive a link to choose a new password. Check your inbox (and spam)."
-        );
+        setDevResetUrl(null);
+        const result = await requestPasswordReset(trimmedEmail);
+        if (result.error) throw new Error(result.error);
+        if (result.devResetUrl) {
+          setDevResetUrl(result.devResetUrl);
+          toast.info(
+            "Resend test mode: email not delivered to this address. Use the reset link shown below."
+          );
+        } else {
+          toast.success(
+            "If we have that email on file, you'll receive a link to choose a new password. Check your inbox (and spam)."
+          );
+        }
         preserveDraft({ email: trimmedEmail });
         return;
       }
@@ -296,6 +300,21 @@ export function LoginForm() {
                 ? "Create account"
                 : "Sign in"}
           </LoadingButton>
+
+          {devResetUrl && (
+            <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2.5 text-left text-xs text-amber-950">
+              <p className="font-medium">Dev reset link (Resend did not email this address)</p>
+              <p className="mt-1 break-all">
+                <a href={devResetUrl} className="text-green-800 underline">
+                  Open reset link
+                </a>
+              </p>
+              <p className="mt-1.5 text-[11px] text-amber-900/80">
+                Free Resend only sends to your Resend signup email. For real delivery,
+                verify a domain at resend.com.
+              </p>
+            </div>
+          )}
 
           {mode === "sign_in" && (
             <button
