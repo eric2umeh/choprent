@@ -32,9 +32,9 @@ Dashboard → **Authentication → Providers**:
    - `http://localhost:3000/auth/callback`
    - `http://localhost:3000/auth/callback/recovery`
    - `http://localhost:3000/auth/reset-password`
-   - `https://YOUR_VERCEL_DOMAIN/auth/callback`
-   - `https://YOUR_VERCEL_DOMAIN/auth/callback/recovery`
+   - `http://localhost:3000/auth/reset-password/verify`
    - `https://YOUR_VERCEL_DOMAIN/auth/reset-password`
+   - `https://YOUR_VERCEL_DOMAIN/auth/reset-password/verify`
 5. **Rate limits** (Authentication → Rate Limits) — for dev/pilot testing:
    - **Rate limit for sending emails** — increase from **2** to e.g. **30** or **120** (this is what blocks magic links; sign-ups/sign-ins limits are separate)
    - Click **Save changes**
@@ -110,29 +110,17 @@ on conflict (user_id, organization_id) do update set role = 'owner';
 
 #### Forgot password
 
+ChopRent sends reset emails via **Resend** (not Supabase’s template) using a `token_hash` link — **no PKCE**, works in any browser.
+
+**Requires:** `SUPABASE_SERVICE_ROLE_KEY` in `apps/web/.env.local` (and Vercel). Optional: `RESEND_API_KEY` — without it, dev logs the reset link in the terminal running `npm run dev`.
+
 1. Login → **Password** → **Forgot password?** → enter email → **Send reset link**
-2. Click the email link → **Set a new password** page (not the sign-in page)
-3. Enter a new password (min **6** characters) → save → dashboard opens
+2. Open the **ChopRent** email (subject: “Reset your ChopRent password”) — not an old Supabase-only email
+3. Click link → **Set a new password** → save → dashboard opens
 
-**Supabase redirect URLs** (Authentication → URL Configuration) must include:
-- `http://localhost:3000/auth/reset-password`
-- `https://YOUR_DOMAIN/auth/reset-password`
+**Supabase redirect URLs** must include `/auth/reset-password` and `/auth/reset-password/verify` (local + production).
 
-**Email template (recommended)** — Dashboard → Authentication → Email Templates → **Reset password**. Replace the link body so the button uses `token_hash` (works in any browser, not only the one that requested reset):
-
-```html
-<a href="{{ .SiteURL }}/auth/reset-password?token_hash={{ .TokenHash }}&type=recovery">
-  Reset password
-</a>
-```
-
-Set **Site URL** in Supabase to your app origin (e.g. `http://localhost:3000` or `https://your-app.vercel.app`) — not `/login`.
-
-**Same browser:** If you keep the default Supabase email link, open the reset email in the **same browser** where you clicked “Send reset link”.
-
-**Note:** Reset emails count toward the **2/hour** Supabase email limit.
-
-**No email quota left?** Supabase Dashboard → **Authentication → Users** → your user → use **Send password recovery** or delete the user and **Create account** again on the Password tab.
+**Note:** Old reset emails (Supabase PKCE links) will not work — always request a **new** link after deploying this fix.
 
 #### Phone SMS cost (not recommended for pilot)
 
