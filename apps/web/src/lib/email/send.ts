@@ -16,7 +16,11 @@ export async function sendEmail(input: SendEmailInput): Promise<{ ok: boolean; e
       console.info("[email:dev]", input.to, input.subject);
       return { ok: true };
     }
-    return { ok: false, error: "Email not configured (RESEND_API_KEY missing)." };
+    return {
+      ok: false,
+      error:
+        "Email not configured. Add RESEND_API_KEY in Vercel → Project Settings → Environment Variables, then redeploy.",
+    };
   }
 
   const res = await fetch("https://api.resend.com/emails", {
