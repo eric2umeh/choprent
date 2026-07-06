@@ -170,4 +170,4 @@ choprent/
 
 ## Next step
 
-Sprint 10: follow [`docs/19_sprint10_pilot_hardening.md`](19_sprint10_pilot_hardening.md) → onboard first live plaza using the dashboard checklist → verify end-to-end rent collection.
+MVP go-live: run [`docs/20_mvp_data_reset.md`](20_mvp_data_reset.md) to wipe test data, then onboard your first real plaza via the dashboard checklist ([`docs/19_sprint10_pilot_hardening.md`](19_sprint10_pilot_hardening.md)).
