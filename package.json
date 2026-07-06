@@ -7,6 +7,8 @@
     "build": "npm run build --workspace=web",
     "lint": "npm run lint --workspace=web",
     "db:reset": "supabase db reset",
+    "db:reset-mvp": "bash scripts/reset-mvp.sh",
+    "db:reset-mvp:yes": "bash scripts/reset-mvp.sh --yes",
     "db:push": "supabase db push",
     "db:types": "supabase gen types typescript --local > apps/web/src/types/database.generated.ts"
   },
