@@ -134,7 +134,7 @@ export default async function DashboardHomePage({
       <div className="bg-white px-3 py-4">
         <SectionHeader title="Units" href={`/d/${orgSlug}/properties`} />
         {units.length === 0 ? (
-          <p className="text-empty-state">No units yet — add a property, then add units.</p>
+          <p className="text-empty-state">No unit yet — add a property, then add units.</p>
         ) : (
           <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-3">
             {units.slice(0, 6).map((unit) => (
