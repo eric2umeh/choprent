@@ -5,7 +5,8 @@ import { useRouter } from "next/navigation";
 import { deleteProperty } from "@/lib/actions/sites";
 import type { PropertySummary } from "@/lib/data/property-types";
 import { formatSiteType } from "@/lib/data/property-types";
-import { Building2, ChevronRight, Pencil, Trash2 } from "lucide-react";
+import { PropertyLogo } from "@/components/properties/property-logo";
+import { ChevronRight, Pencil, Trash2 } from "lucide-react";
 import Link from "next/link";
 import { propertyPath } from "@/lib/routes/dashboard-paths";
 import { Modal } from "@/components/ui/modal";
@@ -72,7 +73,11 @@ export function PropertiesOverview({
                 className="interactive-lift min-w-0 flex-1 rounded-lg p-1 -m-1"
               >
                 <div className="flex items-center gap-2">
-                  <Building2 className="h-4 w-4 shrink-0 text-green-700" />
+                  <PropertyLogo
+                    url={property.logoUrl}
+                    name={property.name}
+                    size="sm"
+                  />
                   <p className="truncate text-list-primary">{property.name}</p>
                   <ChevronRight className="ml-auto h-4 w-4 shrink-0 text-muted" />
                 </div>
@@ -127,6 +132,7 @@ export function PropertiesOverview({
           <PropertyForm
             orgSlug={orgSlug}
             property={editing}
+            logoUrl={editing.logoUrl}
             onSaved={() => setEditing(null)}
           />
         )}

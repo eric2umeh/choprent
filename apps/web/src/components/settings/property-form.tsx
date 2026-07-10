@@ -71,7 +71,7 @@ export function PropertyForm({
         <input
           name="name"
           className="input-field mt-1"
-          placeholder="e.g. Eri Plaza, Lekki House 4"
+          placeholder="e.g. Sunrise Plaza, Lekki House 4"
           defaultValue={property?.name ?? ""}
           required
           disabled={pending}

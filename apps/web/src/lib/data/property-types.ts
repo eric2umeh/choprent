@@ -9,6 +9,7 @@ export type PropertySummary = {
   city: string;
   state: string;
   logoPath: string | null;
+  logoUrl: string | null;
   unitCount: number;
 };
 

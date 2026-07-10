@@ -1,6 +1,7 @@
 import { PageHeader } from "@/components/ui/page-header";
 import { SettingsPageClient } from "@/components/settings/settings-page-client";
 import { requireStaffContext } from "@/lib/auth/session";
+import { isPrivilegedRole } from "@/lib/auth/roles";
 import { listReminderRules } from "@/lib/actions/reminders";
 import { getOrgProfile } from "@/lib/data/org-profile";
 import { createAdminClient } from "@/lib/supabase/admin";
@@ -17,8 +18,9 @@ export default async function SettingsPage({
   if (!profile) notFound();
 
   let staffDisplayName: string | null = null;
-  const reminderRules =
-    ctx.role === "owner" ? await listReminderRules(orgSlug) : [];
+  const reminderRules = isPrivilegedRole(ctx.role)
+    ? await listReminderRules(orgSlug)
+    : [];
 
   if (ctx.role === "manager" || ctx.role === "agent") {
     const admin = createAdminClient();

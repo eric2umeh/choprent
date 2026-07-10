@@ -1,23 +1,31 @@
 import type { MembershipRole } from "@/types/database";
 
+export function isPrivilegedRole(role: MembershipRole | null | undefined): boolean {
+  return role === "owner" || role === "admin";
+}
+
+export function canManageTeam(role: MembershipRole | null | undefined): boolean {
+  return isPrivilegedRole(role);
+}
+
 export function canAddUnits(role: MembershipRole | null | undefined): boolean {
-  return role === "owner";
+  return isPrivilegedRole(role);
 }
 
 export function canEditUnits(role: MembershipRole | null | undefined): boolean {
-  return role === "owner" || role === "manager";
+  return isPrivilegedRole(role) || role === "manager";
 }
 
 export function canManageLeases(role: MembershipRole | null | undefined): boolean {
-  return role === "owner" || role === "manager";
+  return isPrivilegedRole(role) || role === "manager";
 }
 
 export function canManageExpenses(role: MembershipRole | null | undefined): boolean {
-  return role === "owner" || role === "manager";
+  return isPrivilegedRole(role) || role === "manager";
 }
 
 export function canVerifyPayments(role: MembershipRole | null | undefined): boolean {
-  return role === "owner" || role === "manager" || role === "agent";
+  return isPrivilegedRole(role) || role === "manager" || role === "agent";
 }
 
 export function formatNaira(amount: number): string {

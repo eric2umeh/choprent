@@ -6,6 +6,7 @@ import {
   inviteTeamMember,
   removeTeamMember,
   respondToResignation,
+  updateTeamMember,
   type ResignationRequest,
   type TeamActionState,
   type TeamMember,
@@ -17,6 +18,8 @@ import { Badge } from "@/components/ui/badge";
 import { Modal } from "@/components/ui/modal";
 import { confirmDialog } from "@/components/ui/confirm-dialog";
 import { toast } from "@/components/ui/toast";
+import { formatMembershipRole } from "@/lib/auth/role-labels";
+import { Pencil } from "lucide-react";
 
 const initial: TeamActionState = {};
 
@@ -25,11 +28,13 @@ export function UsersPageClient({
   members,
   properties,
   resignations,
+  canInviteAdmin = false,
 }: {
   orgSlug: string;
   members: TeamMember[];
   properties: PropertySummary[];
   resignations: ResignationRequest[];
+  canInviteAdmin?: boolean;
 }) {
   const router = useRouter();
   const [inviteOpen, setInviteOpen] = useState(false);
@@ -108,7 +113,12 @@ export function UsersPageClient({
         </button>
       </div>
 
-      <UsersList orgSlug={orgSlug} members={members} />
+      <UsersList
+        orgSlug={orgSlug}
+        members={members}
+        properties={properties}
+        canInviteAdmin={canInviteAdmin}
+      />
 
       <Modal
         open={inviteOpen}
@@ -119,6 +129,7 @@ export function UsersPageClient({
         <InviteUserForm
           orgSlug={orgSlug}
           properties={properties}
+          canInviteAdmin={canInviteAdmin}
           onSaved={() => setInviteOpen(false)}
         />
       </Modal>
@@ -126,9 +137,20 @@ export function UsersPageClient({
   );
 }
 
-function UsersList({ orgSlug, members }: { orgSlug: string; members: TeamMember[] }) {
+function UsersList({
+  orgSlug,
+  members,
+  properties,
+  canInviteAdmin = false,
+}: {
+  orgSlug: string;
+  members: TeamMember[];
+  properties: PropertySummary[];
+  canInviteAdmin?: boolean;
+}) {
   const router = useRouter();
   const [, startRemove] = useTransition();
+  const [editing, setEditing] = useState<TeamMember | null>(null);
 
   async function handleRemove(membershipId: string, email: string | null) {
     const { confirmed } = await confirmDialog({
@@ -153,6 +175,7 @@ function UsersList({ orgSlug, members }: { orgSlug: string; members: TeamMember[
   }
 
   return (
+    <>
     <ul className="divide-y divide-border rounded-xl border border-border bg-white">
       {members.map((member) => (
         <li key={member.id} className="px-3 py-3">
@@ -165,9 +188,7 @@ function UsersList({ orgSlug, members }: { orgSlug: string; members: TeamMember[
                 <p className="text-list-meta">{member.email}</p>
               )}
               <div className="mt-1 flex flex-wrap gap-1">
-                <Badge variant="muted" className="capitalize">
-                  {member.role}
-                </Badge>
+                <Badge variant="muted">{formatMembershipRole(member.role)}</Badge>
                 {member.siteNames.length > 0 ? (
                   member.siteNames.map((name) => (
                     <Badge key={name} variant="muted" className="text-[10px]">
@@ -191,28 +212,157 @@ function UsersList({ orgSlug, members }: { orgSlug: string; members: TeamMember[
               )}
             </div>
             {member.role !== "owner" && (
-              <button
-                type="button"
-                className="text-xs font-semibold text-red-600"
-                onClick={() => handleRemove(member.id, member.email)}
-              >
-                Remove
-              </button>
+              <div className="flex shrink-0 items-center gap-2">
+                <button
+                  type="button"
+                  className="inline-flex items-center gap-1 text-xs font-semibold text-foreground"
+                  onClick={() => setEditing(member)}
+                >
+                  <Pencil className="h-3.5 w-3.5" />
+                  Edit
+                </button>
+                <button
+                  type="button"
+                  className="text-xs font-semibold text-red-600"
+                  onClick={() => handleRemove(member.id, member.email)}
+                >
+                  Remove
+                </button>
+              </div>
             )}
           </div>
         </li>
       ))}
     </ul>
+
+      <Modal
+        open={!!editing}
+        onClose={() => setEditing(null)}
+        title="Edit team member"
+        description="Update role, display name, or property access."
+      >
+        {editing && (
+          <EditUserForm
+            orgSlug={orgSlug}
+            member={editing}
+            properties={properties}
+            canInviteAdmin={canInviteAdmin}
+            onSaved={() => setEditing(null)}
+          />
+        )}
+      </Modal>
+    </>
+  );
+}
+
+function EditUserForm({
+  orgSlug,
+  member,
+  properties,
+  canInviteAdmin = false,
+  onSaved,
+}: {
+  orgSlug: string;
+  member: TeamMember;
+  properties: PropertySummary[];
+  canInviteAdmin?: boolean;
+  onSaved?: () => void;
+}) {
+  const router = useRouter();
+  const [state, formAction, pending] = useActionState(
+    updateTeamMember.bind(null, orgSlug),
+    initial
+  );
+  const lastError = useRef<string | undefined>(undefined);
+  const lastSuccess = useRef(false);
+  const hasAllSites =
+    member.role === "manager" &&
+    (member.siteIds.length === 0 ||
+      member.siteIds.length >= properties.length);
+
+  useEffect(() => {
+    if (state.error && state.error !== lastError.current) {
+      toast.error(state.error);
+      lastError.current = state.error;
+    }
+    if (state.success && !lastSuccess.current) {
+      lastSuccess.current = true;
+      toast.success("User updated.");
+      router.refresh();
+      onSaved?.();
+    }
+  }, [state.error, state.success, onSaved, router]);
+
+  return (
+    <FormPanel>
+      <form action={formAction} className="space-y-4">
+        <input type="hidden" name="membership_id" value={member.id} />
+        <p className="text-sm text-muted">{member.email}</p>
+        <div>
+          <label className="text-label normal-case">Display name</label>
+          <input
+            name="display_name"
+            className="input-field mt-1.5"
+            defaultValue={member.displayName ?? ""}
+            disabled={pending}
+          />
+        </div>
+        <div>
+          <label className="text-label normal-case">Role</label>
+          <select
+            name="role"
+            className="input-field mt-1.5"
+            defaultValue={member.role}
+            disabled={pending || (member.role === "admin" && !canInviteAdmin)}
+          >
+            {canInviteAdmin && <option value="admin">Admin</option>}
+            <option value="manager">Manager</option>
+            <option value="agent">Agent</option>
+          </select>
+        </div>
+        {properties.length > 0 && (
+          <div>
+            <label className="text-label normal-case">Properties</label>
+            <label className="mt-2 flex items-center gap-2 text-sm">
+              <input
+                type="checkbox"
+                name="assign_all_sites"
+                defaultChecked={hasAllSites}
+              />
+              Assign to all properties
+            </label>
+            <div className="mt-2 space-y-1 rounded-lg border border-border p-2">
+              {properties.map((p) => (
+                <label key={p.id} className="flex items-center gap-2 text-sm">
+                  <input
+                    type="checkbox"
+                    name="site_ids"
+                    value={p.id}
+                    defaultChecked={member.siteIds.includes(p.id)}
+                  />
+                  {p.name}
+                </label>
+              ))}
+            </div>
+          </div>
+        )}
+        <LoadingButton type="submit" loading={pending} className="btn-primary w-full">
+          Save changes
+        </LoadingButton>
+      </form>
+    </FormPanel>
   );
 }
 
 function InviteUserForm({
   orgSlug,
   properties,
+  canInviteAdmin = false,
   onSaved,
 }: {
   orgSlug: string;
   properties: PropertySummary[];
+  canInviteAdmin?: boolean;
   onSaved?: () => void;
 }) {
   const router = useRouter();
@@ -253,6 +403,7 @@ function InviteUserForm({
         <div>
           <label className="text-label normal-case">Role</label>
           <select name="role" className="input-field mt-1.5" defaultValue="manager" disabled={pending}>
+            {canInviteAdmin && <option value="admin">Admin — full access except landlord</option>}
             <option value="manager">Manager</option>
             <option value="agent">Agent</option>
           </select>

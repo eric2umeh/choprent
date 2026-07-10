@@ -23,7 +23,7 @@ import {
 import { Logo } from "@/components/logo";
 import { cn } from "@/lib/utils";
 import type { MembershipRole } from "@/types/database";
-import { canAddUnits } from "@/lib/auth/roles";
+import { canAddUnits, canManageTeam } from "@/lib/auth/roles";
 import { signOutAction } from "@/lib/actions/auth";
 
 const navItems: {
@@ -38,7 +38,7 @@ const navItems: {
   { href: "/tenants", label: "Tenants", icon: Users },
   {
     href: "/properties",
-    label: "Properties & units",
+    label: "Units & Properties",
     icon: Building2,
     hint: "Add shops and units inside each property",
   },
@@ -73,7 +73,7 @@ function NavLinks({
   const filteredNav = navItems.filter((item) => {
     if (collapsed && item.href === "") return false;
     if (item.href === "/settings" && role === "agent") return false;
-    if (item.href === "/users" && role !== "owner") return false;
+    if (item.href === "/users" && !canManageTeam(role)) return false;
     if (item.href === "/account" && role === "agent") return false;
     if (item.href === "/reports" && role === "agent") return false;
     if (item.href === "/expenses" && role === "agent") return false;

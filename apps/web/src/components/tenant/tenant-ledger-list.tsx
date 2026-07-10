@@ -38,10 +38,7 @@ export function TenantLedgerList({
     });
   }, [lines, search, kindFilter]);
 
-  const { page, setPage, totalPages, slice, pageSize } = usePagination(
-    filtered,
-    6
-  );
+  const { page, setPage, totalPages, slice, pageSize } = usePagination(filtered);
 
   const columns: Column<LedgerLineItem>[] = [
     {

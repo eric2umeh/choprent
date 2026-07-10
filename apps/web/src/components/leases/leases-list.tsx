@@ -55,10 +55,7 @@ export function LeasesList({
     });
   }, [leases, search, cadenceFilter, rentStatusFilter]);
 
-  const { page, setPage, totalPages, slice, pageSize } = usePagination(
-    filtered,
-    8,
-  );
+  const { page, setPage, totalPages, slice, pageSize } = usePagination(filtered);
 
   const columns: Column<LeaseListItem>[] = [
     {

@@ -1,3 +1,4 @@
+import { sortByNaturalKey } from "@/lib/utils/natural-sort";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { decodeRouteSegment } from "@/lib/routes/dashboard-paths";
@@ -112,13 +113,16 @@ export async function listUnitsForOrg(
         .order("unit_code");
       if (siteId) adminQuery = adminQuery.eq("site_id", siteId);
       const { data: adminRows } = await adminQuery;
-      return mapUnitRows((adminRows as UnitRow[] | null) ?? []);
+      return sortByNaturalKey(
+        await mapUnitRows((adminRows as UnitRow[] | null) ?? []),
+        (unit) => unit.unitCode
+      );
     } catch {
       return [];
     }
   }
 
-  return mapUnitRows(data as UnitRow[]);
+  return sortByNaturalKey(await mapUnitRows(data as UnitRow[]), (unit) => unit.unitCode);
 }
 
 export async function getUnitDetail(

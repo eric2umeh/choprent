@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { requireStaffContext } from "@/lib/auth/session";
+import { isPrivilegedRole } from "@/lib/auth/roles";
 import { isPaystackDvaEnabled } from "@/lib/paystack/client";
 import {
   listVirtualAccountsForOrg,
@@ -16,7 +17,7 @@ export type VirtualAccountActionState = {
 export async function listOrgVirtualAccounts(orgSlug: string) {
   if (!isPaystackDvaEnabled()) return [];
   const ctx = await requireStaffContext(orgSlug);
-  if (ctx.role !== "owner") return [];
+  if (!isPrivilegedRole(ctx.role)) return [];
   return listVirtualAccountsForOrg(ctx.org.id);
 }
 
@@ -28,8 +29,8 @@ export async function provisionUnitVirtualAccount(
     return { error: "Paystack DVA is not enabled for this deployment." };
   }
   const ctx = await requireStaffContext(orgSlug);
-  if (ctx.role !== "owner") {
-    return { error: "Only the landlord can provision dedicated accounts." };
+  if (!isPrivilegedRole(ctx.role)) {
+    return { error: "Only the landlord or an admin can provision dedicated accounts." };
   }
 
   const result = await provisionUnitDva(ctx.org.id, unitId);

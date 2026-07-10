@@ -8,6 +8,7 @@ import {
   type OrgSettingsActionState,
 } from "@/lib/actions/org-settings";
 import type { OrgProfile } from "@/lib/data/org-profile";
+import { PasswordInput } from "@/components/ui/password-input";
 import { FormPanel } from "@/components/ui/form-panel";
 import { LoadingButton } from "@/components/ui/loading-button";
 import { toast } from "@/components/ui/toast";
@@ -129,21 +130,19 @@ export function PasswordSettingsForm({
       <form action={formAction} className="space-y-4">
         <div>
           <label className="text-label normal-case">New password</label>
-          <input
+          <PasswordInput
             name="password"
-            type="password"
             minLength={8}
-            className="input-field mt-1.5"
+            className="mt-1.5"
             disabled={pending}
           />
         </div>
         <div>
           <label className="text-label normal-case">Confirm password</label>
-          <input
+          <PasswordInput
             name="confirm_password"
-            type="password"
             minLength={8}
-            className="input-field mt-1.5"
+            className="mt-1.5"
             disabled={pending}
           />
         </div>

@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { requireStaffContext } from "@/lib/auth/session";
 import { createAdminClient } from "@/lib/supabase/admin";
 import type { MembershipRole } from "@/types/database";
+import { canManageTeam, isPrivilegedRole } from "@/lib/auth/roles";
 
 export type TeamActionState = {
   error?: string;
@@ -61,7 +62,7 @@ async function otherOrgNamesForUser(
 
 export async function listTeamMembers(orgSlug: string): Promise<TeamMember[]> {
   const ctx = await requireStaffContext(orgSlug);
-  if (ctx.role !== "owner") return [];
+  if (!canManageTeam(ctx.role)) return [];
 
   const admin = createAdminClient();
   const { data: rows } = await admin
@@ -115,7 +116,7 @@ export async function listPendingResignations(
   orgSlug: string
 ): Promise<ResignationRequest[]> {
   const ctx = await requireStaffContext(orgSlug);
-  if (ctx.role !== "owner") return [];
+  if (!canManageTeam(ctx.role)) return [];
 
   const admin = createAdminClient();
   const { data: rows } = await admin
@@ -155,8 +156,8 @@ export async function inviteTeamMember(
   formData: FormData
 ): Promise<TeamActionState> {
   const ctx = await requireStaffContext(orgSlug);
-  if (ctx.role !== "owner") {
-    return { error: "Only the landlord can invite team members." };
+  if (!canManageTeam(ctx.role)) {
+    return { error: "Only the landlord or an admin can invite team members." };
   }
 
   const email = String(formData.get("email") ?? "").trim().toLowerCase();
@@ -168,8 +169,14 @@ export async function inviteTeamMember(
     .filter(Boolean);
 
   if (!email) return { error: "Email is required." };
-  if (role !== "manager" && role !== "agent") {
-    return { error: "Choose manager or agent." };
+  if (role === "owner") {
+    return { error: "Landlord accounts cannot be invited. They sign up directly." };
+  }
+  if (role === "admin" && ctx.role !== "owner") {
+    return { error: "Only the landlord can invite an admin." };
+  }
+  if (role !== "manager" && role !== "agent" && role !== "admin") {
+    return { error: "Choose admin, manager, or agent." };
   }
 
   const admin = createAdminClient();
@@ -259,13 +266,34 @@ export async function inviteTeamMember(
   return { success: true, warning };
 }
 
-export async function removeTeamMember(
+export async function updateTeamMember(
   orgSlug: string,
-  membershipId: string
+  _prev: TeamActionState,
+  formData: FormData
 ): Promise<TeamActionState> {
   const ctx = await requireStaffContext(orgSlug);
-  if (ctx.role !== "owner") {
-    return { error: "Only the landlord can remove team members." };
+  if (!canManageTeam(ctx.role)) {
+    return { error: "Only the landlord or an admin can edit team members." };
+  }
+
+  const membershipId = String(formData.get("membership_id") ?? "").trim();
+  const role = String(formData.get("role") ?? "") as MembershipRole;
+  const displayName = String(formData.get("display_name") ?? "").trim() || null;
+  const assignAll = formData.get("assign_all_sites") === "on";
+  const siteIds = formData
+    .getAll("site_ids")
+    .map((v) => String(v))
+    .filter(Boolean);
+
+  if (!membershipId) return { error: "Member not found." };
+  if (role === "owner") {
+    return { error: "Landlord role cannot be changed here." };
+  }
+  if (role === "admin" && ctx.role !== "owner") {
+    return { error: "Only the landlord can assign the admin role." };
+  }
+  if (role !== "manager" && role !== "agent" && role !== "admin") {
+    return { error: "Choose admin, manager, or agent." };
   }
 
   const admin = createAdminClient();
@@ -278,7 +306,81 @@ export async function removeTeamMember(
 
   if (!row) return { error: "Team member not found." };
   if (row.role === "owner") {
-    return { error: "You cannot remove the landlord account." };
+    return { error: "You cannot edit the landlord account." };
+  }
+  if (row.role === "admin" && ctx.role !== "owner") {
+    return { error: "Only the landlord can edit an admin." };
+  }
+  if (row.role === "admin" && role !== "admin" && ctx.role !== "owner") {
+    return { error: "Only the landlord can change an admin's role." };
+  }
+
+  const { error: updateError } = await admin
+    .from("memberships")
+    .update({ role, display_name: displayName })
+    .eq("id", membershipId);
+
+  if (updateError) return { error: updateError.message };
+
+  await admin.from("site_assignments").delete().eq("user_id", row.user_id);
+
+  if (role === "agent" || assignAll || siteIds.length > 0) {
+    const { data: sites } = await admin
+      .from("sites")
+      .select("id")
+      .eq("organization_id", ctx.org.id);
+
+    const targetSiteIds =
+      role === "manager" && !assignAll && siteIds.length === 0
+        ? []
+        : assignAll
+          ? (sites ?? []).map((s) => s.id)
+          : siteIds;
+
+    if (role === "agent" && targetSiteIds.length === 0) {
+      return {
+        error: "Agents need at least one property assigned. Select properties or choose all.",
+      };
+    }
+
+    if (targetSiteIds.length > 0) {
+      const rows = targetSiteIds.map((siteId) => ({
+        user_id: row.user_id,
+        site_id: siteId,
+      }));
+      const { error: assignError } = await admin.from("site_assignments").insert(rows);
+      if (assignError) return { error: assignError.message };
+    }
+  }
+
+  revalidatePath(`/d/${orgSlug}/users`);
+  revalidatePath(`/d/${orgSlug}/settings`);
+  return { success: true };
+}
+
+export async function removeTeamMember(
+  orgSlug: string,
+  membershipId: string
+): Promise<TeamActionState> {
+  const ctx = await requireStaffContext(orgSlug);
+  if (!canManageTeam(ctx.role)) {
+    return { error: "Only the landlord or an admin can remove team members." };
+  }
+
+  const admin = createAdminClient();
+  const { data: row } = await admin
+    .from("memberships")
+    .select("id, role, user_id")
+    .eq("id", membershipId)
+    .eq("organization_id", ctx.org.id)
+    .maybeSingle();
+
+  if (!row) return { error: "Team member not found." };
+  if (row.role === "owner") {
+    return { error: "You cannot remove or change the landlord account." };
+  }
+  if (row.role === "admin" && ctx.role !== "owner") {
+    return { error: "Only the landlord can remove an admin." };
   }
   if (row.user_id === ctx.user.id) {
     return { error: "You cannot remove yourself." };
@@ -344,8 +446,8 @@ export async function respondToResignation(
   note?: string
 ): Promise<TeamActionState> {
   const ctx = await requireStaffContext(orgSlug);
-  if (ctx.role !== "owner") {
-    return { error: "Only the landlord can respond to resignation requests." };
+  if (!canManageTeam(ctx.role)) {
+    return { error: "Only the landlord or an admin can respond to resignation requests." };
   }
 
   const admin = createAdminClient();

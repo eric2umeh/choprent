@@ -1,3 +1,4 @@
+import { sortByNaturalKey } from "@/lib/utils/natural-sort";
 import { createAdminClient } from "@/lib/supabase/admin";
 import type { BillingCadence } from "@/types/database";
 import { slugify } from "@/lib/utils/slug";
@@ -200,7 +201,8 @@ export async function listLeasesForOrg(orgId: string): Promise<LeaseListItem[]> 
       .order("start_date", { ascending: false });
 
     if (!data) return [];
-    return mapLeaseRows(data as LeaseRow[], admin);
+    const leases = await mapLeaseRows(data as LeaseRow[], admin);
+    return sortByNaturalKey(leases, (lease) => lease.unitCode);
   } catch {
     return [];
   }

@@ -3,17 +3,18 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { requireStaffContext } from "@/lib/auth/session";
+import { canAddUnits } from "@/lib/auth/roles";
 import { getPropertyForOrg } from "@/lib/data/sites";
 import { slugify } from "@/lib/utils/slug";
 import { propertyPath } from "@/lib/routes/dashboard-paths";
 import { SITE_TYPE_OPTIONS } from "@/lib/data/property-types";
-import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import type { Site } from "@/types/database";
 
 export type PropertyActionState = {
   error?: string;
   success?: boolean;
+  propertyId?: string;
 };
 
 const SITE_TYPES = SITE_TYPE_OPTIONS.map((option) => option.value);
@@ -45,17 +46,16 @@ export async function saveProperty(
 ): Promise<PropertyActionState> {
   const ctx = await requireStaffContext(orgSlug);
 
-  if (ctx.role !== "owner") {
-    return { error: "Only the landlord can add or edit properties." };
+  if (!canAddUnits(ctx.role)) {
+    return { error: "Only the landlord or an admin can add or edit properties." };
   }
 
-  const propertyId = String(formData.get("property_id") ?? "").trim() || null;
+  let propertyId = String(formData.get("property_id") ?? "").trim() || null;
   const name = String(formData.get("name") ?? "").trim();
   const siteType = String(formData.get("site_type") ?? "plaza") as Site["site_type"];
   const addressLine1 = String(formData.get("address_line1") ?? "").trim();
   const city = String(formData.get("city") ?? "").trim();
   const state = String(formData.get("state") ?? "").trim();
-  const logo = formData.get("logo");
 
   if (!name) {
     return { error: "Property name is required." };
@@ -87,23 +87,6 @@ export async function saveProperty(
     logo_path: existingAddress.logo_path ?? "",
   };
 
-  if (logo instanceof File && logo.size > 0 && propertyId) {
-    if (logo.size > 2 * 1024 * 1024) {
-      return { error: "Logo must be 2MB or less." };
-    }
-    if (!LOGO_MIME.has(logo.type)) {
-      return { error: "Logo must be JPG, PNG, or WebP." };
-    }
-    const ext = logo.name.split(".").pop()?.toLowerCase() ?? "png";
-    const path = `${ctx.org.id}/properties/${propertyId}/logo.${ext}`;
-    const supabase = await createClient();
-    const { error: uploadError } = await supabase.storage
-      .from("documents")
-      .upload(path, logo, { upsert: true, contentType: logo.type });
-    if (uploadError) return { error: uploadError.message };
-    address.logo_path = path;
-  }
-
   if (propertyId) {
     const { error } = await admin
       .from("sites")
@@ -131,27 +114,71 @@ export async function saveProperty(
       return { error: error?.message ?? "Could not create property." };
     }
 
-    if (logo instanceof File && logo.size > 0) {
-      const ext = logo.name.split(".").pop()?.toLowerCase() ?? "png";
-      const path = `${ctx.org.id}/properties/${created.id}/logo.${ext}`;
-      const supabase = await createClient();
-      const { error: uploadError } = await supabase.storage
-        .from("documents")
-        .upload(path, logo, { upsert: true, contentType: logo.type });
-      if (uploadError) return { error: uploadError.message };
-      await admin
-        .from("sites")
-        .update({
-          address: { ...insertAddress, logo_path: path },
-        })
-        .eq("id", created.id);
-    }
+    propertyId = created.id;
   }
 
   revalidatePath(`/d/${orgSlug}/properties`);
   revalidatePath(`/d/${orgSlug}/account`);
   revalidatePath(`/t/${orgSlug}`, "layout");
-  return { success: true };
+  return {
+    success: true,
+    propertyId: propertyId ?? undefined,
+  };
+}
+
+export async function uploadPropertyLogo(
+  orgSlug: string,
+  propertyId: string,
+  formData: FormData
+): Promise<PropertyActionState> {
+  const ctx = await requireStaffContext(orgSlug);
+  if (!canAddUnits(ctx.role)) {
+    return { error: "Only the landlord or an admin can update property logos." };
+  }
+
+  const property = await getPropertyForOrg(ctx.org.id, propertyId);
+  if (!property) return { error: "Property not found." };
+
+  const logo = formData.get("logo");
+  if (!(logo instanceof File) || logo.size === 0) {
+    return { error: "Choose a logo file to upload." };
+  }
+  if (logo.size > 2 * 1024 * 1024) {
+    return { error: "Logo must be 2MB or less." };
+  }
+  if (!LOGO_MIME.has(logo.type)) {
+    return { error: "Logo must be JPG, PNG, or WebP." };
+  }
+
+  const admin = createAdminClient();
+  const { data: siteRow } = await admin
+    .from("sites")
+    .select("address")
+    .eq("id", propertyId)
+    .maybeSingle();
+
+  const existingAddress = (siteRow?.address ?? {}) as Record<string, string>;
+  const ext = logo.name.split(".").pop()?.toLowerCase() ?? "png";
+  const path = `${ctx.org.id}/properties/${propertyId}/logo.${ext}`;
+
+  const { error: uploadError } = await admin.storage
+    .from("documents")
+    .upload(path, logo, { upsert: true, contentType: logo.type });
+  if (uploadError) return { error: uploadError.message };
+
+  const { error } = await admin
+    .from("sites")
+    .update({
+      address: { ...existingAddress, logo_path: path },
+    })
+    .eq("id", propertyId)
+    .eq("organization_id", ctx.org.id);
+
+  if (error) return { error: error.message };
+
+  revalidatePath(`/d/${orgSlug}/properties`);
+  revalidatePath(`/t/${orgSlug}`, "layout");
+  return { success: true, propertyId };
 }
 
 export async function deleteProperty(
@@ -159,8 +186,8 @@ export async function deleteProperty(
   propertyId: string
 ): Promise<PropertyActionState> {
   const ctx = await requireStaffContext(orgSlug);
-  if (ctx.role !== "owner") {
-    return { error: "Only the landlord can delete properties." };
+  if (!canAddUnits(ctx.role)) {
+    return { error: "Only the landlord or an admin can delete properties." };
   }
 
   const property = await getPropertyForOrg(ctx.org.id, propertyId);

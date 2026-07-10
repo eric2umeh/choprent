@@ -40,7 +40,7 @@ export async function createUnit(
 ): Promise<UnitActionState> {
   const ctx = await requireStaffContext(orgSlug);
   if (!canAddUnits(ctx.role)) {
-    return { error: "Only the landlord can add units." };
+    return { error: "Only the landlord or an admin can add units." };
   }
 
   const siteId = String(formData.get("site_id") ?? "").trim();

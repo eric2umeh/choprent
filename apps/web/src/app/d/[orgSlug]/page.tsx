@@ -4,6 +4,7 @@ import { StatCard } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { ListRow, SectionHeader } from "@/components/ui/section-header";
 import { requireStaffContext } from "@/lib/auth/session";
+import { isPrivilegedRole } from "@/lib/auth/roles";
 import { getDashboardStats } from "@/lib/data/dashboard-stats";
 import { getActivityFeed } from "@/lib/data/activity-feed";
 import { DashboardLiveSync } from "@/components/dashboard/dashboard-live-sync";
@@ -35,7 +36,7 @@ export default async function DashboardHomePage({
     listUnitsForOrg(ctx.org.id),
     getActivityFeed(ctx.org.id, 8),
     listNotificationsForUser(ctx.user.id, ctx.org.id),
-    ctx.role === "owner"
+    ctx.role === "owner" || ctx.role === "admin"
       ? getPilotOnboardingStatus(ctx.org.id, orgSlug)
       : Promise.resolve(null),
   ]);
@@ -134,7 +135,7 @@ export default async function DashboardHomePage({
       <div className="bg-white px-3 py-4">
         <SectionHeader title="Units" href={`/d/${orgSlug}/properties`} />
         {units.length === 0 ? (
-          <p className="text-empty-state">No units yet — add a property, then add units.</p>
+          <p className="text-empty-state">No unit yet — add a property, then add units.</p>
         ) : (
           <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-3">
             {units.slice(0, 6).map((unit) => (

@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { requireStaffContext } from "@/lib/auth/session";
+import { isPrivilegedRole } from "@/lib/auth/roles";
 import { getPropertyForOrg } from "@/lib/data/sites";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
@@ -33,7 +34,7 @@ export async function saveSettlementAccount(
   formData: FormData
 ): Promise<SettlementActionState> {
   const ctx = await requireStaffContext(orgSlug);
-  if (ctx.role !== "owner") {
+  if (!isPrivilegedRole(ctx.role)) {
     return { error: "Only the landlord can manage settlement accounts." };
   }
 
@@ -110,7 +111,7 @@ export async function deleteSettlementAccount(
   accountId: string
 ): Promise<SettlementActionState> {
   const ctx = await requireStaffContext(orgSlug);
-  if (ctx.role !== "owner") {
+  if (!isPrivilegedRole(ctx.role)) {
     return { error: "Only the landlord can manage settlement accounts." };
   }
 

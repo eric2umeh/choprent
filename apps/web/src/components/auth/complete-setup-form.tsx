@@ -107,7 +107,7 @@ export function CompleteSetupForm({ email }: { email: string }) {
             value={workspaceName}
             onChange={(e) => setWorkspaceName(e.target.value)}
             className="input-field mt-1"
-            placeholder="e.g. Eri Plaza, Lekki Properties"
+            placeholder="e.g. Sunrise Plaza, Lekki Properties"
             disabled={loading}
           />
           <p className="mt-1 text-[11px] text-muted">

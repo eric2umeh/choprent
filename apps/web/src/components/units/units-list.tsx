@@ -16,8 +16,10 @@ import { ViewToggle, type ViewMode } from "@/components/ui/view-toggle";
 import type { UnitListItem } from "@/lib/data/unit-types";
 import { formatPropertyType } from "@/lib/data/unit-types";
 import { formatNaira } from "@/lib/auth/roles";
-import { Plus } from "lucide-react";
+import { Plus, Upload } from "lucide-react";
 import { unitPath, propertyPath } from "@/lib/routes/dashboard-paths";
+import { Modal } from "@/components/ui/modal";
+import { BulkUnitsImportForm } from "@/components/units/bulk-units-import-form";
 
 function statusVariant(status: string) {
   if (status === "occupied") return "success" as const;
@@ -29,6 +31,7 @@ export function UnitsList({
   orgSlug,
   propertyId,
   propertySlug,
+  propertyName,
   canAdd,
   units,
   onAddUnit,
@@ -37,6 +40,7 @@ export function UnitsList({
   orgSlug: string;
   propertyId: string;
   propertySlug: string;
+  propertyName?: string;
   canAdd: boolean;
   units: UnitListItem[];
   onAddUnit?: () => void;
@@ -48,6 +52,7 @@ export function UnitsList({
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [typeFilter, setTypeFilter] = useState("all");
+  const [showImport, setShowImport] = useState(false);
 
   const filtered = useMemo(() => {
     return units.filter((u) => {
@@ -62,10 +67,7 @@ export function UnitsList({
     });
   }, [units, search, statusFilter, typeFilter]);
 
-  const { page, setPage, totalPages, slice, pageSize } = usePagination(
-    filtered,
-    8,
-  );
+  const { page, setPage, totalPages, slice, pageSize } = usePagination(filtered);
 
   const showPropertyColumn = useMemo(
     () => new Set(units.map((unit) => unit.propertyName).filter(Boolean)).size > 1,
@@ -203,6 +205,16 @@ export function UnitsList({
               Add unit
             </button>
           )}
+          {canAdd && (
+            <button
+              type="button"
+              onClick={() => setShowImport(true)}
+              className="btn-ghost inline-flex gap-1.5 px-3 py-1.5"
+            >
+              <Upload className="h-3.5 w-3.5" />
+              Import CSV
+            </button>
+          )}
           {canAdd && !onAddUnit && (
             <Link
               href={`${propertyPath(orgSlug, propertySlug)}/units/new`}
@@ -273,6 +285,20 @@ export function UnitsList({
           pageSize={pageSize}
         />
       </ListPanel>
+
+      <Modal
+        open={showImport}
+        onClose={() => setShowImport(false)}
+        title="Import units from CSV"
+        description="Bulk-add shops from a spreadsheet export."
+      >
+        <BulkUnitsImportForm
+          orgSlug={orgSlug}
+          propertyId={propertyId}
+          propertyName={propertyName ?? units[0]?.propertyName ?? "Property"}
+          onSaved={() => setShowImport(false)}
+        />
+      </Modal>
     </>
   );
 }

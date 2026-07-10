@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { canVerifyPayments } from "@/lib/auth/roles";
 import { requireStaffContext } from "@/lib/auth/session";
+import { isPrivilegedRole } from "@/lib/auth/roles";
 import { runPaymentAllocation } from "@/lib/charges/allocate-payment";
 import { getUnitBalanceBreakdown } from "@/lib/data/unit-balance-breakdown";
 import {
@@ -248,8 +249,8 @@ export async function unverifyPayment(
   paymentId: string
 ): Promise<PaymentActionState> {
   const ctx = await requireStaffContext(orgSlug);
-  if (ctx.role !== "owner") {
-    return { error: "Only the landlord can unverify a payment." };
+  if (!isPrivilegedRole(ctx.role)) {
+    return { error: "Only the landlord or an admin can unverify a payment." };
   }
 
   const admin = createAdminClient();
