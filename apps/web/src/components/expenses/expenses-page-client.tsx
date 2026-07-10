@@ -68,10 +68,7 @@ export function ExpensesPageClient({
     });
   }, [expenses, search, propertyFilter]);
 
-  const { page, setPage, totalPages, slice, pageSize } = usePagination(
-    filtered,
-    8
-  );
+  const { page, setPage, totalPages, slice, pageSize } = usePagination(filtered);
 
   async function handleDelete(expense: ExpenseListItem) {
     const { confirmed } = await confirmDialog({

@@ -79,10 +79,7 @@ export function PaymentsList({
     });
   }, [payments, search, statusFilter, rentStatusFilter, methodFilter]);
 
-  const { page, setPage, totalPages, slice, pageSize } = usePagination(
-    filtered,
-    8
-  );
+  const { page, setPage, totalPages, slice, pageSize } = usePagination(filtered);
 
   function handleVerify(paymentId: string) {
     setActingId(paymentId);

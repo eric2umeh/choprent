@@ -72,10 +72,7 @@ export function DocumentsList({
     });
   }, [documents, search, typeFilter, scopeFilter, unitFilter]);
 
-  const { page, setPage, totalPages, slice, pageSize } = usePagination(
-    filtered,
-    8,
-  );
+  const { page, setPage, totalPages, slice, pageSize } = usePagination(filtered);
 
   function handleDownload(docId: string) {
     setDownloadingId(docId);
