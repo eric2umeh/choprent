@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { requireStaffContext } from "@/lib/auth/session";
+import { isPrivilegedRole } from "@/lib/auth/roles";
 import { createAdminClient } from "@/lib/supabase/admin";
 
 export type OnboardingActionState = {
@@ -13,8 +14,8 @@ export async function dismissPilotOnboarding(
   orgSlug: string
 ): Promise<OnboardingActionState> {
   const ctx = await requireStaffContext(orgSlug);
-  if (ctx.role !== "owner") {
-    return { error: "Only the landlord can dismiss the setup guide." };
+  if (!isPrivilegedRole(ctx.role)) {
+    return { error: "Only the landlord or an admin can dismiss the setup guide." };
   }
 
   const admin = createAdminClient();
@@ -42,8 +43,8 @@ export async function reopenPilotOnboarding(
   orgSlug: string
 ): Promise<OnboardingActionState> {
   const ctx = await requireStaffContext(orgSlug);
-  if (ctx.role !== "owner") {
-    return { error: "Only the landlord can reopen the setup guide." };
+  if (!isPrivilegedRole(ctx.role)) {
+    return { error: "Only the landlord or an admin can reopen the setup guide." };
   }
 
   const admin = createAdminClient();

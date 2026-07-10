@@ -15,7 +15,7 @@ export type AuthActionState = {
   success?: boolean;
 };
 
-const STAFF_ROLES: MembershipRole[] = ["owner", "manager", "agent"];
+const STAFF_ROLES: MembershipRole[] = ["owner", "admin", "manager", "agent"];
 
 async function getExistingStaffMembership(userId: string) {
   const admin = createAdminClient();
@@ -23,7 +23,7 @@ async function getExistingStaffMembership(userId: string) {
     .from("memberships")
     .select("role, organization_id, organizations(slug)")
     .eq("user_id", userId)
-    .in("role", ["owner", "manager", "agent"])
+    .in("role", ["owner", "admin", "manager", "agent"])
     .limit(1)
     .maybeSingle();
 }

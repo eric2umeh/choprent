@@ -78,7 +78,7 @@ function slugLookupCandidates(slug: string): string[] {
   return [slug];
 }
 
-/** Prefer eri-plaza in URLs for the seeded demo org. */
+/** Prefer the org's canonical slug in dashboard URLs when available. */
 export function canonicalOrgSlug(org: { id: string; slug: string }): string {
   if (org.id === PILOT_ORG_ID) return PILOT_ORG_SLUG;
   return org.slug;
@@ -199,7 +199,7 @@ async function getStaffDashboardPathAdmin(userId: string): Promise<string | null
       .from("memberships")
       .select("organizations(id, slug)")
       .eq("user_id", userId)
-      .in("role", ["owner", "manager", "agent"])
+      .in("role", ["owner", "admin", "manager", "agent"])
       .limit(1)
       .maybeSingle();
 
@@ -220,7 +220,7 @@ export async function resolvePostLoginPath(): Promise<string> {
     .from("memberships")
     .select("organization_id, organizations(id, slug)")
     .eq("user_id", user.id)
-    .in("role", ["owner", "manager", "agent"])
+    .in("role", ["owner", "admin", "manager", "agent"])
     .limit(1)
     .maybeSingle();
 

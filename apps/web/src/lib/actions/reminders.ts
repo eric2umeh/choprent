@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { requireStaffContext } from "@/lib/auth/session";
+import { isPrivilegedRole } from "@/lib/auth/roles";
 import { createAdminClient } from "@/lib/supabase/admin";
 
 export type ReminderActionState = {
@@ -18,7 +19,7 @@ export type ReminderRule = {
 
 export async function listReminderRules(orgSlug: string): Promise<ReminderRule[]> {
   const ctx = await requireStaffContext(orgSlug);
-  if (ctx.role !== "owner") return [];
+  if (!isPrivilegedRole(ctx.role)) return [];
 
   const admin = createAdminClient();
   const { data } = await admin
@@ -41,7 +42,7 @@ export async function upsertReminderRule(
   formData: FormData
 ): Promise<ReminderActionState> {
   const ctx = await requireStaffContext(orgSlug);
-  if (ctx.role !== "owner") {
+  if (!isPrivilegedRole(ctx.role)) {
     return { error: "Only the landlord can manage reminder rules." };
   }
 
@@ -76,7 +77,7 @@ export async function toggleReminderRule(
   enabled: boolean
 ): Promise<ReminderActionState> {
   const ctx = await requireStaffContext(orgSlug);
-  if (ctx.role !== "owner") {
+  if (!isPrivilegedRole(ctx.role)) {
     return { error: "Only the landlord can manage reminder rules." };
   }
 

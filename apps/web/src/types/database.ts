@@ -1,6 +1,6 @@
 /** ChopRent domain enums — mirrors supabase/migrations enums */
 
-export type MembershipRole = "owner" | "manager" | "agent";
+export type MembershipRole = "owner" | "admin" | "manager" | "agent";
 export type PropertyType =
   | "shop"
   | "flat"

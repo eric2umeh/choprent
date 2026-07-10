@@ -1,6 +1,7 @@
 import { PageHeader } from "@/components/ui/page-header";
 import { UsersPageClient } from "@/components/users/users-page-client";
 import { requireStaffContext } from "@/lib/auth/session";
+import { canManageTeam } from "@/lib/auth/roles";
 import { listPropertiesForOrg } from "@/lib/data/sites";
 import { listTeamMembers, listPendingResignations } from "@/lib/actions/team";
 import { notFound, redirect } from "next/navigation";
@@ -13,7 +14,7 @@ export default async function UsersPage({
   const { orgSlug } = await params;
   const ctx = await requireStaffContext(orgSlug);
 
-  if (ctx.role !== "owner") {
+  if (!canManageTeam(ctx.role)) {
     redirect(`/d/${orgSlug}/settings`);
   }
 
@@ -36,6 +37,7 @@ export default async function UsersPage({
         members={members}
         properties={properties}
         resignations={resignations}
+        canInviteAdmin={ctx.role === "owner"}
       />
     </div>
   );
