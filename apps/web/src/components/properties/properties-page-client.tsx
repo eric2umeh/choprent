@@ -62,6 +62,8 @@ export function PropertiesPageClient({
         <PageHeader
           title={singleProperty.name}
           description={`${formatSiteType(singleProperty.siteType)} · ${units.length} ${units.length === 1 ? "unit" : "units"}`}
+          imageUrl={singleProperty.logoUrl}
+          imageAlt={`${singleProperty.name} logo`}
           action={
             canManage ? (
               <div className="flex flex-wrap items-center gap-1">
@@ -123,6 +125,7 @@ export function PropertiesPageClient({
             <PropertyForm
               orgSlug={orgSlug}
               property={editing}
+              logoUrl={editing.logoUrl}
               onSaved={() => setEditing(null)}
             />
           )}
@@ -159,7 +162,7 @@ export function PropertiesPageClient({
   return (
     <div>
       <PageHeader
-        title="Properties & units"
+        title="Units & Properties"
         description="Plazas, estates, malls, and houses — add shops and units inside each property"
         action={
           canManage ? (

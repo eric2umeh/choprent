@@ -63,6 +63,8 @@ export function PropertyDetailPageClient({
       <PageHeader
         title={property.name}
         description={`${formatSiteType(property.siteType)} · ${units.length} ${units.length === 1 ? "unit" : "units"}`}
+        imageUrl={property.logoUrl}
+        imageAlt={`${property.name} logo`}
         action={
           <div className="flex flex-wrap items-center gap-1">
             <Link href={`/d/${orgSlug}/properties`} className="btn-ghost px-3 py-1.5">
@@ -139,6 +141,7 @@ export function PropertyDetailPageClient({
         <PropertyForm
           orgSlug={orgSlug}
           property={property}
+          logoUrl={property.logoUrl}
           onSaved={() => setEditing(false)}
         />
       </Modal>

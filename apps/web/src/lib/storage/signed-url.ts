@@ -6,21 +6,20 @@ export async function createSignedStorageUrl(
   path: string,
   expiresIn = 3600,
 ): Promise<string | null> {
-  const supabase = await createClient();
-  const { data, error } = await supabase.storage
-    .from(bucket)
-    .createSignedUrl(path, expiresIn);
-
-  if (data?.signedUrl) return data.signedUrl;
-
   try {
     const admin = createAdminClient();
     const { data: adminData } = await admin.storage
       .from(bucket)
       .createSignedUrl(path, expiresIn);
-    return adminData?.signedUrl ?? null;
+    if (adminData?.signedUrl) return adminData.signedUrl;
   } catch {
-    if (error) return null;
-    return null;
+    // fall through to user client
   }
+
+  const supabase = await createClient();
+  const { data } = await supabase.storage
+    .from(bucket)
+    .createSignedUrl(path, expiresIn);
+
+  return data?.signedUrl ?? null;
 }
