@@ -71,7 +71,7 @@ export function PropertiesPageClient({
                   onClick={() => setEditing(singleProperty)}
                 >
                   <Pencil className="h-4 w-4" />
-                  Edit
+                  Edit property
                 </button>
                 <button
                   type="button"
@@ -84,10 +84,10 @@ export function PropertiesPageClient({
                 <button
                   type="button"
                   className="btn-primary inline-flex items-center gap-1.5 px-3 py-1.5"
-                  onClick={() => setShowAddUnit(true)}
+                  onClick={() => setShowAddProperty(true)}
                 >
                   <Plus className="h-4 w-4" />
-                  Add unit
+                  Add property
                 </button>
               </div>
             ) : undefined
@@ -106,6 +106,7 @@ export function PropertiesPageClient({
           orgSlug={orgSlug}
           propertyId={singleProperty.id}
           propertySlug={singleProperty.slug}
+          propertyName={singleProperty.name}
           canAdd={canManage}
           units={units}
           onAddUnit={canManage ? () => setShowAddUnit(true) : undefined}
@@ -125,6 +126,15 @@ export function PropertiesPageClient({
               onSaved={() => setEditing(null)}
             />
           )}
+        </Modal>
+
+        <Modal
+          open={showAddProperty}
+          onClose={() => setShowAddProperty(false)}
+          title="Add property"
+          description="Each plaza, estate, or building is managed separately."
+        >
+          <PropertyForm orgSlug={orgSlug} onSaved={() => setShowAddProperty(false)} />
         </Modal>
 
         <Modal

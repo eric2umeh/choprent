@@ -76,7 +76,7 @@ export function PropertyDetailPageClient({
                   onClick={() => setEditing(true)}
                 >
                   <Pencil className="h-4 w-4" />
-                  Edit
+                  Edit property
                 </button>
                 <button
                   type="button"
@@ -112,6 +112,7 @@ export function PropertyDetailPageClient({
         orgSlug={orgSlug}
         propertyId={property.id}
         propertySlug={property.slug}
+        propertyName={property.name}
         canAdd={canManage}
         units={units}
         onAddUnit={canManage ? () => setShowAddUnit(true) : undefined}

@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
+import { createSignedStorageUrl } from "@/lib/storage/signed-url";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { isUuid, slugify } from "@/lib/utils/slug";
 import type { PropertySummary } from "@/lib/data/property-types";
@@ -19,6 +20,7 @@ function mapSite(row: SiteRow, unitCount = 0): PropertySummary {
     city: address.city ?? "",
     state: address.state ?? "",
     logoPath: address.logo_path ?? null,
+    logoUrl: null,
     unitCount,
   };
 }
@@ -65,7 +67,15 @@ async function attachUnitCounts(
     counts.set(row.site_id, (counts.get(row.site_id) ?? 0) + 1);
   }
 
-  return sites.map((site) => mapSite(site, counts.get(site.id) ?? 0));
+  return Promise.all(
+    sites.map(async (site) => {
+      const summary = mapSite(site, counts.get(site.id) ?? 0);
+      if (summary.logoPath) {
+        summary.logoUrl = await createSignedStorageUrl("documents", summary.logoPath);
+      }
+      return summary;
+    })
+  );
 }
 
 export async function listPropertiesForOrg(orgId: string): Promise<PropertySummary[]> {
