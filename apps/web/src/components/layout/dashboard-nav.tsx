@@ -38,7 +38,7 @@ const navItems: {
   { href: "/tenants", label: "Tenants", icon: Users },
   {
     href: "/properties",
-    label: "Properties & units",
+    label: "Units & Properties",
     icon: Building2,
     hint: "Add shops and units inside each property",
   },
