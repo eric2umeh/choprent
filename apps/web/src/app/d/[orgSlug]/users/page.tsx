@@ -29,8 +29,8 @@ export default async function UsersPage({
   return (
     <div>
       <PageHeader
-        title="Users"
-        description="Managers, agents, property assignments, and resignation requests"
+        title="Users & Roles"
+        description="Manage staff access, roles, and permissions for your plaza"
       />
       <UsersPageClient
         orgSlug={orgSlug}
