@@ -18,8 +18,10 @@ import { Badge } from "@/components/ui/badge";
 import { Modal } from "@/components/ui/modal";
 import { confirmDialog } from "@/components/ui/confirm-dialog";
 import { toast } from "@/components/ui/toast";
+import { Tabs, TabPanel } from "@/components/ui/tabs";
+import { RolesPermissionsPanel } from "@/components/users/roles-permissions-panel";
 import { formatMembershipRole } from "@/lib/auth/role-labels";
-import { Pencil } from "lucide-react";
+import { Pencil, Shield } from "lucide-react";
 
 const initial: TeamActionState = {};
 
@@ -38,10 +40,24 @@ export function UsersPageClient({
 }) {
   const router = useRouter();
   const [inviteOpen, setInviteOpen] = useState(false);
+  const [tab, setTab] = useState<"staff" | "roles">("staff");
   const [, startRespond] = useTransition();
 
+  const staffCount = members.length;
+
   return (
-    <div className="space-y-6 px-3 py-4 lg:px-0">
+    <div className="space-y-0">
+      <Tabs
+        tabs={[
+          { id: "staff", label: `Staff users (${staffCount})` },
+          { id: "roles", label: "Roles & permissions" },
+        ]}
+        active={tab}
+        onChange={(id) => setTab(id as "staff" | "roles")}
+      />
+
+      {tab === "staff" ? (
+        <TabPanel className="space-y-6 lg:px-0">
       {resignations.length > 0 && (
         <section className="rounded-xl border border-amber-200 bg-amber-50 p-4">
           <h2 className="text-sm font-semibold text-amber-900">Pending resignations</h2>
@@ -133,6 +149,16 @@ export function UsersPageClient({
           onSaved={() => setInviteOpen(false)}
         />
       </Modal>
+        </TabPanel>
+      ) : (
+        <TabPanel className="lg:px-0">
+          <div className="mb-3 flex items-center gap-2 text-sm font-medium text-foreground">
+            <Shield className="h-4 w-4 text-green-700" />
+            What each role can do
+          </div>
+          <RolesPermissionsPanel members={members} />
+        </TabPanel>
+      )}
     </div>
   );
 }
