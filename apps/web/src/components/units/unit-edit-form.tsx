@@ -110,7 +110,7 @@ export function UnitEditForm({
           name="status"
           defaultValue={unit.status}
           className="input-field mt-1"
-          disabled={pending || !!unit.tenantName}
+          disabled={pending}
         >
           <option value="vacant">Vacant</option>
           <option value="occupied">Occupied</option>
@@ -118,7 +118,8 @@ export function UnitEditForm({
         </select>
         {unit.tenantName && (
           <p className="mt-1 text-[11px] text-muted">
-            Status follows tenant assignment when a tenant name is saved.
+            Set status to Vacant and save to end the active tenancy and mark this
+            unit vacant.
           </p>
         )}
       </div>
