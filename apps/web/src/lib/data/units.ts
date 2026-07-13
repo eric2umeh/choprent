@@ -5,6 +5,7 @@ import { decodeRouteSegment } from "@/lib/routes/dashboard-paths";
 import { isUuid } from "@/lib/utils/slug";
 import type { UnitListItem, UnitDetail } from "@/lib/data/unit-types";
 import type { PropertyType, UnitStatus } from "@/types/database";
+import { actorLabel, resolveActorLabels } from "@/lib/data/audit-actors";
 
 type UnitRow = {
   id: string;
@@ -15,6 +16,8 @@ type UnitRow = {
   arrears_balance_ngn: number;
   is_composite: boolean;
   composite_note: string | null;
+  created_at?: string;
+  created_by?: string | null;
   sites: { name?: string; slug?: string } | { name?: string; slug?: string }[] | null;
 };
 
@@ -78,6 +81,7 @@ async function mapUnitRows(rows: UnitRow[]): Promise<UnitListItem[]> {
     isComposite: u.is_composite,
     compositeNote: u.composite_note,
     virtualAccount: accountByUnit.get(u.id) ?? null,
+    createdAt: u.created_at?.slice(0, 10) ?? null,
   }));
 }
 
@@ -90,7 +94,7 @@ export async function listUnitsForOrg(
   let query = supabase
     .from("units")
     .select(
-      "id, site_id, unit_code, property_type, status, arrears_balance_ngn, is_composite, composite_note, sites(name, slug)"
+      "id, site_id, unit_code, property_type, status, arrears_balance_ngn, is_composite, composite_note, created_at, sites(name, slug)"
     )
     .eq("organization_id", orgId)
     .order("unit_code");
@@ -107,7 +111,7 @@ export async function listUnitsForOrg(
       let adminQuery = admin
         .from("units")
         .select(
-          "id, site_id, unit_code, property_type, status, arrears_balance_ngn, is_composite, composite_note, sites(name, slug)"
+          "id, site_id, unit_code, property_type, status, arrears_balance_ngn, is_composite, composite_note, created_at, sites(name, slug)"
         )
         .eq("organization_id", orgId)
         .order("unit_code");
@@ -158,7 +162,7 @@ async function fetchUnitDetail(
   let query = supabase
     .from("units")
     .select(
-      "id, site_id, unit_code, property_type, status, arrears_balance_ngn, is_composite, composite_note, organization_id, sites(name, slug)"
+      "id, site_id, unit_code, property_type, status, arrears_balance_ngn, is_composite, composite_note, created_at, created_by, organization_id, sites(name, slug)"
     )
     .eq("organization_id", orgId);
 
@@ -178,7 +182,7 @@ async function fetchUnitDetail(
       let adminQuery = admin
         .from("units")
         .select(
-          "id, site_id, unit_code, property_type, status, arrears_balance_ngn, is_composite, composite_note, organization_id, sites(name, slug)"
+          "id, site_id, unit_code, property_type, status, arrears_balance_ngn, is_composite, composite_note, created_at, created_by, organization_id, sites(name, slug)"
         )
         .eq("organization_id", orgId);
 
@@ -202,6 +206,8 @@ async function fetchUnitDetail(
   const mapped = await mapUnitRows([row]);
   const base = mapped[0];
   if (!base) return null;
+
+  const actorLabels = await resolveActorLabels(orgId, [row.created_by]);
 
   try {
     const admin = createAdminClient();
@@ -229,6 +235,8 @@ async function fetchUnitDetail(
 
     return {
       ...base,
+      createdAt: row.created_at?.slice(0, 10) ?? null,
+      createdByName: actorLabel(actorLabels, row.created_by),
       leaseId: lease?.id ?? null,
       tenantPhone: lease?.tenant_phone ?? null,
       tenantEmail: lease?.tenant_email ?? null,
@@ -238,6 +246,8 @@ async function fetchUnitDetail(
   } catch {
     return {
       ...base,
+      createdAt: row.created_at?.slice(0, 10) ?? null,
+      createdByName: actorLabel(actorLabels, row.created_by),
       leaseId: null,
       tenantPhone: null,
       tenantEmail: null,

@@ -92,6 +92,7 @@ export async function submitTransferPayment(
       payment_method: "bank_transfer",
       status: "pending",
       payment_date: new Date().toISOString().slice(0, 10),
+      recorded_by: ctx.user.id,
       metadata,
     })
     .select("id")

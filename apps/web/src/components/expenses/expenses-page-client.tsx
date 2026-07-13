@@ -219,8 +219,8 @@ export function ExpensesPageClient({
                   <span
                     className={
                       row.netNgn >= 0
-                        ? "font-semibold text-green-700"
-                        : "font-semibold text-red-600"
+                        ? "text-table-cell-strong tabular-nums"
+                        : "text-money-negative"
                     }
                   >
                     Net {formatNaira(row.netNgn)}

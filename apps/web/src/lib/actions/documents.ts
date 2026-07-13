@@ -3,12 +3,20 @@
 import { revalidatePath } from "next/cache";
 import { canManageLeases } from "@/lib/auth/roles";
 import { requireStaffContext, requireTenantContext } from "@/lib/auth/session";
-import { listDocumentsForOrg } from "@/lib/data/documents";
+import {
+  listDocumentsForOrg,
+  type DocumentType,
+} from "@/lib/data/documents";
 import { getTenantLedger } from "@/lib/data/ledger";
+import { parseDocumentType } from "@/lib/documents/categories";
+import {
+  collectFilesFromFormData,
+  insertManagementDocuments,
+  readDocumentUploadFromFormData,
+} from "@/lib/documents/upload";
 import { buildStatementPdf } from "@/lib/pdf/statement";
 import { createSignedStorageUrl } from "@/lib/storage/signed-url";
 import { createAdminClient } from "@/lib/supabase/admin";
-import type { DocumentType } from "@/lib/data/documents";
 
 export type DocumentActionState = {
   error?: string;
@@ -16,32 +24,10 @@ export type DocumentActionState = {
   downloadUrl?: string;
 };
 
-const DOC_TYPES: DocumentType[] = [
-  "letter",
-  "notice",
-  "receipt",
-  "statement",
-  "attachment",
-];
-
-function inferContentType(file: File, ext: string): string {
-  if (file.type && file.type !== "application/octet-stream") return file.type;
-
-  const byExt: Record<string, string> = {
-    pdf: "application/pdf",
-    png: "image/png",
-    jpg: "image/jpeg",
-    jpeg: "image/jpeg",
-    webp: "image/webp",
-    gif: "image/gif",
-    doc: "application/msword",
-    docx: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-    xls: "application/vnd.ms-excel",
-    xlsx: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-    txt: "text/plain",
-  };
-
-  return byExt[ext] ?? "application/octet-stream";
+function revalidateDocumentPaths(orgSlug: string) {
+  revalidatePath(`/d/${orgSlug}/tenants`);
+  revalidatePath(`/d/${orgSlug}/properties`);
+  revalidatePath(`/t/${orgSlug}/documents`);
 }
 
 export async function getDocumentDownloadUrl(
@@ -63,7 +49,9 @@ export async function getDocumentDownloadUrl(
     }
     if (!doc.filePath) return { error: "File not available." };
 
-    const { recordTenantEngagementInternal } = await import("@/lib/actions/tenant-activity-internal");
+    const { recordTenantEngagementInternal } = await import(
+      "@/lib/actions/tenant-activity-internal"
+    );
     await recordTenantEngagementInternal({
       orgId: ctx.org.id,
       tenantUserId: ctx.user.id,
@@ -121,70 +109,71 @@ export async function issueDocument(
 ): Promise<DocumentActionState> {
   const ctx = await requireStaffContext(orgSlug);
   if (!canManageLeases(ctx.role)) {
-    return { error: "You don't have permission to issue documents." };
+    return { error: "You don't have permission to upload documents." };
   }
 
-  const title = String(formData.get("title") ?? "").trim();
-  const requestedType = String(formData.get("doc_type") ?? "attachment");
-  const docType = (
-    DOC_TYPES.includes(requestedType as DocumentType) ? requestedType : "attachment"
-  ) as DocumentType;
+  const { files, docType, title } = readDocumentUploadFromFormData(formData);
   const unitId = String(formData.get("unit_id") ?? "").trim() || null;
-  const file = formData.get("file");
+  const leaseId = String(formData.get("lease_id") ?? "").trim() || null;
+  const siteId = String(formData.get("site_id") ?? "").trim() || null;
 
-  if (!title) return { error: "Title is required." };
-  if (!(file instanceof File) || file.size === 0) {
-    return { error: "Choose a file to upload." };
-  }
-  if (file.size > 20 * 1024 * 1024) {
-    return { error: "File must be 20MB or less." };
-  }
+  if (files.length === 0) return { error: "Choose at least one file to upload." };
 
   const admin = createAdminClient();
-  const ext = file.name.split(".").pop()?.toLowerCase() ?? "bin";
-  const contentType = inferContentType(file, ext);
-  const path = `${ctx.org.id}/${unitId ?? "plaza"}/${crypto.randomUUID()}.${ext}`;
 
-  const { error: uploadError } = await admin.storage
-    .from("documents")
-    .upload(path, file, { upsert: false, contentType });
+  let resolvedLeaseId = leaseId;
+  let resolvedSiteId = siteId;
+  let resolvedUnitId = unitId;
 
-  if (uploadError) return { error: uploadError.message };
-
-  let leaseId: string | null = null;
-  if (unitId) {
+  if (unitId && !leaseId) {
     const { data: lease } = await admin
       .from("leases")
       .select("id")
       .eq("unit_id", unitId)
       .eq("status", "active")
       .maybeSingle();
-    leaseId = lease?.id ?? null;
+    resolvedLeaseId = lease?.id ?? null;
   }
 
-  const { error: insertError } = await admin.from("management_documents").insert({
-    organization_id: ctx.org.id,
-    unit_id: unitId,
-    lease_id: leaseId,
-    doc_type: docType,
-    title,
-    file_url: path,
-    issued_by: ctx.user.id,
+  if (leaseId && !unitId) {
+    const { data: lease } = await admin
+      .from("leases")
+      .select("unit_id, units!inner(site_id)")
+      .eq("id", leaseId)
+      .maybeSingle();
+    if (lease) {
+      resolvedUnitId = lease.unit_id;
+      const units = lease.units as { site_id: string } | { site_id: string }[] | null;
+      resolvedSiteId = Array.isArray(units) ? units[0]?.site_id : units?.site_id ?? null;
+    }
+  }
+
+  if (unitId && !siteId) {
+    const { data: unit } = await admin
+      .from("units")
+      .select("site_id")
+      .eq("id", unitId)
+      .eq("organization_id", ctx.org.id)
+      .maybeSingle();
+    resolvedSiteId = unit?.site_id ?? null;
+  }
+
+  const result = await insertManagementDocuments({
+    admin,
+    orgId: ctx.org.id,
+    userId: ctx.user.id,
+    files,
+    docType,
+    title: title || undefined,
+    unitId: resolvedUnitId,
+    leaseId: resolvedLeaseId,
+    siteId: resolvedSiteId,
   });
 
-  if (insertError) {
-    await admin.storage.from("documents").remove([path]);
-    if (insertError.message.includes("invalid input value for enum")) {
-      return {
-        error:
-          "Document type not supported yet. Run the latest database migration, then try again.",
-      };
-    }
-    return { error: insertError.message };
-  }
+  if (result.error) return { error: result.error };
 
-  revalidatePath(`/d/${orgSlug}/documents`);
-  revalidatePath(`/t/${orgSlug}/documents`);
+  revalidateDocumentPaths(orgSlug);
+  if (leaseId) revalidatePath(`/d/${orgSlug}/tenants/${leaseId}`);
   return { success: true };
 }
 
@@ -202,7 +191,7 @@ export async function generateStatement(
 
     const { data: unit } = await admin
       .from("units")
-      .select("unit_code, organization_id")
+      .select("unit_code, organization_id, site_id")
       .eq("id", unitId)
       .eq("organization_id", ctx.org.id)
       .maybeSingle();
@@ -241,9 +230,10 @@ export async function generateStatement(
 
     const { error: insertError } = await admin.from("management_documents").insert({
       organization_id: ctx.org.id,
+      site_id: unit.site_id,
       unit_id: unitId,
       lease_id: lease?.id ?? null,
-      doc_type: "statement",
+      doc_type: "statement" satisfies DocumentType,
       title,
       file_url: path,
       issued_by: ctx.user.id,
@@ -254,8 +244,7 @@ export async function generateStatement(
       return { error: insertError.message };
     }
 
-    revalidatePath(`/d/${orgSlug}/documents`);
-    revalidatePath(`/t/${orgSlug}/documents`);
+    revalidateDocumentPaths(orgSlug);
     return { success: true };
   } catch (err) {
     return {
@@ -265,4 +254,41 @@ export async function generateStatement(
           : "Could not generate statement. Try again.",
     };
   }
+}
+
+export async function uploadLeaseDocumentsFromForm(
+  orgSlug: string,
+  formData: FormData,
+  leaseId: string,
+  unitId: string,
+  siteId: string | null
+): Promise<DocumentActionState> {
+  const ctx = await requireStaffContext(orgSlug);
+  if (!canManageLeases(ctx.role)) {
+    return { error: "You don't have permission to upload documents." };
+  }
+
+  const files = collectFilesFromFormData(formData);
+  if (files.length === 0) return { success: true };
+
+  const docType = parseDocumentType(String(formData.get("doc_type") ?? "tenancy_agreement"));
+  const title = String(formData.get("document_title") ?? "").trim() || undefined;
+
+  const admin = createAdminClient();
+  const result = await insertManagementDocuments({
+    admin,
+    orgId: ctx.org.id,
+    userId: ctx.user.id,
+    files,
+    docType,
+    title,
+    unitId,
+    leaseId,
+    siteId,
+  });
+
+  if (result.error) return { error: result.error };
+  revalidateDocumentPaths(orgSlug);
+  revalidatePath(`/d/${orgSlug}/tenants/${leaseId}`);
+  return { success: true };
 }

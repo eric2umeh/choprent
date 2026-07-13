@@ -27,6 +27,7 @@ export type ExpenseCategory =
   | "cleaning"
   | "repairs"
   | "utilities"
+  | "government"
   | "other";
 
 export interface Organization {

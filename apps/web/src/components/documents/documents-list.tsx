@@ -129,9 +129,14 @@ export function DocumentsList({
       key: "issued",
       header: "Issued",
       render: (d) => (
-        <span className="text-table-cell-muted tabular-nums">
-          {formatDisplayDate(d.issuedAt)}
-        </span>
+        <div>
+          <span className="text-table-cell-muted tabular-nums">
+            {formatDisplayDate(d.issuedAt)}
+          </span>
+          {d.issuedByName && (
+            <p className="mt-0.5 text-[11px] text-muted">{d.issuedByName}</p>
+          )}
+        </div>
       ),
     },
     {
@@ -272,6 +277,7 @@ export function DocumentsList({
                     <p className="text-list-meta">
                       {doc.unitCode ? `Unit ${doc.unitCode}` : "Plaza-wide"} ·{" "}
                       {formatDisplayDate(doc.issuedAt)}
+                      {doc.issuedByName ? ` · ${doc.issuedByName}` : ""}
                     </p>
                   </div>
                   <Badge

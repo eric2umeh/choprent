@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { createUnit, type UnitActionState } from "@/lib/actions/units";
 import { PROPERTY_TYPE_OPTIONS } from "@/lib/data/unit-types";
 import { FormPanel } from "@/components/ui/form-panel";
+import { DocumentUploadField } from "@/components/ui/document-upload-field";
 import { LoadingButton } from "@/components/ui/loading-button";
 import { toast } from "@/components/ui/toast";
 
@@ -117,6 +118,8 @@ export function NewUnitForm({
             disabled={pending}
           />
         </div>
+
+        <DocumentUploadField disabled={pending} defaultDocType="other" />
 
         <LoadingButton
           type="submit"

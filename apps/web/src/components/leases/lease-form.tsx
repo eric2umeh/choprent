@@ -8,6 +8,7 @@ import {
   updateActiveLease,
 } from "@/lib/actions/leases";
 import { LoadingButton } from "@/components/ui/loading-button";
+import { DocumentUploadField } from "@/components/ui/document-upload-field";
 import { Modal } from "@/components/ui/modal";
 import { SearchableSelect } from "@/components/ui/searchable-select";
 import { toast } from "@/components/ui/toast";
@@ -281,6 +282,14 @@ export function LeaseForm({
             <option value="monthly">Monthly</option>
           </select>
         </div>
+
+        {(mode === "create" || mode === "edit") && (
+          <DocumentUploadField
+            disabled={loading}
+            defaultDocType="tenancy_agreement"
+            showTitle
+          />
+        )}
 
         <LoadingButton
           type="submit"

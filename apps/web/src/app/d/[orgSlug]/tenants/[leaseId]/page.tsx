@@ -4,6 +4,7 @@ import { requireStaffContext } from "@/lib/auth/session";
 import { canManageLeases } from "@/lib/auth/roles";
 import { getLeaseDetail } from "@/lib/data/leases";
 import { listExpensesForUnit } from "@/lib/data/expenses";
+import { listDocumentsForLease } from "@/lib/data/documents";
 import { listSettlementAccounts } from "@/lib/data/settlement-accounts";
 import { notFound } from "next/navigation";
 import Link from "next/link";
@@ -19,9 +20,10 @@ export default async function TenantDetailPage({
   const lease = await getLeaseDetail(ctx.org.id, leaseId);
   if (!lease) notFound();
 
-  const [unitExpenses, settlementAccounts] = await Promise.all([
+  const [unitExpenses, settlementAccounts, documents] = await Promise.all([
     listExpensesForUnit(ctx.org.id, lease.unitId),
     listSettlementAccounts(ctx.org.id),
+    listDocumentsForLease(ctx.org.id, leaseId),
   ]);
 
   return (
@@ -39,6 +41,7 @@ export default async function TenantDetailPage({
         orgSlug={orgSlug}
         lease={lease}
         unitExpenses={unitExpenses}
+        documents={documents}
         canManage={canManage}
         settlementAccounts={settlementAccounts}
       />

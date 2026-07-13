@@ -5,6 +5,7 @@ import { canManageLeases } from "@/lib/auth/roles";
 import { requireStaffContext } from "@/lib/auth/session";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { regenerateLedgerForUnit } from "@/lib/charges/generate-ledger";
+import { uploadDocumentsFromFormData } from "@/lib/documents/upload";
 import type { BillingCadence } from "@/types/database";
 
 export type LeaseActionState = {
@@ -90,6 +91,7 @@ export async function createLease(
     end_date: endDate,
     billing_cadence: billingCadence,
     status: "active",
+    created_by: ctx.user.id,
   }).select("id").single();
 
   if (insertError || !newLease) return { error: insertError?.message ?? "Could not create lease." };
@@ -97,6 +99,21 @@ export async function createLease(
   await admin.from("units").update({ status: "occupied" }).eq("id", unitId);
 
   await regenerateLedgerForUnit(admin, ctx.org.id, unitId);
+
+  const docResult = await uploadDocumentsFromFormData(
+    admin,
+    ctx.org.id,
+    ctx.user.id,
+    formData,
+    {
+      unitId,
+      leaseId: newLease.id,
+      siteId: unit.site_id,
+    }
+  );
+  if (docResult.error) {
+    return { error: `Lease created but documents failed: ${docResult.error}` };
+  }
 
   const { syncDvaAccountNameForUnit } = await import("@/lib/paystack/provision-unit-dva");
   const { isPaystackDvaEnabled } = await import("@/lib/paystack/client");
@@ -170,6 +187,7 @@ export async function renewLease(
     billing_cadence: billingCadence,
     status: "active",
     renewed_from_lease_id: leaseId,
+    created_by: ctx.user.id,
   }).select("id").single();
 
   if (insertError || !newLease) return { error: insertError?.message ?? "Could not renew lease." };
@@ -258,6 +276,24 @@ export async function updateActiveLease(
   if (updateError) return { error: updateError.message };
 
   await regenerateLedgerForUnit(admin, ctx.org.id, current.unit_id);
+
+  const units = current.units as { site_id?: string } | { site_id?: string }[] | null;
+  const siteId = Array.isArray(units) ? units[0]?.site_id : units?.site_id;
+
+  const docResult = await uploadDocumentsFromFormData(
+    admin,
+    ctx.org.id,
+    ctx.user.id,
+    formData,
+    {
+      unitId: current.unit_id,
+      leaseId,
+      siteId: siteId ?? null,
+    }
+  );
+  if (docResult.error) {
+    return { error: `Lease updated but documents failed: ${docResult.error}` };
+  }
 
   revalidatePath(`/d/${orgSlug}/tenants`);
   revalidatePath(`/d/${orgSlug}/tenants/${leaseId}`);

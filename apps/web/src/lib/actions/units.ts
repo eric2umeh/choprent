@@ -13,6 +13,7 @@ import {
   parseBillingProfileFromForm,
 } from "@/lib/charges/billing-profile";
 import { regenerateLedgerForUnit } from "@/lib/charges/generate-ledger";
+import { uploadDocumentsFromFormData } from "@/lib/documents/upload";
 import type { BillingCadence, PropertyType } from "@/types/database";
 
 export type UnitActionState = {
@@ -67,6 +68,7 @@ export async function createUnit(
     composite_note: compositeNote,
     property_type: propertyType,
     status,
+    created_by: ctx.user.id,
   };
 
   const admin = createAdminClient();
@@ -77,6 +79,20 @@ export async function createUnit(
       return { error: "A unit with this code already exists in that property." };
     }
     return { error: error.message };
+  }
+
+  const docResult = await uploadDocumentsFromFormData(
+    admin,
+    ctx.org.id,
+    ctx.user.id,
+    formData,
+    {
+      unitId: data.id,
+      siteId,
+    }
+  );
+  if (docResult.error) {
+    return { error: `Unit saved but documents failed: ${docResult.error}` };
   }
 
   revalidatePropertyDashboardPaths(orgSlug, ctx.org.id, siteId);
@@ -226,6 +242,7 @@ export async function setupUnitDetails(
           end_date: end,
           billing_cadence: "annual",
           status: "active",
+          created_by: ctx.user.id,
         })
         .select("id")
         .single();

@@ -185,6 +185,71 @@ export async function generateLedgerForLease(
   }
 }
 
+/** Remove ledger periods that no longer match the active lease billing schedule. */
+export async function repairStaleLedgerPeriodsForUnit(
+  admin: AdminClient,
+  orgId: string,
+  unitId: string
+): Promise<boolean> {
+  const { data: lease } = await admin
+    .from("leases")
+    .select("id, start_date, end_date, billing_cadence")
+    .eq("unit_id", unitId)
+    .eq("status", "active")
+    .maybeSingle();
+
+  if (!lease) return false;
+
+  const expected = listBillingPeriods(
+    lease.start_date,
+    lease.end_date,
+    lease.billing_cadence
+  );
+  const expectedStarts = new Set(expected.map((p) => p.periodStart));
+
+  const { data: openPeriods } = await admin
+    .from("ledger_periods")
+    .select("id, period_start, paid_total_ngn")
+    .eq("unit_id", unitId)
+    .eq("status", "open");
+
+  const hasStale = (openPeriods ?? []).some(
+    (p) => !expectedStarts.has(p.period_start)
+  );
+
+  if (!hasStale) return false;
+
+  const profile = await loadUnitBillingProfile(admin, unitId);
+
+  if (!profile || profile.baseRentNgn <= 0) {
+    for (const period of openPeriods ?? []) {
+      if (
+        !expectedStarts.has(period.period_start) &&
+        Number(period.paid_total_ngn) === 0
+      ) {
+        await admin
+          .from("ledger_lines")
+          .delete()
+          .eq("ledger_period_id", period.id);
+        await admin.from("ledger_periods").delete().eq("id", period.id);
+      }
+    }
+    return true;
+  }
+
+  await generateLedgerForLease(admin, {
+    orgId,
+    unitId,
+    leaseId: lease.id,
+    leaseStart: lease.start_date,
+    leaseEnd: lease.end_date,
+    cadence: lease.billing_cadence,
+    profile,
+  });
+
+  return true;
+}
+
 export async function regenerateLedgerForUnit(
   admin: AdminClient,
   orgId: string,

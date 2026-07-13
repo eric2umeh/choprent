@@ -9,6 +9,7 @@ import { PropertiesOverview } from "@/components/properties/properties-overview"
 import { AddUnitsInfoBanner } from "@/components/properties/add-units-info-banner";
 import { UnitsList } from "@/components/units/units-list";
 import { NewUnitForm } from "@/components/units/new-unit-form";
+import { AddDocumentModal } from "@/components/documents/add-document-modal";
 import { deleteProperty } from "@/lib/actions/sites";
 import type { PropertySummary } from "@/lib/data/property-types";
 import type { UnitListItem } from "@/lib/data/unit-types";
@@ -24,6 +25,7 @@ export function PropertiesPageClient({
   singleProperty,
   units = [],
   paystackDvaEnabled = false,
+  canManageDocuments = false,
 }: {
   orgSlug: string;
   properties: PropertySummary[];
@@ -31,10 +33,12 @@ export function PropertiesPageClient({
   singleProperty?: PropertySummary | null;
   units?: UnitListItem[];
   paystackDvaEnabled?: boolean;
+  canManageDocuments?: boolean;
 }) {
   const router = useRouter();
   const [showAddProperty, setShowAddProperty] = useState(false);
   const [showAddUnit, setShowAddUnit] = useState(false);
+  const [showAddDocument, setShowAddDocument] = useState(false);
   const [editing, setEditing] = useState<PropertySummary | null>(null);
   const [, startDelete] = useTransition();
 
@@ -91,6 +95,15 @@ export function PropertiesPageClient({
                   <Plus className="h-4 w-4" />
                   Add property
                 </button>
+                {canManageDocuments && (
+                  <button
+                    type="button"
+                    className="btn-ghost px-3 py-1.5"
+                    onClick={() => setShowAddDocument(true)}
+                  >
+                    Add document
+                  </button>
+                )}
               </div>
             ) : undefined
           }
@@ -155,6 +168,17 @@ export function PropertiesPageClient({
             onSaved={() => setShowAddUnit(false)}
           />
         </Modal>
+
+        {canManageDocuments && (
+          <AddDocumentModal
+            orgSlug={orgSlug}
+            open={showAddDocument}
+            onClose={() => setShowAddDocument(false)}
+            properties={[{ id: singleProperty.id, name: singleProperty.name }]}
+            units={units.map((u) => ({ id: u.id, unitCode: u.unitCode }))}
+            defaultSiteId={singleProperty.id}
+          />
+        )}
       </div>
     );
   }
@@ -166,13 +190,24 @@ export function PropertiesPageClient({
         description="Plazas, estates, malls, and houses — add shops and units inside each property"
         action={
           canManage ? (
-            <button
-              type="button"
-              className="btn-primary px-3 py-1.5"
-              onClick={() => setShowAddProperty(true)}
-            >
-              Add property
-            </button>
+            <div className="flex flex-wrap items-center gap-1">
+              {canManageDocuments && (
+                <button
+                  type="button"
+                  className="btn-ghost px-3 py-1.5"
+                  onClick={() => setShowAddDocument(true)}
+                >
+                  Add document
+                </button>
+              )}
+              <button
+                type="button"
+                className="btn-primary px-3 py-1.5"
+                onClick={() => setShowAddProperty(true)}
+              >
+                Add property
+              </button>
+            </div>
           ) : undefined
         }
       />
@@ -200,6 +235,16 @@ export function PropertiesPageClient({
       >
         <PropertyForm orgSlug={orgSlug} onSaved={() => setShowAddProperty(false)} />
       </Modal>
+
+      {canManageDocuments && (
+        <AddDocumentModal
+          orgSlug={orgSlug}
+          open={showAddDocument}
+          onClose={() => setShowAddDocument(false)}
+          properties={properties.map((p) => ({ id: p.id, name: p.name }))}
+          units={units.map((u) => ({ id: u.id, unitCode: u.unitCode }))}
+        />
+      )}
     </div>
   );
 }

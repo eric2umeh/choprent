@@ -1,6 +1,6 @@
 import { PropertiesPageClient } from "@/components/properties/properties-page-client";
 import { requireStaffContext } from "@/lib/auth/session";
-import { canAddUnits } from "@/lib/auth/roles";
+import { canAddUnits, canManageLeases } from "@/lib/auth/roles";
 import { listPropertiesForOrg } from "@/lib/data/sites";
 import { listUnitsForOrg } from "@/lib/data/units";
 import { isPaystackDvaEnabled } from "@/lib/paystack/client";
@@ -23,6 +23,7 @@ export default async function PropertiesPage({
       orgSlug={orgSlug}
       properties={properties}
       canManage={canAddUnits(ctx.role)}
+      canManageDocuments={canManageLeases(ctx.role)}
       singleProperty={singleProperty}
       units={units}
       paystackDvaEnabled={isPaystackDvaEnabled()}

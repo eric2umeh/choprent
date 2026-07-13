@@ -8,6 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { ListPanel } from "@/components/ui/page-header";
 import { ResponsiveDataTable, type Column } from "@/components/ui/responsive-table";
 import { ExpenseHistoryTable } from "@/components/expenses/expense-history-table";
+import { EntityDocumentsSection } from "@/components/documents/entity-documents-section";
 import { TenantPaymentStatusBadge } from "@/components/tenants/tenant-payment-status-badge";
 import { LeaseForm } from "@/components/leases/lease-form";
 import { confirmDialog } from "@/components/ui/confirm-dialog";
@@ -15,6 +16,7 @@ import { toast } from "@/components/ui/toast";
 import { endActiveLease } from "@/lib/actions/leases";
 import type { LeaseDetail } from "@/lib/data/leases";
 import type { ExpenseListItem } from "@/lib/data/expenses";
+import type { DocumentListItem } from "@/lib/data/documents";
 import type { SettlementAccountItem } from "@/lib/data/settlement-accounts";
 import { formatNaira } from "@/lib/auth/roles";
 import { formatDisplayDate, formatDateRange } from "@/lib/utils/format-date";
@@ -23,12 +25,14 @@ export function TenantDetailClient({
   orgSlug,
   lease,
   unitExpenses,
+  documents,
   canManage = false,
   settlementAccounts = [],
 }: {
   orgSlug: string;
   lease: LeaseDetail;
   unitExpenses: ExpenseListItem[];
+  documents: DocumentListItem[];
   canManage?: boolean;
   settlementAccounts?: SettlementAccountItem[];
 }) {
@@ -50,7 +54,9 @@ export function TenantDetailClient({
       key: "amount",
       header: "Amount",
       mobilePrimary: true,
-      render: (p) => <span className="text-money">{formatNaira(p.amount)}</span>,
+      render: (p) => (
+        <span className="text-table-cell-strong tabular-nums">{formatNaira(p.amount)}</span>
+      ),
     },
     {
       key: "method",
@@ -64,6 +70,13 @@ export function TenantDetailClient({
       header: "Period",
       render: (p) => (
         <span className="text-meta-pill">{p.periodLabel ?? "—"}</span>
+      ),
+    },
+    {
+      key: "submittedBy",
+      header: "Submitted by",
+      render: (p) => (
+        <span className="text-table-cell-muted">{p.submittedByName ?? "—"}</span>
       ),
     },
     {
@@ -177,20 +190,18 @@ export function TenantDetailClient({
           </div>
           <div>
             <dt className="text-label normal-case">Annual rent</dt>
-            <dd className="mt-0.5 text-money">{formatNaira(lease.annualTotal)}</dd>
+            <dd className="mt-0.5 text-detail-value">{formatNaira(lease.annualTotal)}</dd>
           </div>
           <div>
             <dt className="text-label normal-case">Collected</dt>
-            <dd className="mt-0.5 text-list-primary font-semibold">
-              {formatNaira(lease.paidAmount)}
-            </dd>
+            <dd className="text-detail-value">{formatNaira(lease.paidAmount)}</dd>
           </div>
           <div>
             <dt className="text-label normal-case">Arrears</dt>
             <dd
-              className={`mt-0.5 font-semibold ${
-                lease.arrears > 0 ? "text-money-negative" : "text-green-700"
-              }`}
+              className={
+                lease.arrears > 0 ? "text-detail-value text-money-negative" : "text-detail-value"
+              }
             >
               {formatNaira(lease.arrears)}
             </dd>
@@ -199,43 +210,42 @@ export function TenantDetailClient({
         <dl className="mt-4 grid gap-3 border-t border-border pt-4 sm:grid-cols-2 lg:grid-cols-4">
           <div>
             <dt className="text-label normal-case">Lease period</dt>
-            <dd className="mt-0.5 text-list-primary tabular-nums">
+            <dd className="text-detail-value tabular-nums">
               {formatDateRange(lease.startDate, lease.endDate)}
             </dd>
           </div>
           <div>
             <dt className="text-label normal-case">Billing cadence</dt>
-            <dd className="mt-0.5 text-list-primary capitalize">
-              {lease.billingCadence}
-            </dd>
+            <dd className="text-detail-value capitalize">{lease.billingCadence}</dd>
           </div>
           <div>
             <dt className="text-label normal-case">Phone</dt>
-            <dd className="mt-0.5 text-list-primary">
-              {lease.tenantPhone ?? "—"}
-            </dd>
+            <dd className="text-detail-value">{lease.tenantPhone ?? "—"}</dd>
           </div>
           {lease.tenantEmail && (
             <div>
               <dt className="text-label normal-case">Email</dt>
-              <dd className="mt-0.5 text-list-primary break-all">
-                {lease.tenantEmail}
+              <dd className="text-detail-value break-all">{lease.tenantEmail}</dd>
+            </div>
+          )}
+          {(lease.createdAt || lease.createdByName) && (
+            <div>
+              <dt className="text-label normal-case">Tenancy created</dt>
+              <dd className="text-detail-value">
+                {lease.createdAt ? formatDisplayDate(lease.createdAt) : "—"}
+                {lease.createdByName ? (
+                  <span className="text-detail-meta"> · {lease.createdByName}</span>
+                ) : null}
               </dd>
             </div>
           )}
         </dl>
         <div className="mt-3 flex flex-wrap gap-2 text-sm">
-          <Link
-            href={unitPath(orgSlug, lease.propertySlug, lease.unitCode)}
-            className="font-semibold text-green-800 hover:text-green-900"
-          >
+          <Link href={unitPath(orgSlug, lease.propertySlug, lease.unitCode)} className="text-section-link">
             View unit →
           </Link>
           <span className="text-list-meta">·</span>
-          <Link
-            href={propertyPath(orgSlug, lease.propertySlug)}
-            className="font-semibold text-green-800 hover:text-green-900"
-          >
+          <Link href={propertyPath(orgSlug, lease.propertySlug)} className="text-section-link">
             View property →
           </Link>
         </div>
@@ -262,6 +272,14 @@ export function TenantDetailClient({
           showUnit={false}
         />
       </ListPanel>
+
+      <EntityDocumentsSection
+        orgSlug={orgSlug}
+        documents={documents}
+        canManage={canManage}
+        defaultLeaseId={lease.id}
+        defaultUnitId={lease.unitId}
+      />
 
       {lease.priorLeases.length > 0 && (
         <ListPanel>

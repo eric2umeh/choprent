@@ -22,6 +22,13 @@ function clampPeriod(start: Date, end: Date, leaseStart: Date, leaseEnd: Date) {
   return { periodStart: toIsoDate(ps), periodEnd: toIsoDate(pe) };
 }
 
+function addYearsMinusOneDay(date: Date, years: number): Date {
+  const result = new Date(date);
+  result.setFullYear(result.getFullYear() + years);
+  result.setDate(result.getDate() - 1);
+  return result;
+}
+
 /** Calendar billing periods clipped to lease dates. */
 export function listBillingPeriods(
   leaseStart: string,
@@ -35,16 +42,20 @@ export function listBillingPeriods(
   const periods: BillingPeriodRange[] = [];
 
   if (cadence === "annual") {
-    for (let y = start.getFullYear(); y <= end.getFullYear(); y++) {
-      const range = clampPeriod(
-        new Date(y, 0, 1),
-        new Date(y, 11, 31),
-        start,
-        end
-      );
-      if (range) {
-        periods.push({ ...range, periodLabel: String(y) });
-      }
+    let periodStart = new Date(start);
+    while (periodStart <= end) {
+      const anniversaryEnd = addYearsMinusOneDay(periodStart, 1);
+      const periodEnd = anniversaryEnd > end ? new Date(end) : anniversaryEnd;
+
+      periods.push({
+        periodStart: toIsoDate(periodStart),
+        periodEnd: toIsoDate(periodEnd),
+        periodLabel: String(periodStart.getFullYear()),
+      });
+
+      if (periodEnd >= end) break;
+      periodStart = new Date(periodEnd);
+      periodStart.setDate(periodStart.getDate() + 1);
     }
     return periods;
   }

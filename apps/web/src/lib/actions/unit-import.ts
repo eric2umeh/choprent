@@ -97,6 +97,7 @@ export async function importUnitsFromCsv(
           : null,
         property_type: "shop",
         status: row.status,
+        created_by: ctx.user.id,
       })
       .select("id")
       .single();
@@ -129,6 +130,7 @@ export async function importUnitsFromCsv(
           end_date: end,
           billing_cadence: "annual",
           status: "active",
+          created_by: ctx.user.id,
         })
         .select("id")
         .single();

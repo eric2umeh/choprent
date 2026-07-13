@@ -6,7 +6,6 @@ import { useEffect, useState } from "react";
 import {
   Building2,
   CreditCard,
-  FileText,
   LayoutDashboard,
   Settings,
   Users,
@@ -45,7 +44,6 @@ const navItems: {
   { href: "/payments", label: "Payments", icon: CreditCard, badge: true },
   { href: "/expenses", label: "Expenses", icon: Receipt },
   { href: "/analytics", label: "Analytics", icon: TrendingUp },
-  { href: "/documents", label: "Documents", icon: FileText },
   { href: "/users", label: "Users & Roles", icon: UserCog, hint: "Staff, roles & permissions" },
   { href: "/reports", label: "Reports", icon: BarChart3, hint: "Exports & snapshots" },
   { href: "/account", label: "Account", icon: Landmark },

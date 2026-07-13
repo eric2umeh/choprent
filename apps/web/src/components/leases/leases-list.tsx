@@ -12,6 +12,7 @@ import {
 } from "@/components/ui/responsive-table";
 import { ViewToggle, type ViewMode } from "@/components/ui/view-toggle";
 import { LeaseForm } from "@/components/leases/lease-form";
+import { AddDocumentModal } from "@/components/documents/add-document-modal";
 import { TenantPaymentStatusBadge } from "@/components/tenants/tenant-payment-status-badge";
 import type { LeaseListItem } from "@/lib/data/leases";
 import type { SettlementAccountItem } from "@/lib/data/settlement-accounts";
@@ -39,6 +40,7 @@ export function LeasesList({
   const [formMode, setFormMode] = useState<"create" | "renew" | "edit" | null>(
     null
   );
+  const [showAddDocument, setShowAddDocument] = useState(false);
   const [activeLease, setActiveLease] = useState<LeaseListItem | null>(null);
   const [, startTransition] = useTransition();
 
@@ -60,6 +62,19 @@ export function LeasesList({
 
   const { page, setPage, totalPages, slice, pageSize } = usePagination(filtered);
 
+  const leaseDocumentOptions = useMemo(
+    () =>
+      leases
+        .filter((l) => l.status === "active")
+        .map((l) => ({
+          id: l.id,
+          tenantName: l.tenantName,
+          unitCode: l.unitCode,
+          unitId: l.unitId,
+        })),
+    [leases]
+  );
+
   const columns: Column<LeaseListItem>[] = [
     {
       key: "unit",
@@ -73,7 +88,14 @@ export function LeasesList({
       key: "tenant",
       header: "Tenant",
       mobilePrimary: true,
-      render: (l) => <span className="text-table-cell">{l.tenantName}</span>,
+      render: (l) => (
+        <div>
+          <span className="text-table-cell-strong">{l.tenantName}</span>
+          {l.tenantPhone ? (
+            <span className="text-table-sub tabular-nums">{l.tenantPhone}</span>
+          ) : null}
+        </div>
+      ),
     },
     {
       key: "property",
@@ -87,14 +109,16 @@ export function LeasesList({
       header: "Annual rent",
       mobilePrimary: true,
       render: (l) => (
-        <span className="text-money">{formatNaira(l.annualTotal)}</span>
+        <span className="text-table-cell-strong tabular-nums">
+          {formatNaira(l.annualTotal)}
+        </span>
       ),
     },
     {
       key: "collected",
       header: "Collected",
       render: (l) => (
-        <span className="text-table-cell">{formatNaira(l.paidAmount)}</span>
+        <span className="text-table-cell tabular-nums">{formatNaira(l.paidAmount)}</span>
       ),
     },
     {
@@ -210,13 +234,22 @@ export function LeasesList({
         <div className="flex items-center gap-2 px-3 lg:px-0">
           <ViewToggle value={view} onChange={setView} />
           {canManage && (
-            <button
-              type="button"
-              className="btn-primary px-3 py-1.5"
-              onClick={() => setFormMode("create")}
-            >
-              Assign tenant
-            </button>
+            <>
+              <button
+                type="button"
+                className="btn-ghost px-3 py-1.5"
+                onClick={() => setShowAddDocument(true)}
+              >
+                Add document
+              </button>
+              <button
+                type="button"
+                className="btn-primary px-3 py-1.5"
+                onClick={() => setFormMode("create")}
+              >
+                Assign tenant
+              </button>
+            </>
           )}
         </div>
       </ListToolbar>
@@ -287,6 +320,14 @@ export function LeasesList({
             setFormMode(null);
             setActiveLease(null);
           }}
+        />
+      )}
+      {canManage && (
+        <AddDocumentModal
+          orgSlug={orgSlug}
+          open={showAddDocument}
+          onClose={() => setShowAddDocument(false)}
+          leases={leaseDocumentOptions}
         />
       )}
     </>

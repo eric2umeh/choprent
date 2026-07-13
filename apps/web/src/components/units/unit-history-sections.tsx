@@ -6,7 +6,9 @@ import { Badge } from "@/components/ui/badge";
 import { ListPanel } from "@/components/ui/page-header";
 import { ResponsiveDataTable, type Column } from "@/components/ui/responsive-table";
 import { ExpenseHistoryTable } from "@/components/expenses/expense-history-table";
+import { EntityDocumentsSection } from "@/components/documents/entity-documents-section";
 import type { ExpenseListItem } from "@/lib/data/expenses";
+import type { DocumentListItem } from "@/lib/data/documents";
 import { formatNaira } from "@/lib/auth/roles";
 import { formatDisplayDate, formatDateRange } from "@/lib/utils/format-date";
 
@@ -17,6 +19,7 @@ type UnitPayment = {
   method: string;
   date: string;
   periodLabel: string | null;
+  submittedByName?: string | null;
 };
 
 type UnitLease = {
@@ -32,11 +35,17 @@ export function UnitHistorySections({
   payments,
   leases,
   expenses,
+  documents,
+  canManageDocuments = false,
+  unitId,
 }: {
   orgSlug: string;
   payments: UnitPayment[];
   leases: UnitLease[];
   expenses: ExpenseListItem[];
+  documents: DocumentListItem[];
+  canManageDocuments?: boolean;
+  unitId: string;
 }) {
   const router = useRouter();
 
@@ -55,7 +64,9 @@ export function UnitHistorySections({
       key: "amount",
       header: "Amount",
       mobilePrimary: true,
-      render: (p) => <span className="text-money">{formatNaira(p.amount)}</span>,
+      render: (p) => (
+        <span className="text-table-cell-strong tabular-nums">{formatNaira(p.amount)}</span>
+      ),
     },
     {
       key: "method",
@@ -69,6 +80,13 @@ export function UnitHistorySections({
       header: "Period",
       render: (p) => (
         <span className="text-meta-pill">{p.periodLabel ?? "—"}</span>
+      ),
+    },
+    {
+      key: "submittedBy",
+      header: "Submitted by",
+      render: (p) => (
+        <span className="text-table-cell-muted">{p.submittedByName ?? "—"}</span>
       ),
     },
     {
@@ -95,14 +113,14 @@ export function UnitHistorySections({
       key: "tenant",
       header: "Tenant",
       mobilePrimary: true,
-      render: (l) => <span className="text-table-cell">{l.tenantName}</span>,
+      render: (l) => <span className="text-table-cell-strong">{l.tenantName}</span>,
     },
     {
       key: "period",
       header: "Lease period",
       mobilePrimary: true,
       render: (l) => (
-        <span className="text-period-compact">
+        <span className="text-table-cell-muted tabular-nums">
           {formatDateRange(l.startDate, l.endDate)}
         </span>
       ),
@@ -167,6 +185,13 @@ export function UnitHistorySections({
           emptyMessage="No expenses recorded for this unit yet."
         />
       </ListPanel>
+
+      <EntityDocumentsSection
+        orgSlug={orgSlug}
+        documents={documents}
+        canManage={canManageDocuments}
+        defaultUnitId={unitId}
+      />
     </>
   );
 }

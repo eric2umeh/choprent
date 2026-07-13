@@ -3,13 +3,15 @@ import { Card } from "@/components/ui/card";
 import { UnitDetailClient } from "@/components/units/unit-detail-client";
 import { UnitHistorySections } from "@/components/units/unit-history-sections";
 import { requireStaffContext } from "@/lib/auth/session";
-import { canAddUnits, canEditUnits } from "@/lib/auth/roles";
+import { canAddUnits, canEditUnits, canManageLeases } from "@/lib/auth/roles";
 import { resolveProperty } from "@/lib/data/sites";
 import { resolveUnit } from "@/lib/data/units";
 import { getUnitHistory } from "@/lib/data/leases";
 import { listExpensesForUnit } from "@/lib/data/expenses";
+import { listDocumentsForUnit } from "@/lib/data/documents";
 import { propertyPath, unitPath, unitCodeFromUrlRef } from "@/lib/routes/dashboard-paths";
 import { formatNaira } from "@/lib/auth/roles";
+import { formatDisplayDate } from "@/lib/utils/format-date";
 import { formatPropertyType } from "@/lib/data/unit-types";
 import { isPaystackDvaEnabled } from "@/lib/paystack/client";
 import { isUuid } from "@/lib/utils/slug";
@@ -56,9 +58,12 @@ export default async function PropertyUnitDetailPage({
   const canEdit = canEditUnits(ctx.role);
   const paystackDvaEnabled = isPaystackDvaEnabled();
 
-  const [history, expenses] = await Promise.all([
+  const canManageDocs = canManageLeases(ctx.role);
+
+  const [history, expenses, documents] = await Promise.all([
     getUnitHistory(ctx.org.id, unit.id),
     listExpensesForUnit(ctx.org.id, unit.id),
+    listDocumentsForUnit(ctx.org.id, unit.id),
   ]);
 
   return (
@@ -85,36 +90,45 @@ export default async function PropertyUnitDetailPage({
       >
         <div className="space-y-0">
           <Card className="rounded-none border-x-0 border-t-0 shadow-none">
-            <dl className="grid gap-3 text-sm sm:grid-cols-3">
+            <dl className="grid gap-3 text-sm sm:grid-cols-2 lg:grid-cols-4">
               <div>
                 <dt className="text-label normal-case">Tenant</dt>
-                <dd className="mt-0.5 text-list-primary font-semibold">
-                  {unit.tenantName ?? "—"}
-                </dd>
+                <dd className="text-detail-value">{unit.tenantName ?? "—"}</dd>
               </div>
               <div>
                 <dt className="text-label normal-case">Annual rent</dt>
-                <dd className="mt-0.5 text-money">
+                <dd className="text-detail-value">
                   {unit.annualRent > 0 ? formatNaira(unit.annualRent) : "—"}
                 </dd>
               </div>
               <div>
                 <dt className="text-label normal-case">Arrears</dt>
                 <dd
-                  className={`mt-0.5 font-semibold ${
-                    unit.arrears > 0 ? "text-money-negative" : "text-green-700"
-                  }`}
+                  className={
+                    unit.arrears > 0 ? "text-detail-value text-money-negative" : "text-detail-value"
+                  }
                 >
                   {formatNaira(unit.arrears)}
                 </dd>
               </div>
+              {(unit.createdAt || unit.createdByName) && (
+                <div>
+                  <dt className="text-label normal-case">Unit added</dt>
+                  <dd className="text-detail-value">
+                    {unit.createdAt ? formatDisplayDate(unit.createdAt) : "—"}
+                    {unit.createdByName ? (
+                      <span className="text-detail-meta"> · {unit.createdByName}</span>
+                    ) : null}
+                  </dd>
+                </div>
+              )}
             </dl>
           </Card>
 
           {paystackDvaEnabled && unit.virtualAccount && (
-            <Card className="rounded-none border-x-0 border-t-0 border-green-200 bg-green-50 shadow-none">
-              <p className="text-label normal-case text-green-800">Shop account (DVA)</p>
-              <p className="mt-1 font-mono text-lg font-bold text-green-900">
+            <Card className="rounded-none border-x-0 border-t-0 border-border bg-surface-subtle shadow-none">
+              <p className="text-label normal-case">Shop account (DVA)</p>
+              <p className="mt-1 font-mono text-lg font-semibold text-foreground">
                 {unit.virtualAccount}
               </p>
             </Card>
@@ -126,6 +140,9 @@ export default async function PropertyUnitDetailPage({
           payments={history.payments}
           leases={history.leases}
           expenses={expenses}
+          documents={documents}
+          canManageDocuments={canManageDocs}
+          unitId={unit.id}
         />
       </UnitDetailClient>
     </div>
