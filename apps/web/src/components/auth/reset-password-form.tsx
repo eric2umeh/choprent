@@ -12,6 +12,7 @@ import {
   isSameAsCurrentPassword,
   SAME_PASSWORD_MESSAGE,
 } from "@/lib/auth/password-validation";
+import { AUTOCOMPLETE_NEW_PASSWORD } from "@/lib/auth/autocomplete";
 import { PasswordInput } from "@/components/ui/password-input";
 import { LoadingButton } from "@/components/ui/loading-button";
 import { toast } from "@/components/ui/toast";
@@ -168,7 +169,7 @@ export function ResetPasswordForm() {
           minLength={6}
           value={password}
           onChange={(e) => setPassword(e.target.value)}
-          autoComplete="new-password"
+          autoComplete={AUTOCOMPLETE_NEW_PASSWORD}
           placeholder="At least 6 characters — different from your old password"
         />
       </div>
@@ -182,7 +183,7 @@ export function ResetPasswordForm() {
           minLength={6}
           value={confirm}
           onChange={(e) => setConfirm(e.target.value)}
-          autoComplete="new-password"
+          autoComplete={AUTOCOMPLETE_NEW_PASSWORD}
           placeholder="Re-enter your password"
         />
       </div>

@@ -10,6 +10,7 @@ import { ResponsiveDataTable, type Column } from "@/components/ui/responsive-tab
 import { ViewToggle, type ViewMode } from "@/components/ui/view-toggle";
 import type { LedgerLineItem } from "@/lib/data/ledger";
 import { formatNaira } from "@/lib/auth/roles";
+import { formatDisplayDate } from "@/lib/utils/format-date";
 
 function kindVariant(kind: LedgerLineItem["kind"]) {
   if (kind === "payment") return "success" as const;
@@ -69,7 +70,9 @@ export function TenantLedgerList({
       header: "Date",
       mobilePrimary: true,
       render: (l) => (
-        <span className="text-table-cell-muted tabular-nums">{l.date}</span>
+        <span className="text-table-cell-muted tabular-nums">
+          {formatDisplayDate(l.date)}
+        </span>
       ),
     },
     {
@@ -133,7 +136,9 @@ export function TenantLedgerList({
                 <div className="flex items-start justify-between gap-2">
                   <div className="min-w-0">
                     <p className="text-list-primary">{line.description}</p>
-                    <p className="mt-0.5 text-list-meta tabular-nums">{line.date}</p>
+                    <p className="mt-0.5 text-list-meta tabular-nums">
+                      {formatDisplayDate(line.date)}
+                    </p>
                   </div>
                   <div className="shrink-0 text-right">
                     <p

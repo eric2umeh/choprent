@@ -10,6 +10,7 @@ import {
 } from "@/lib/actions/reports";
 import type { TenantActivitySnapshot } from "@/lib/data/tenant-activity";
 import { formatNaira } from "@/lib/auth/roles";
+import { formatDisplayDate } from "@/lib/utils/format-date";
 import { StatCard } from "@/components/ui/card";
 import { ListPanel } from "@/components/ui/page-header";
 import { ResponsiveDataTable, type Column } from "@/components/ui/responsive-table";
@@ -247,7 +248,9 @@ export function ReportsPageClient({
           <ul className="divide-y divide-border">
             {snapshots.map((s) => (
               <li key={s.id} className="flex flex-wrap items-center justify-between gap-2 px-3 py-3">
-                <span className="text-list-primary tabular-nums">{s.snapshot_date}</span>
+                <span className="text-list-primary tabular-nums">
+                  {formatDisplayDate(s.snapshot_date)}
+                </span>
                 <span className="text-list-secondary">
                   {s.tenants_self_served} self-serving · {s.units_registered} units ·{" "}
                   {s.collection_rate_pct ?? "—"}% collected

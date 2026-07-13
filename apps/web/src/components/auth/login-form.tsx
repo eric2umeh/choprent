@@ -17,6 +17,7 @@ import { PasswordInput } from "@/components/ui/password-input";
 import { LoadingButton } from "@/components/ui/loading-button";
 import { toast } from "@/components/ui/toast";
 import type { MembershipRole } from "@/types/database";
+import { passwordFieldAutocomplete } from "@/lib/auth/autocomplete";
 
 type LoginMethod = "password" | "magic_link";
 type PasswordMode = "sign_in" | "sign_up" | "forgot_password";
@@ -253,7 +254,9 @@ export function LoginForm() {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="At least 6 characters"
-                autoComplete={mode === "sign_up" ? "new-password" : "current-password"}
+                autoComplete={passwordFieldAutocomplete(
+                  mode === "sign_up" ? "sign_up" : "sign_in"
+                )}
                 disabled={loading}
               />
             </div>

@@ -1,11 +1,20 @@
-/** Formats an ISO date string (yyyy-mm-dd) as dd-mm-yy. */
-export function formatDateDdMmYy(isoDate: string): string {
-  const match = /^(\d{4})-(\d{2})-(\d{2})/.exec(isoDate);
-  if (!match) return isoDate;
+/** Formats an ISO date (yyyy-mm-dd) or datetime string as DD-MM-YYYY for display. */
+export function formatDisplayDate(value: string | null | undefined): string {
+  if (!value) return "—";
+  const match = /^(\d{4})-(\d{2})-(\d{2})/.exec(value.trim());
+  if (!match) return value;
   const [, year, month, day] = match;
-  return `${day}-${month}-${year.slice(-2)}`;
+  return `${day}-${month}-${year}`;
 }
 
-export function formatLeasePeriod(startDate: string, endDate: string): string {
-  return `${formatDateDdMmYy(startDate)} → ${formatDateDdMmYy(endDate)}`;
+/** Formats a start/end date pair for tables and summaries. */
+export function formatDateRange(
+  startDate: string,
+  endDate: string,
+  separator = " → "
+): string {
+  return `${formatDisplayDate(startDate)}${separator}${formatDisplayDate(endDate)}`;
 }
+
+/** @deprecated Use formatDateRange */
+export const formatLeasePeriod = formatDateRange;

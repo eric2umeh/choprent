@@ -8,6 +8,7 @@ import { ResponsiveDataTable, type Column } from "@/components/ui/responsive-tab
 import { ExpenseHistoryTable } from "@/components/expenses/expense-history-table";
 import type { ExpenseListItem } from "@/lib/data/expenses";
 import { formatNaira } from "@/lib/auth/roles";
+import { formatDisplayDate, formatDateRange } from "@/lib/utils/format-date";
 
 type UnitPayment = {
   id: string;
@@ -45,7 +46,9 @@ export function UnitHistorySections({
       header: "Date",
       mobilePrimary: true,
       render: (p) => (
-        <span className="text-table-cell-muted tabular-nums">{p.date}</span>
+        <span className="text-table-cell-muted tabular-nums">
+          {formatDisplayDate(p.date)}
+        </span>
       ),
     },
     {
@@ -100,7 +103,7 @@ export function UnitHistorySections({
       mobilePrimary: true,
       render: (l) => (
         <span className="text-period-compact">
-          {l.startDate} → {l.endDate}
+          {formatDateRange(l.startDate, l.endDate)}
         </span>
       ),
     },

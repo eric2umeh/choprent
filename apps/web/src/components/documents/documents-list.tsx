@@ -19,6 +19,7 @@ import {
 } from "@/lib/actions/documents";
 import type { DocumentListItem, DocumentType } from "@/lib/data/documents";
 import { toast } from "@/components/ui/toast";
+import { formatDisplayDate } from "@/lib/utils/format-date";
 import { Spinner } from "@/components/ui/spinner";
 import { Download, FileText } from "lucide-react";
 
@@ -128,7 +129,9 @@ export function DocumentsList({
       key: "issued",
       header: "Issued",
       render: (d) => (
-        <span className="text-table-cell-muted tabular-nums">{d.issuedAt}</span>
+        <span className="text-table-cell-muted tabular-nums">
+          {formatDisplayDate(d.issuedAt)}
+        </span>
       ),
     },
     {
@@ -268,7 +271,7 @@ export function DocumentsList({
                     <p className="truncate text-list-primary">{doc.title}</p>
                     <p className="text-list-meta">
                       {doc.unitCode ? `Unit ${doc.unitCode}` : "Plaza-wide"} ·{" "}
-                      {doc.issuedAt}
+                      {formatDisplayDate(doc.issuedAt)}
                     </p>
                   </div>
                   <Badge

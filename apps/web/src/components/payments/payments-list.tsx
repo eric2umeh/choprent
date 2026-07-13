@@ -16,6 +16,7 @@ import { EditCashForm } from "@/components/payments/edit-cash-form";
 import { getReceiptDownloadUrl } from "@/lib/actions/documents";
 import type { PaymentListItem } from "@/lib/data/payments";
 import { formatNaira } from "@/lib/auth/roles";
+import { formatDisplayDate } from "@/lib/utils/format-date";
 import { toast } from "@/components/ui/toast";
 import { Spinner } from "@/components/ui/spinner";
 import { Check, X, FileImage, Pencil, Undo2 } from "lucide-react";
@@ -186,7 +187,9 @@ export function PaymentsList({
       key: "date",
       header: "Submitted",
       render: (p) => (
-        <span className="text-table-cell-muted tabular-nums">{p.createdAt.slice(0, 10)}</span>
+        <span className="text-table-cell-muted tabular-nums">
+          {formatDisplayDate(p.createdAt)}
+        </span>
       ),
     },
     {
