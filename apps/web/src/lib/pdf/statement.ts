@@ -1,5 +1,6 @@
 import { PDFDocument, StandardFonts, rgb } from "pdf-lib";
 import type { LedgerLineItem } from "@/lib/data/ledger";
+import { formatDisplayDate } from "@/lib/utils/format-date";
 
 /** Standard PDF fonts only support WinAnsi — not ₦ or other Unicode symbols. */
 function formatNairaForPdf(amount: number): string {
@@ -49,7 +50,7 @@ export async function buildStatementPdf(input: {
   y -= 4;
   draw(`Unit: ${input.unitCode}`);
   draw(`Tenant: ${input.tenantName}`);
-  draw(`Issued: ${input.issuedAt}`);
+  draw(`Issued: ${formatDisplayDate(input.issuedAt)}`);
   draw(`Balance due: ${formatNairaForPdf(input.balance)}`, 12, true);
   y -= 8;
   draw("Activity", 12, true);
@@ -57,7 +58,7 @@ export async function buildStatementPdf(input: {
   for (const line of input.lines.slice(0, 40)) {
     const sign = line.kind === "payment" ? "+" : "-";
     draw(
-      `${line.date}  ${line.description.slice(0, 42)}  ${sign}${formatNairaForPdf(Math.abs(line.amount))}`,
+      `${formatDisplayDate(line.date)}  ${line.description.slice(0, 42)}  ${sign}${formatNairaForPdf(Math.abs(line.amount))}`,
       10,
     );
     if (y < 60) break;

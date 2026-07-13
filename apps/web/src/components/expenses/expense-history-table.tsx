@@ -6,6 +6,7 @@ import {
   type ExpenseListItem,
 } from "@/lib/data/expenses";
 import { formatNaira } from "@/lib/auth/roles";
+import { formatDisplayDate } from "@/lib/utils/format-date";
 
 export function ExpenseHistoryTable({
   expenses,
@@ -24,7 +25,9 @@ export function ExpenseHistoryTable({
       header: "Date",
       mobilePrimary: true,
       render: (e) => (
-        <span className="text-table-cell-muted tabular-nums">{e.expenseDate}</span>
+        <span className="text-table-cell-muted tabular-nums">
+          {formatDisplayDate(e.expenseDate)}
+        </span>
       ),
     },
     {

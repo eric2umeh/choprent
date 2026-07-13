@@ -16,6 +16,7 @@ import { TenantPaymentStatusBadge } from "@/components/tenants/tenant-payment-st
 import type { LeaseListItem } from "@/lib/data/leases";
 import type { SettlementAccountItem } from "@/lib/data/settlement-accounts";
 import { formatNaira } from "@/lib/auth/roles";
+import { formatDateRange } from "@/lib/utils/format-date";
 
 export function LeasesList({
   orgSlug,
@@ -107,7 +108,7 @@ export function LeasesList({
       className: "w-[11.5rem]",
       render: (l) => (
         <span className="text-period-compact">
-          {l.startDate} → {l.endDate}
+          {formatDateRange(l.startDate, l.endDate)}
         </span>
       ),
     },
@@ -241,7 +242,7 @@ export function LeasesList({
                       {l.unitCode} · {l.tenantName}
                     </p>
                     <p className="text-period-compact mt-0.5">
-                      {l.startDate} → {l.endDate}
+                      {formatDateRange(l.startDate, l.endDate)}
                     </p>
                     <p className="text-cell-muted capitalize">
                       {l.billingCadence}

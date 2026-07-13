@@ -10,6 +10,7 @@ import {
 } from "@/lib/data/expenses";
 import type { PropertySummary } from "@/lib/data/property-types";
 import { formatNaira } from "@/lib/auth/roles";
+import { formatDisplayDate } from "@/lib/utils/format-date";
 import { StatCard } from "@/components/ui/card";
 import { Modal } from "@/components/ui/modal";
 import { ExpenseForm } from "@/components/expenses/expense-form";
@@ -95,7 +96,9 @@ export function ExpensesPageClient({
       header: "Date",
       mobilePrimary: true,
       render: (e) => (
-        <span className="text-table-cell-muted tabular-nums">{e.expenseDate}</span>
+        <span className="text-table-cell-muted tabular-nums">
+          {formatDisplayDate(e.expenseDate)}
+        </span>
       ),
     },
     {
@@ -290,7 +293,9 @@ export function ExpensesPageClient({
                   {formatExpenseCategory(expense.category)}
                 </p>
                 <div className="mt-2 flex items-center justify-between">
-                  <span className="text-list-meta">{expense.expenseDate}</span>
+                  <span className="text-list-meta">
+                    {formatDisplayDate(expense.expenseDate)}
+                  </span>
                   <span className="text-money">{formatNaira(expense.amountNgn)}</span>
                 </div>
               </div>

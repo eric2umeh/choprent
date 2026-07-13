@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { formatNaira } from "@/lib/auth/roles";
+import { formatDisplayDate } from "@/lib/utils/format-date";
 import { formatPropertyType } from "@/lib/data/unit-types";
 import type { PortfolioSummary, RentAdvisorItem } from "@/lib/data/analytics";
 import { StatCard } from "@/components/ui/card";
@@ -81,7 +82,7 @@ export function AnalyticsPageClient({
                 <div className="mt-2 flex flex-wrap gap-3 text-xs text-list-meta">
                   <span>{item.collectionRate}% collected</span>
                   <span>{formatNaira(item.arrears)} arrears</span>
-                  <span>Ends {item.leaseEndDate}</span>
+                  <span>Ends {formatDisplayDate(item.leaseEndDate)}</span>
                   <span>{item.daysToRenewal}d to renewal</span>
                 </div>
               </div>

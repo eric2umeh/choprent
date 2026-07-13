@@ -19,6 +19,7 @@ import {
 import { StaffNotificationsPanel } from "@/components/notifications/staff-notification-bell";
 import { PilotSetupChecklist } from "@/components/onboarding/pilot-setup-checklist";
 import { formatNaira } from "@/lib/auth/roles";
+import { formatDisplayDate } from "@/lib/utils/format-date";
 import { getPilotOnboardingStatus } from "@/lib/data/pilot-onboarding";
 
 export default async function DashboardHomePage({
@@ -123,7 +124,7 @@ export default async function DashboardHomePage({
                 <div className="shrink-0 text-right">
                   <p className="text-money text-sm">{formatNaira(item.amount)}</p>
                   <p className="mt-0.5 text-list-meta tabular-nums">
-                    {item.at.slice(0, 10)}
+                    {formatDisplayDate(item.at)}
                   </p>
                 </div>
               </ListRow>
