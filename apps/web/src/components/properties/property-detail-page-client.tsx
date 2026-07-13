@@ -9,11 +9,13 @@ import { AddUnitsInfoBanner } from "@/components/properties/add-units-info-banne
 import { UnitsList } from "@/components/units/units-list";
 import { NewUnitForm } from "@/components/units/new-unit-form";
 import { ExpenseHistoryTable } from "@/components/expenses/expense-history-table";
+import { EntityDocumentsSection } from "@/components/documents/entity-documents-section";
 import { ListPanel } from "@/components/ui/page-header";
 import { deleteProperty } from "@/lib/actions/sites";
 import type { PropertySummary } from "@/lib/data/property-types";
 import type { UnitListItem } from "@/lib/data/unit-types";
 import type { ExpenseListItem } from "@/lib/data/expenses";
+import type { DocumentListItem } from "@/lib/data/documents";
 import { formatSiteType } from "@/lib/data/property-types";
 import { toast } from "@/components/ui/toast";
 import { confirmDialog } from "@/components/ui/confirm-dialog";
@@ -25,14 +27,18 @@ export function PropertyDetailPageClient({
   property,
   units,
   expenses,
+  documents,
   canManage,
+  canManageDocuments = false,
   paystackDvaEnabled = false,
 }: {
   orgSlug: string;
   property: PropertySummary;
   units: UnitListItem[];
   expenses: ExpenseListItem[];
+  documents: DocumentListItem[];
   canManage: boolean;
+  canManageDocuments?: boolean;
   paystackDvaEnabled?: boolean;
 }) {
   const router = useRouter();
@@ -131,6 +137,14 @@ export function PropertyDetailPageClient({
           showUnit
         />
       </ListPanel>
+
+      <EntityDocumentsSection
+        orgSlug={orgSlug}
+        documents={documents}
+        canManage={canManageDocuments}
+        defaultSiteId={property.id}
+        units={units.map((u) => ({ id: u.id, unitCode: u.unitCode }))}
+      />
 
       <Modal
         open={editing}

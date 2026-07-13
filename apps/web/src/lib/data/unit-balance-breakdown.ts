@@ -1,7 +1,9 @@
 import { createAdminClient } from "@/lib/supabase/admin";
+import { listBillingPeriods } from "@/lib/charges/period-ranges";
+import { repairStaleLedgerPeriodsForUnit } from "@/lib/charges/generate-ledger";
 
 export type BalanceBreakdownRow = {
-  year: string;
+  periodLabel: string;
   kind: string;
   kindKey: string;
   balance: number;
@@ -24,12 +26,14 @@ function kindLabel(key: string): string {
   return KIND_LABELS[key] ?? key;
 }
 
-/** Outstanding balance grouped by calendar year and charge type for record-cash UI. */
+/** Outstanding balance grouped by billing period and charge type for record-cash UI. */
 export async function getUnitBalanceBreakdown(
   orgId: string,
   unitId: string
 ): Promise<{ rows: BalanceBreakdownRow[]; total: number }> {
   const admin = createAdminClient();
+
+  await repairStaleLedgerPeriodsForUnit(admin, orgId, unitId);
 
   const { data: unit } = await admin
     .from("units")
@@ -39,6 +43,24 @@ export async function getUnitBalanceBreakdown(
     .maybeSingle();
 
   if (!unit) return { rows: [], total: 0 };
+
+  const { data: lease } = await admin
+    .from("leases")
+    .select("start_date, end_date, billing_cadence")
+    .eq("unit_id", unitId)
+    .eq("status", "active")
+    .maybeSingle();
+
+  const periodLabelsByStart = new Map<string, string>();
+  if (lease) {
+    for (const period of listBillingPeriods(
+      lease.start_date,
+      lease.end_date,
+      lease.billing_cadence
+    )) {
+      periodLabelsByStart.set(period.periodStart, period.periodLabel);
+    }
+  }
 
   const buckets = new Map<string, number>();
   const arrears = Number(unit.arrears_balance_ngn ?? 0);
@@ -64,16 +86,18 @@ export async function getUnitBalanceBreakdown(
     );
     if (owed <= 0) continue;
 
-    const year = String(period.period_start).slice(0, 4);
+    const periodLabel =
+      periodLabelsByStart.get(period.period_start) ??
+      String(period.period_start).slice(0, 4);
 
     const { data: lines } = await admin
       .from("ledger_lines")
-      .select("amount_ngn, charge_templates(charge_kind)")
+      .select("amount_ngn, description, charge_templates(charge_kind)")
       .eq("ledger_period_id", period.id)
       .eq("kind", "expected");
 
     if (!lines?.length) {
-      const key = `${year}|rent`;
+      const key = `${periodLabel}|rent`;
       buckets.set(key, (buckets.get(key) ?? 0) + owed);
       continue;
     }
@@ -94,14 +118,14 @@ export async function getUnitBalanceBreakdown(
     const base = lineSum > 0 ? lineSum : owed;
     for (const [kind, amt] of byKind) {
       const share = owed * (amt / base);
-      const key = `${year}|${kind}`;
+      const key = `${periodLabel}|${kind}`;
       buckets.set(key, (buckets.get(key) ?? 0) + share);
     }
   }
 
   const { data: expenses } = await admin
     .from("property_expenses")
-    .select("amount_ngn, expense_date, description")
+    .select("amount_ngn, expense_date")
     .eq("unit_id", unitId)
     .eq("organization_id", orgId);
 
@@ -113,9 +137,9 @@ export async function getUnitBalanceBreakdown(
 
   const rows: BalanceBreakdownRow[] = [...buckets.entries()]
     .map(([key, balance]) => {
-      const [year, kindKey] = key.split("|");
+      const [periodLabel, kindKey] = key.split("|");
       return {
-        year,
+        periodLabel,
         kindKey,
         kind: kindLabel(kindKey),
         balance: Math.round(balance),
@@ -123,8 +147,8 @@ export async function getUnitBalanceBreakdown(
     })
     .filter((r) => r.balance > 0)
     .sort((a, b) => {
-      const yearCmp = a.year.localeCompare(b.year);
-      if (yearCmp !== 0) return yearCmp;
+      const periodCmp = a.periodLabel.localeCompare(b.periodLabel);
+      if (periodCmp !== 0) return periodCmp;
       return a.kind.localeCompare(b.kind);
     });
 

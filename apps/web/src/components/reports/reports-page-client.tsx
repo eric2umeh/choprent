@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import {
   exportTenantActivityPack,
@@ -12,7 +12,9 @@ import type { TenantActivitySnapshot } from "@/lib/data/tenant-activity";
 import { formatNaira } from "@/lib/auth/roles";
 import { formatDisplayDate } from "@/lib/utils/format-date";
 import { StatCard } from "@/components/ui/card";
-import { ListPanel } from "@/components/ui/page-header";
+import { FilterBar, FilterSelect } from "@/components/ui/filter-bar";
+import { ListPanel, ListToolbar } from "@/components/ui/page-header";
+import { Pagination, usePagination } from "@/components/ui/pagination";
 import { ResponsiveDataTable, type Column } from "@/components/ui/responsive-table";
 import { toast } from "@/components/ui/toast";
 import { Spinner } from "@/components/ui/spinner";
@@ -44,6 +46,14 @@ function boolBadge(value: boolean) {
   );
 }
 
+function defaultDateRange() {
+  const year = new Date().getFullYear();
+  return {
+    from: `${year}-01-01`,
+    to: new Date().toISOString().slice(0, 10),
+  };
+}
+
 export function ReportsPageClient({
   orgSlug,
   activity,
@@ -58,6 +68,35 @@ export function ReportsPageClient({
   const router = useRouter();
   const [exporting, setExporting] = useState<string | null>(null);
   const [, startTransition] = useTransition();
+  const defaults = defaultDateRange();
+  const [dateFrom, setDateFrom] = useState(defaults.from);
+  const [dateTo, setDateTo] = useState(defaults.to);
+  const [search, setSearch] = useState("");
+  const [selfServeFilter, setSelfServeFilter] = useState("all");
+
+  const filteredRows = useMemo(() => {
+    return activity.selfServiceRows.filter((r) => {
+      const q = search.toLowerCase();
+      const matchSearch =
+        !q ||
+        r.tenantName.toLowerCase().includes(q) ||
+        r.unitCode.toLowerCase().includes(q);
+
+      const matchSelfServe =
+        selfServeFilter === "all" ||
+        (selfServeFilter === "yes" && r.qualifiesSelfServing) ||
+        (selfServeFilter === "no" && !r.qualifiesSelfServing);
+
+      const activityDay = r.lastActivityAt?.slice(0, 10) ?? null;
+      const matchDate =
+        !activityDay ||
+        ((!dateFrom || activityDay >= dateFrom) && (!dateTo || activityDay <= dateTo));
+
+      return matchSearch && matchSelfServe && matchDate;
+    });
+  }, [activity.selfServiceRows, search, selfServeFilter, dateFrom, dateTo]);
+
+  const { page, setPage, totalPages, slice, pageSize } = usePagination(filteredRows);
 
   function handleExport(
     kind: "payments" | "units" | "pack",
@@ -71,7 +110,6 @@ export function ReportsPageClient({
         toast.error(result.error);
         return;
       }
-      const month = new Date().toISOString().slice(0, 7);
       if (result.csv && kind === "pack" && result.json) {
         downloadText(result.csv, `${result.filename}_tenants.csv`, "text/csv");
         downloadText(result.json, `${result.filename}.json`, "application/json");
@@ -79,7 +117,10 @@ export function ReportsPageClient({
       } else if (result.csv) {
         downloadText(
           result.csv,
-          kind === "payments" ? `payments_export_${month}.csv` : `units_export_${month}.csv`,
+          result.filename ??
+            (kind === "payments"
+              ? `payments_export_${dateFrom}_to_${dateTo}.csv`
+              : `units_export_${dateFrom}_to_${dateTo}.csv`),
           "text/csv"
         );
         toast.success("Export downloaded.");
@@ -131,6 +172,15 @@ export function ReportsPageClient({
       header: "Self-serving",
       render: (r) => boolBadge(r.qualifiesSelfServing),
     },
+    {
+      key: "lastActivity",
+      header: "Last activity",
+      render: (r) => (
+        <span className="text-table-cell-muted tabular-nums">
+          {r.lastActivityAt ? formatDisplayDate(r.lastActivityAt) : "—"}
+        </span>
+      ),
+    },
   ];
 
   return (
@@ -159,55 +209,115 @@ export function ReportsPageClient({
       </div>
 
       {canExport && (
-        <div className="flex flex-wrap gap-2 border-b border-border bg-white px-3 py-3">
-          <button
-            type="button"
-            className="btn-primary inline-flex items-center gap-1.5 px-3 py-1.5"
-            disabled={exporting !== null}
-            onClick={() => handleExport("pack", () => exportTenantActivityPack(orgSlug))}
-          >
-            {exporting === "pack" ? (
-              <Spinner size="sm" className="text-white" />
-            ) : (
-              <Download className="h-4 w-4" />
-            )}
-            Download report pack
-          </button>
-          <button
-            type="button"
-            className="btn-ghost inline-flex items-center gap-1.5 px-3 py-1.5"
-            disabled={exporting !== null}
-            onClick={() => handleExport("payments", () => exportPaymentsCsv(orgSlug))}
-          >
-            Payments CSV
-          </button>
-          <button
-            type="button"
-            className="btn-ghost inline-flex items-center gap-1.5 px-3 py-1.5"
-            disabled={exporting !== null}
-            onClick={() => handleExport("units", () => exportUnitsCsv(orgSlug))}
-          >
-            Units CSV
-          </button>
-          <button
-            type="button"
-            className="btn-ghost inline-flex items-center gap-1.5 px-3 py-1.5"
-            onClick={handleSaveSnapshot}
-          >
-            <Save className="h-4 w-4" />
-            Save snapshot
-          </button>
+        <div className="space-y-3 border-b border-border bg-white px-3 py-3">
+          <div className="flex flex-wrap items-end gap-3">
+            <div>
+              <label className="text-label normal-case">From</label>
+              <input
+                type="date"
+                className="input-field mt-1"
+                value={dateFrom}
+                onChange={(e) => setDateFrom(e.target.value)}
+              />
+            </div>
+            <div>
+              <label className="text-label normal-case">To</label>
+              <input
+                type="date"
+                className="input-field mt-1"
+                value={dateTo}
+                onChange={(e) => setDateTo(e.target.value)}
+              />
+            </div>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            <button
+              type="button"
+              className="btn-primary inline-flex items-center gap-1.5 px-3 py-1.5"
+              disabled={exporting !== null}
+              onClick={() => handleExport("pack", () => exportTenantActivityPack(orgSlug))}
+            >
+              {exporting === "pack" ? (
+                <Spinner size="sm" className="text-white" />
+              ) : (
+                <Download className="h-4 w-4" />
+              )}
+              Download report pack
+            </button>
+            <button
+              type="button"
+              className="btn-ghost inline-flex items-center gap-1.5 px-3 py-1.5"
+              disabled={exporting !== null}
+              onClick={() =>
+                handleExport("payments", () =>
+                  exportPaymentsCsv(orgSlug, dateFrom, dateTo)
+                )
+              }
+            >
+              Print Payments
+            </button>
+            <button
+              type="button"
+              className="btn-ghost inline-flex items-center gap-1.5 px-3 py-1.5"
+              disabled={exporting !== null}
+              onClick={() =>
+                handleExport("units", () => exportUnitsCsv(orgSlug, dateFrom, dateTo))
+              }
+            >
+              Print Units
+            </button>
+            <button
+              type="button"
+              className="btn-ghost inline-flex items-center gap-1.5 px-3 py-1.5"
+              onClick={handleSaveSnapshot}
+            >
+              <Save className="h-4 w-4" />
+              Save snapshot
+            </button>
+          </div>
         </div>
       )}
+
+      <ListToolbar>
+        <FilterBar
+          search={search}
+          onSearchChange={(v) => {
+            setSearch(v);
+            setPage(1);
+          }}
+          searchPlaceholder="Search tenant or unit…"
+        >
+          <FilterSelect
+            label="Self-serving"
+            value={selfServeFilter}
+            onChange={(v) => {
+              setSelfServeFilter(v);
+              setPage(1);
+            }}
+            options={[
+              { value: "all", label: "All" },
+              { value: "yes", label: "Yes" },
+              { value: "no", label: "No" },
+            ]}
+          />
+        </FilterBar>
+      </ListToolbar>
 
       <ListPanel>
         <h2 className="border-b border-border px-3 py-3 text-card-title">
           Tenant self-service activity
         </h2>
         <ResponsiveDataTable
-          rows={activity.selfServiceRows}
+          rows={slice}
           columns={columns}
-          emptyMessage="No active leases yet."
+          emptyMessage="No active leases in this date range."
+        />
+        <Pagination
+          page={page}
+          totalPages={totalPages}
+          onPageChange={setPage}
+          totalItems={filteredRows.length}
+          pageSize={pageSize}
         />
       </ListPanel>
 
@@ -215,18 +325,18 @@ export function ReportsPageClient({
         <h2 className="text-card-title">Monthly reports checklist</h2>
         <ul className="mt-3 space-y-2 text-list-secondary">
           <li>
-            ✓ Units registered: <strong>{activity.unitsRegistered}</strong> — export Units CSV
+            ✓ Units registered: <span className="text-list-primary">{activity.unitsRegistered}</span> — Print Units
           </li>
           <li>
-            ✓ Tenants self-serving: <strong>{activity.tenantsSelfServing}</strong> — download
+            ✓ Tenants self-serving: <span className="text-list-primary">{activity.tenantsSelfServing}</span> — download
             report pack
           </li>
           <li>
             ✓ Verified ₦ this month:{" "}
-            <strong>{formatNaira(activity.verifiedTotalNgnThisMonth)}</strong> — Payments CSV
+            <span className="text-list-primary">{formatNaira(activity.verifiedTotalNgnThisMonth)}</span> — Print Payments
           </li>
           <li>
-            ✓ Collection rate: <strong>{activity.collectionRatePct}%</strong> — screenshot this page
+            ✓ Collection rate: <span className="text-list-primary">{activity.collectionRatePct}%</span> — screenshot this page
           </li>
           <li className="flex items-center gap-2">
             <Camera className="h-4 w-4 shrink-0 text-muted" />
@@ -236,7 +346,7 @@ export function ReportsPageClient({
         <p className="mt-4 text-list-meta">
           Store exports in your monthly reports folder (see{" "}
           <code className="text-xs">docs/02_monthly_reports_checklist.md</code>). Use{" "}
-          <strong>Save snapshot</strong> to keep a dated record in the database.
+          <span className="text-section-link">Save snapshot</span> to keep a dated record in the database.
         </p>
       </div>
 

@@ -3,6 +3,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import type { PaymentMethod, PaymentStatus } from "@/types/database";
 import type { TenantPaymentStatus } from "@/lib/data/tenant-payment-status";
 import { paymentNoteFromRow } from "@/lib/payments/payment-note";
+import { actorLabel, resolveActorLabels } from "@/lib/data/audit-actors";
 
 export type PaymentListItem = {
   id: string;
@@ -20,6 +21,8 @@ export type PaymentListItem = {
   paymentDate: string | null;
   paymentNote: string | null;
   createdAt: string;
+  submittedByName: string | null;
+  verifiedByName: string | null;
 };
 
 type PaymentRow = {
@@ -35,6 +38,9 @@ type PaymentRow = {
   payment_note?: string | null;
   metadata?: unknown;
   created_at: string;
+  recorded_by?: string | null;
+  verified_by?: string | null;
+  tenant_id?: string | null;
   units: { unit_code: string } | { unit_code: string }[] | null;
   leases?: never;
 };
@@ -82,7 +88,8 @@ async function tenantInfoForUnit(
 
 function mapPaymentRow(
   row: PaymentRow,
-  tenant: { name: string; leaseId: string | null; rentStatus: TenantPaymentStatus | null }
+  tenant: { name: string; leaseId: string | null; rentStatus: TenantPaymentStatus | null },
+  actors: Map<string, string>
 ): PaymentListItem {
   return {
     id: row.id,
@@ -100,7 +107,30 @@ function mapPaymentRow(
     paymentDate: row.payment_date,
     paymentNote: paymentNoteFromRow(row),
     createdAt: row.created_at,
+    submittedByName: actorLabel(actors, row.recorded_by ?? row.tenant_id),
+    verifiedByName: actorLabel(actors, row.verified_by),
   };
+}
+
+const paymentSelect =
+  "id, unit_id, amount_ngn, period_label, payment_method, status, bank_reference, receipt_file_url, payment_date, payment_note, metadata, created_at, recorded_by, verified_by, tenant_id, units!inner(unit_code)";
+
+async function mapPaymentRows(
+  orgId: string,
+  rows: PaymentRow[],
+  statusByUnit: Map<string, { status: TenantPaymentStatus; leaseId: string }>
+): Promise<PaymentListItem[]> {
+  const actors = await resolveActorLabels(
+    orgId,
+    rows.flatMap((r) => [r.recorded_by ?? r.tenant_id, r.verified_by])
+  );
+
+  return Promise.all(
+    rows.map(async (row) => {
+      const tenant = await tenantInfoForUnit(row.unit_id, statusByUnit);
+      return mapPaymentRow(row, tenant, actors);
+    })
+  );
 }
 
 export async function listPaymentsForOrg(
@@ -112,9 +142,7 @@ export async function listPaymentsForOrg(
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("payments")
-    .select(
-      "id, unit_id, amount_ngn, period_label, payment_method, status, bank_reference, receipt_file_url, payment_date, payment_note, metadata, created_at, units!inner(unit_code)"
-    )
+    .select(paymentSelect)
     .eq("organization_id", orgId)
     .order("created_at", { ascending: false });
 
@@ -123,28 +151,15 @@ export async function listPaymentsForOrg(
       const admin = createAdminClient();
       const { data: adminRows } = await admin
         .from("payments")
-        .select(
-          "id, unit_id, amount_ngn, period_label, payment_method, status, bank_reference, receipt_file_url, payment_date, payment_note, metadata, created_at, units!inner(unit_code)"
-        )
+        .select(paymentSelect)
         .eq("organization_id", orgId)
         .order("created_at", { ascending: false });
       if (!adminRows) return [];
-      return Promise.all(
-        adminRows.map(async (row) => {
-          const r = row as PaymentRow;
-          const tenant = await tenantInfoForUnit(r.unit_id, statusByUnit);
-          return mapPaymentRow(r, tenant);
-        })
-      );
+      return mapPaymentRows(orgId, adminRows as PaymentRow[], statusByUnit);
     } catch {
       return [];
     }
   }
 
-  return Promise.all(
-    (data as PaymentRow[]).map(async (row) => {
-      const tenant = await tenantInfoForUnit(row.unit_id, statusByUnit);
-      return mapPaymentRow(row, tenant);
-    })
-  );
+  return mapPaymentRows(orgId, data as PaymentRow[], statusByUnit);
 }

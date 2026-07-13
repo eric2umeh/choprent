@@ -112,11 +112,13 @@ export function RecordCashForm({
               <ul className="mt-2 max-h-40 space-y-1.5 overflow-y-auto">
                 {breakdown.map((row) => (
                   <li
-                    key={`${row.year}-${row.kindKey}`}
+                    key={`${row.periodLabel}-${row.kindKey}`}
                     className="flex items-center justify-between gap-2 text-xs"
                   >
                     <span className="text-list-secondary">
-                      <span className="font-medium text-foreground">{row.year}</span>
+                      <span className="font-medium text-foreground">
+                        {row.periodLabel}
+                      </span>
                       {" · "}
                       {row.kind}
                     </span>

@@ -187,9 +187,14 @@ export function PaymentsList({
       key: "date",
       header: "Submitted",
       render: (p) => (
-        <span className="text-table-cell-muted tabular-nums">
-          {formatDisplayDate(p.createdAt)}
-        </span>
+        <div>
+          <span className="text-table-cell-muted tabular-nums">
+            {formatDisplayDate(p.createdAt)}
+          </span>
+          {p.submittedByName && (
+            <p className="mt-0.5 text-[11px] text-muted">{p.submittedByName}</p>
+          )}
+        </div>
       ),
     },
     {

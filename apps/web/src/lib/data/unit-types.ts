@@ -14,9 +14,12 @@ export type UnitListItem = {
   isComposite: boolean;
   compositeNote: string | null;
   virtualAccount: string | null;
+  createdAt: string | null;
 };
 
 export type UnitDetail = UnitListItem & {
+  createdAt: string | null;
+  createdByName: string | null;
   leaseId: string | null;
   tenantPhone: string | null;
   tenantEmail: string | null;

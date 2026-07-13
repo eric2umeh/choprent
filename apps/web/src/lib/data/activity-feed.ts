@@ -108,12 +108,34 @@ export function unitsToCsv(units: Awaited<ReturnType<typeof listUnitsForOrg>>): 
   );
 }
 
-export async function buildPaymentsExport(orgId: string): Promise<string> {
+export async function buildPaymentsExport(
+  orgId: string,
+  startDate?: string,
+  endDate?: string
+): Promise<string> {
   const payments = await listPaymentsForOrg(orgId);
-  return paymentsToCsv(payments);
+  const filtered = payments.filter((p) => {
+    if (!startDate && !endDate) return true;
+    const day = p.createdAt.slice(0, 10);
+    if (startDate && day < startDate) return false;
+    if (endDate && day > endDate) return false;
+    return true;
+  });
+  return paymentsToCsv(filtered);
 }
 
-export async function buildUnitsExport(orgId: string): Promise<string> {
+export async function buildUnitsExport(
+  orgId: string,
+  startDate?: string,
+  endDate?: string
+): Promise<string> {
   const units = await listUnitsForOrg(orgId);
-  return unitsToCsv(units);
+  const filtered = units.filter((u) => {
+    if (!startDate && !endDate) return true;
+    if (!u.createdAt) return true;
+    if (startDate && u.createdAt < startDate) return false;
+    if (endDate && u.createdAt > endDate) return false;
+    return true;
+  });
+  return unitsToCsv(filtered);
 }

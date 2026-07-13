@@ -6,6 +6,7 @@ import {
   deriveTenantPaymentStatus,
   type TenantPaymentStatus,
 } from "@/lib/data/tenant-payment-status";
+import { actorLabel, resolveActorLabels } from "@/lib/data/audit-actors";
 
 export type LeaseListItem = {
   id: string;
@@ -28,6 +29,8 @@ export type LeaseListItem = {
 };
 
 export type LeaseDetail = LeaseListItem & {
+  createdAt: string | null;
+  createdByName: string | null;
   payments: {
     id: string;
     amount: number;
@@ -35,6 +38,7 @@ export type LeaseDetail = LeaseListItem & {
     method: string;
     date: string;
     periodLabel: string | null;
+    submittedByName: string | null;
   }[];
   priorLeases: {
     id: string;
@@ -55,6 +59,8 @@ type LeaseRow = {
   end_date: string;
   billing_cadence: BillingCadence;
   status: LeaseListItem["status"];
+  created_at?: string;
+  created_by?: string | null;
   units:
     | {
         unit_code: string;
@@ -189,7 +195,7 @@ async function mapLeaseRows(
 }
 
 const leaseSelect =
-  "id, unit_id, tenant_display_name, tenant_phone, tenant_email, start_date, end_date, billing_cadence, status, units!inner(unit_code, site_id, organization_id, arrears_balance_ngn, sites(name, slug))";
+  "id, unit_id, tenant_display_name, tenant_phone, tenant_email, start_date, end_date, billing_cadence, status, created_at, created_by, units!inner(unit_code, site_id, organization_id, arrears_balance_ngn, sites(name, slug))";
 
 export async function listLeasesForOrg(orgId: string): Promise<LeaseListItem[]> {
   try {
@@ -225,10 +231,14 @@ export async function getLeaseDetail(
 
     const mapped = (await mapLeaseRows([row as LeaseRow], admin))[0];
 
+    const actorLabels = await resolveActorLabels(orgId, [row.created_by]);
+
     const [{ data: payments }, { data: priorLeases }] = await Promise.all([
       admin
         .from("payments")
-        .select("id, amount_ngn, status, payment_method, created_at, period_label")
+        .select(
+          "id, amount_ngn, status, payment_method, created_at, period_label, recorded_by, tenant_id"
+        )
         .eq("unit_id", mapped.unitId)
         .order("created_at", { ascending: false })
         .limit(20),
@@ -241,8 +251,15 @@ export async function getLeaseDetail(
         .limit(10),
     ]);
 
+    const paymentActors = await resolveActorLabels(
+      orgId,
+      (payments ?? []).map((p) => p.recorded_by ?? p.tenant_id)
+    );
+
     return {
       ...mapped,
+      createdAt: row.created_at?.slice(0, 10) ?? null,
+      createdByName: actorLabel(actorLabels, row.created_by),
       payments: (payments ?? []).map((p) => ({
         id: p.id,
         amount: Number(p.amount_ngn),
@@ -250,6 +267,10 @@ export async function getLeaseDetail(
         method: p.payment_method,
         date: p.created_at.slice(0, 10),
         periodLabel: p.period_label,
+        submittedByName: actorLabel(
+          paymentActors,
+          p.recorded_by ?? p.tenant_id
+        ),
       })),
       priorLeases: (priorLeases ?? []).map((l) => ({
         id: l.id,
@@ -320,7 +341,9 @@ export async function getUnitHistory(
     const [{ data: payments }, { data: leases }] = await Promise.all([
       admin
         .from("payments")
-        .select("id, amount_ngn, status, payment_method, created_at, period_label")
+        .select(
+          "id, amount_ngn, status, payment_method, created_at, period_label, recorded_by, tenant_id"
+        )
         .eq("organization_id", orgId)
         .eq("unit_id", unitId)
         .order("created_at", { ascending: false })
@@ -333,6 +356,11 @@ export async function getUnitHistory(
         .limit(20),
     ]);
 
+    const paymentActors = await resolveActorLabels(
+      orgId,
+      (payments ?? []).map((p) => p.recorded_by ?? p.tenant_id)
+    );
+
     return {
       payments: (payments ?? []).map((p) => ({
         id: p.id,
@@ -341,6 +369,10 @@ export async function getUnitHistory(
         method: p.payment_method,
         date: p.created_at.slice(0, 10),
         periodLabel: p.period_label,
+        submittedByName: actorLabel(
+          paymentActors,
+          p.recorded_by ?? p.tenant_id
+        ),
       })),
       leases: (leases ?? []).map((l) => ({
         id: l.id,

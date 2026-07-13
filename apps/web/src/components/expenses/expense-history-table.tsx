@@ -34,13 +34,15 @@ export function ExpenseHistoryTable({
       key: "description",
       header: "Description",
       mobilePrimary: true,
-      render: (e) => <span className="text-table-cell">{e.description}</span>,
+      render: (e) => (
+        <span className="text-table-cell-strong">{e.description}</span>
+      ),
     },
     {
       key: "category",
       header: "Category",
       render: (e) => (
-        <span className="text-meta-pill">{formatExpenseCategory(e.category)}</span>
+        <span className="text-table-cell-muted">{formatExpenseCategory(e.category)}</span>
       ),
     },
     ...(showProperty
@@ -69,7 +71,9 @@ export function ExpenseHistoryTable({
       key: "amount",
       header: "Amount",
       mobilePrimary: true,
-      render: (e) => <span className="text-money">{formatNaira(e.amountNgn)}</span>,
+      render: (e) => (
+        <span className="text-table-cell-strong tabular-nums">{formatNaira(e.amountNgn)}</span>
+      ),
     },
   ];
 

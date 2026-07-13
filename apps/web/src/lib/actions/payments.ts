@@ -187,6 +187,7 @@ export async function recordCashPayment(
       status: "verified",
       verified_by: ctx.user.id,
       verified_at: new Date().toISOString(),
+      recorded_by: ctx.user.id,
       metadata: metadataWithPaymentNote({}, paymentNote),
     })
     .select("id")

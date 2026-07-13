@@ -157,6 +157,18 @@ export function ExpenseForm({
           />
         </div>
 
+        <div>
+          <label className="text-label normal-case">Document (optional)</label>
+          <input
+            name="attachment"
+            type="file"
+            accept="image/*,.pdf"
+            disabled={pending}
+            className="input-field mt-1.5 text-sm file:mr-2 file:rounded file:border-0 file:bg-green-100 file:px-2 file:py-1 file:text-green-800"
+          />
+          <p className="mt-1 text-form-hint">JPG, PNG, WebP or PDF</p>
+        </div>
+
         {expense && (
           <p className="text-form-hint">
             {formatExpenseCategory(expense.category)} · {expense.propertyName}

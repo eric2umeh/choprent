@@ -5,6 +5,7 @@ import { canManageExpenses } from "@/lib/auth/roles";
 import { requireStaffContext } from "@/lib/auth/session";
 import { getPropertyForOrg } from "@/lib/data/sites";
 import { revalidatePropertyDashboardPaths } from "@/lib/routes/revalidate-dashboard";
+import { inferContentType } from "@/lib/documents/upload";
 import { createAdminClient } from "@/lib/supabase/admin";
 import type { ExpenseCategory } from "@/types/database";
 
@@ -21,6 +22,7 @@ const CATEGORIES: ExpenseCategory[] = [
   "cleaning",
   "repairs",
   "utilities",
+  "government",
   "other",
 ];
 
@@ -68,6 +70,22 @@ export async function saveExpense(
   }
 
   const admin = createAdminClient();
+  let attachmentUrl: string | null = null;
+  const attachment = formData.get("attachment");
+  if (attachment instanceof File && attachment.size > 0) {
+    if (attachment.size > 20 * 1024 * 1024) {
+      return { error: "Attachment must be 20MB or less." };
+    }
+    const ext = attachment.name.split(".").pop()?.toLowerCase() ?? "bin";
+    const contentType = inferContentType(attachment, ext);
+    const path = `${ctx.org.id}/expenses/${crypto.randomUUID()}.${ext}`;
+    const { error: uploadError } = await admin.storage
+      .from("documents")
+      .upload(path, attachment, { upsert: false, contentType });
+    if (uploadError) return { error: uploadError.message };
+    attachmentUrl = path;
+  }
+
   const payload = {
     organization_id: ctx.org.id,
     site_id: siteId,
@@ -78,12 +96,13 @@ export async function saveExpense(
     expense_date: expenseDate,
     created_by: ctx.user.id,
     updated_at: new Date().toISOString(),
+    ...(attachmentUrl ? { attachment_url: attachmentUrl } : {}),
   };
 
   if (expenseId) {
     const { data: existing } = await admin
       .from("property_expenses")
-      .select("id")
+      .select("id, attachment_url")
       .eq("id", expenseId)
       .eq("organization_id", ctx.org.id)
       .maybeSingle();
@@ -92,7 +111,10 @@ export async function saveExpense(
 
     const { error } = await admin
       .from("property_expenses")
-      .update(payload)
+      .update({
+        ...payload,
+        attachment_url: attachmentUrl ?? existing.attachment_url,
+      })
       .eq("id", expenseId);
 
     if (error) return { error: error.message };

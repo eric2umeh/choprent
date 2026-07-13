@@ -30,6 +30,7 @@ export const EXPENSE_CATEGORY_OPTIONS: { value: ExpenseCategory; label: string }
   { value: "cleaning", label: "Cleaning" },
   { value: "repairs", label: "Repairs" },
   { value: "utilities", label: "Utilities" },
+  { value: "government", label: "Government" },
   { value: "other", label: "Other" },
 ];
 

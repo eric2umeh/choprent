@@ -118,14 +118,14 @@ export function AnalyticsPageClient({
           Record costs on{" "}
           <Link
             href={`/d/${orgSlug}/expenses`}
-            className="font-semibold text-green-800 hover:text-green-900"
+                    className="text-section-link"
           >
             Expenses
           </Link>{" "}
           to improve net margin accuracy. Export CSVs from{" "}
           <Link
             href={`/d/${orgSlug}/reports`}
-            className="font-semibold text-green-800 hover:text-green-900"
+                    className="text-section-link"
           >
             Reports
           </Link>

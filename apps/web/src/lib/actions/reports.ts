@@ -28,31 +28,45 @@ export type ReportsPackResult = ExportResult & {
   json?: string;
 };
 
-export async function exportPaymentsCsv(orgSlug: string): Promise<ExportResult> {
+export async function exportPaymentsCsv(
+  orgSlug: string,
+  startDate?: string,
+  endDate?: string
+): Promise<ExportResult> {
   const ctx = await requireStaffContext(orgSlug);
   if (ctx.role === "agent") {
     return { error: "Agents cannot export reports." };
   }
 
   try {
-    const csv = await buildPaymentsExport(ctx.org.id);
-    const month = new Date().toISOString().slice(0, 7);
-    return { csv, filename: `payments_export_${month}.csv` };
+    const csv = await buildPaymentsExport(ctx.org.id, startDate, endDate);
+    const range =
+      startDate && endDate
+        ? `${startDate}_to_${endDate}`
+        : new Date().toISOString().slice(0, 7);
+    return { csv, filename: `payments_export_${range}.csv` };
   } catch {
     return { error: "Could not generate payments export." };
   }
 }
 
-export async function exportUnitsCsv(orgSlug: string): Promise<ExportResult> {
+export async function exportUnitsCsv(
+  orgSlug: string,
+  startDate?: string,
+  endDate?: string
+): Promise<ExportResult> {
   const ctx = await requireStaffContext(orgSlug);
   if (ctx.role === "agent") {
     return { error: "Agents cannot export reports." };
   }
 
   try {
-    const csv = await buildUnitsExport(ctx.org.id);
-    const month = new Date().toISOString().slice(0, 7);
-    return { csv, filename: `units_export_${month}.csv` };
+    const csv = await buildUnitsExport(ctx.org.id, startDate, endDate);
+    const range =
+      startDate && endDate
+        ? `${startDate}_to_${endDate}`
+        : new Date().toISOString().slice(0, 7);
+    return { csv, filename: `units_export_${range}.csv` };
   } catch {
     return { error: "Could not generate units export." };
   }

@@ -57,13 +57,13 @@ export function ResponsiveDataTable<T extends { id: string }>({
                 onClick={() => onRowClick?.(row)}
                 className={cn(
                   "border-b border-border bg-white transition",
-                  onRowClick && "cursor-pointer hover:bg-green-50/40"
+                  onRowClick && "cursor-pointer hover:bg-surface-subtle"
                 )}
               >
                 {columns.map((col) => (
                   <td
                     key={col.key}
-                    className={cn("px-3 py-3 align-middle", col.className)}
+                    className={cn("px-3 py-3.5 align-middle", col.className)}
                   >
                     {col.render(row)}
                   </td>

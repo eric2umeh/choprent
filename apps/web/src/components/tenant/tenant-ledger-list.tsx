@@ -57,7 +57,7 @@ export function TenantLedgerList({
       render: (l) => (
         <span
           className={
-            l.kind === "payment" ? "text-money text-green-700" : "text-money"
+            l.kind === "payment" ? "text-money" : "text-table-cell-strong"
           }
         >
           {l.kind === "payment" ? "+" : "−"}
@@ -144,7 +144,7 @@ export function TenantLedgerList({
                     <p
                       className={
                         line.kind === "payment"
-                          ? "text-money text-green-700"
+                          ? "text-money"
                           : "text-money"
                       }
                     >
