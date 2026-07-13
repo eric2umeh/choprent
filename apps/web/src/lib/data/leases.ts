@@ -274,7 +274,6 @@ export async function listVacantUnitsForLease(
         .from("units")
         .select("id, unit_code, site_id")
         .eq("organization_id", orgId)
-        .in("status", ["vacant", "maintenance"])
         .order("unit_code"),
       admin
         .from("leases")
