@@ -2,7 +2,11 @@
 
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { createLease, renewLease } from "@/lib/actions/leases";
+import {
+  createLease,
+  renewLease,
+  updateActiveLease,
+} from "@/lib/actions/leases";
 import { LoadingButton } from "@/components/ui/loading-button";
 import { Modal } from "@/components/ui/modal";
 import { SearchableSelect } from "@/components/ui/searchable-select";
@@ -14,15 +18,15 @@ export function LeaseForm({
   orgSlug,
   mode,
   lease,
-  vacantUnits,
+  vacantUnits = [],
   settlementAccounts,
   open,
   onClose,
 }: {
   orgSlug: string;
-  mode: "create" | "renew";
+  mode: "create" | "renew" | "edit";
   lease?: LeaseListItem;
-  vacantUnits: { id: string; unitCode: string; siteId: string }[];
+  vacantUnits?: { id: string; unitCode: string; siteId: string }[];
   settlementAccounts: SettlementAccountItem[];
   open: boolean;
   onClose: () => void;
@@ -52,7 +56,9 @@ export function LeaseForm({
     const result =
       mode === "create"
         ? await createLease(orgSlug, {}, formData)
-        : await renewLease(orgSlug, lease!.id, {}, formData);
+        : mode === "renew"
+          ? await renewLease(orgSlug, lease!.id, {}, formData)
+          : await updateActiveLease(orgSlug, lease!.id, {}, formData);
     setLoading(false);
 
     if (result.error) {
@@ -60,23 +66,46 @@ export function LeaseForm({
       return;
     }
 
-    toast.success(mode === "create" ? "Lease created." : "Lease renewed.");
+    const successMessage =
+      mode === "create"
+        ? "Lease created."
+        : mode === "renew"
+          ? "Lease renewed."
+          : "Lease updated.";
+    toast.success(successMessage);
     router.refresh();
     onClose();
   }
 
   const nextYear = new Date().getFullYear() + 1;
 
+  const title =
+    mode === "create"
+      ? "Assign tenant"
+      : mode === "renew"
+        ? `Renew · ${lease?.unitCode}`
+        : `Edit lease · ${lease?.unitCode}`;
+
+  const description =
+    mode === "create"
+      ? "Create an active lease on a vacant unit."
+      : mode === "renew"
+        ? "End the current lease and start a new term."
+        : "Update tenancy dates, contact details, or billing cadence.";
+
+  const submitLabel =
+    mode === "create"
+      ? "Create lease"
+      : mode === "renew"
+        ? "Renew lease"
+        : "Save changes";
+
   return (
     <Modal
       open={open}
       onClose={onClose}
-      title={mode === "create" ? "Assign tenant" : `Renew · ${lease?.unitCode}`}
-      description={
-        mode === "create"
-          ? "Create an active lease on a vacant unit."
-          : "End the current lease and start a new term."
-      }
+      title={title}
+      description={description}
       preventClose={loading}
     >
       <form onSubmit={handleSubmit} className="space-y-3">
@@ -162,6 +191,48 @@ export function LeaseForm({
           </p>
         )}
 
+        {mode === "edit" && lease && (
+          <>
+            <p className="text-sm text-muted">
+              Unit{" "}
+              <span className="font-medium text-foreground">{lease.unitCode}</span>
+              {" · "}
+              {lease.propertyName}
+            </p>
+            <div>
+              <label className="text-label normal-case">Tenant name</label>
+              <input
+                name="tenant_display_name"
+                required
+                disabled={loading}
+                defaultValue={lease.tenantName}
+                className="input-field mt-1"
+              />
+            </div>
+            <div className="grid gap-3 sm:grid-cols-2">
+              <div>
+                <label className="text-label normal-case">Phone</label>
+                <input
+                  name="tenant_phone"
+                  disabled={loading}
+                  defaultValue={lease.tenantPhone ?? ""}
+                  className="input-field mt-1"
+                />
+              </div>
+              <div>
+                <label className="text-label normal-case">Email</label>
+                <input
+                  name="tenant_email"
+                  type="email"
+                  disabled={loading}
+                  defaultValue={lease.tenantEmail ?? ""}
+                  className="input-field mt-1"
+                />
+              </div>
+            </div>
+          </>
+        )}
+
         <div className="grid gap-3 sm:grid-cols-2">
           <div>
             <label className="text-label normal-case">Start date</label>
@@ -171,9 +242,11 @@ export function LeaseForm({
               required
               disabled={loading}
               defaultValue={
-                mode === "renew"
-                  ? `${nextYear}-01-01`
-                  : new Date().toISOString().slice(0, 10)
+                mode === "edit" && lease
+                  ? lease.startDate
+                  : mode === "renew"
+                    ? `${nextYear}-01-01`
+                    : new Date().toISOString().slice(0, 10)
               }
               className="input-field mt-1"
             />
@@ -185,7 +258,11 @@ export function LeaseForm({
               type="date"
               required
               disabled={loading}
-              defaultValue={`${nextYear}-12-31`}
+              defaultValue={
+                mode === "edit" && lease
+                  ? lease.endDate
+                  : `${nextYear}-12-31`
+              }
               className="input-field mt-1"
             />
           </div>
@@ -210,7 +287,7 @@ export function LeaseForm({
           loading={loading}
           className="btn-primary w-full"
         >
-          {mode === "create" ? "Create lease" : "Renew lease"}
+          {submitLabel}
         </LoadingButton>
       </form>
     </Modal>
