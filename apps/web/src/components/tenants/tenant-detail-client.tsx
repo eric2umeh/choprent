@@ -1,25 +1,40 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { useState, useTransition } from "react";
 import { propertyPath, unitPath } from "@/lib/routes/dashboard-paths";
 import { Badge } from "@/components/ui/badge";
 import { ListPanel } from "@/components/ui/page-header";
 import { ResponsiveDataTable, type Column } from "@/components/ui/responsive-table";
 import { ExpenseHistoryTable } from "@/components/expenses/expense-history-table";
 import { TenantPaymentStatusBadge } from "@/components/tenants/tenant-payment-status-badge";
+import { LeaseForm } from "@/components/leases/lease-form";
+import { confirmDialog } from "@/components/ui/confirm-dialog";
+import { toast } from "@/components/ui/toast";
+import { endActiveLease } from "@/lib/actions/leases";
 import type { LeaseDetail } from "@/lib/data/leases";
 import type { ExpenseListItem } from "@/lib/data/expenses";
+import type { SettlementAccountItem } from "@/lib/data/settlement-accounts";
 import { formatNaira } from "@/lib/auth/roles";
+import { formatLeasePeriod } from "@/lib/utils/format-date";
 
 export function TenantDetailClient({
   orgSlug,
   lease,
   unitExpenses,
+  canManage = false,
+  settlementAccounts = [],
 }: {
   orgSlug: string;
   lease: LeaseDetail;
   unitExpenses: ExpenseListItem[];
+  canManage?: boolean;
+  settlementAccounts?: SettlementAccountItem[];
 }) {
+  const router = useRouter();
+  const [editOpen, setEditOpen] = useState(false);
+  const [ending, startEnd] = useTransition();
   const paymentColumns: Column<LeaseDetail["payments"][number]>[] = [
     {
       key: "date",
@@ -81,7 +96,7 @@ export function TenantDetailClient({
       mobilePrimary: true,
       render: (l) => (
         <span className="text-period-compact">
-          {l.startDate} → {l.endDate}
+          {formatLeasePeriod(l.startDate, l.endDate)}
         </span>
       ),
     },
@@ -108,8 +123,48 @@ export function TenantDetailClient({
     },
   ];
 
+  async function handleEndTenancy() {
+    const { confirmed } = await confirmDialog({
+      title: "End tenancy?",
+      message: `End the lease for ${lease.tenantName} on unit ${lease.unitCode}? The unit will be marked vacant.`,
+      confirmLabel: "End tenancy",
+      destructive: true,
+    });
+    if (!confirmed) return;
+
+    startEnd(async () => {
+      const result = await endActiveLease(orgSlug, lease.id);
+      if (result.error) {
+        toast.error(result.error);
+        return;
+      }
+      toast.success("Tenancy ended. Unit is now vacant.");
+      router.push(`/d/${orgSlug}/tenants`);
+      router.refresh();
+    });
+  }
+
   return (
     <div className="space-y-0">
+      {canManage && lease.status === "active" && (
+        <div className="flex flex-wrap gap-2 border-b border-border bg-white px-3 py-3">
+          <button
+            type="button"
+            className="btn-primary px-3 py-1.5 text-sm"
+            onClick={() => setEditOpen(true)}
+          >
+            Edit lease
+          </button>
+          <button
+            type="button"
+            className="rounded-lg border border-red-200 px-3 py-1.5 text-sm font-semibold text-red-600 hover:bg-red-50 disabled:opacity-60"
+            onClick={handleEndTenancy}
+            disabled={ending}
+          >
+            End tenancy
+          </button>
+        </div>
+      )}
       <div className="border-b border-border bg-white px-3 py-4">
         <dl className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
           <div>
@@ -138,6 +193,34 @@ export function TenantDetailClient({
               {formatNaira(lease.arrears)}
             </dd>
           </div>
+        </dl>
+        <dl className="mt-4 grid gap-3 border-t border-border pt-4 sm:grid-cols-2 lg:grid-cols-4">
+          <div>
+            <dt className="text-label normal-case">Lease period</dt>
+            <dd className="mt-0.5 text-list-primary tabular-nums">
+              {formatLeasePeriod(lease.startDate, lease.endDate)}
+            </dd>
+          </div>
+          <div>
+            <dt className="text-label normal-case">Billing cadence</dt>
+            <dd className="mt-0.5 text-list-primary capitalize">
+              {lease.billingCadence}
+            </dd>
+          </div>
+          <div>
+            <dt className="text-label normal-case">Phone</dt>
+            <dd className="mt-0.5 text-list-primary">
+              {lease.tenantPhone ?? "—"}
+            </dd>
+          </div>
+          {lease.tenantEmail && (
+            <div>
+              <dt className="text-label normal-case">Email</dt>
+              <dd className="mt-0.5 text-list-primary break-all">
+                {lease.tenantEmail}
+              </dd>
+            </div>
+          )}
         </dl>
         <div className="mt-3 flex flex-wrap gap-2 text-sm">
           <Link
@@ -189,6 +272,17 @@ export function TenantDetailClient({
             emptyMessage="No prior tenancies."
           />
         </ListPanel>
+      )}
+
+      {canManage && (
+        <LeaseForm
+          orgSlug={orgSlug}
+          mode="edit"
+          lease={lease}
+          settlementAccounts={settlementAccounts}
+          open={editOpen}
+          onClose={() => setEditOpen(false)}
+        />
       )}
     </div>
   );
