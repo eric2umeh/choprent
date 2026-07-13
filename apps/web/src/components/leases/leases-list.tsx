@@ -35,8 +35,10 @@ export function LeasesList({
   const [search, setSearch] = useState("");
   const [cadenceFilter, setCadenceFilter] = useState("all");
   const [rentStatusFilter, setRentStatusFilter] = useState("all");
-  const [formMode, setFormMode] = useState<"create" | "renew" | null>(null);
-  const [renewLease, setRenewLease] = useState<LeaseListItem | null>(null);
+  const [formMode, setFormMode] = useState<"create" | "renew" | "edit" | null>(
+    null
+  );
+  const [activeLease, setActiveLease] = useState<LeaseListItem | null>(null);
   const [, startTransition] = useTransition();
 
   const filtered = useMemo(() => {
@@ -130,19 +132,34 @@ export function LeasesList({
             header: "",
             render: (l: LeaseListItem) =>
               l.status === "active" ? (
-                <button
-                  type="button"
-                  className="btn-ghost px-2 py-1 text-xs"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    startTransition(() => {
-                      setRenewLease(l);
-                      setFormMode("renew");
-                    });
-                  }}
-                >
-                  Renew
-                </button>
+                <div className="flex gap-1">
+                  <button
+                    type="button"
+                    className="btn-ghost px-2 py-1 text-xs"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      startTransition(() => {
+                        setActiveLease(l);
+                        setFormMode("edit");
+                      });
+                    }}
+                  >
+                    Edit
+                  </button>
+                  <button
+                    type="button"
+                    className="btn-ghost px-2 py-1 text-xs"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      startTransition(() => {
+                        setActiveLease(l);
+                        setFormMode("renew");
+                      });
+                    }}
+                  >
+                    Renew
+                  </button>
+                </div>
               ) : null,
           } satisfies Column<LeaseListItem>,
         ]
@@ -257,13 +274,17 @@ export function LeasesList({
         <LeaseForm
           orgSlug={orgSlug}
           mode={formMode}
-          lease={formMode === "renew" ? (renewLease ?? undefined) : undefined}
+          lease={
+            formMode === "renew" || formMode === "edit"
+              ? (activeLease ?? undefined)
+              : undefined
+          }
           vacantUnits={vacantUnits}
           settlementAccounts={settlementAccounts}
           open={!!formMode}
           onClose={() => {
             setFormMode(null);
-            setRenewLease(null);
+            setActiveLease(null);
           }}
         />
       )}
