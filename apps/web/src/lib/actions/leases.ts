@@ -185,3 +185,132 @@ export async function renewLease(
   revalidatePath(`/d/${orgSlug}/tenants`);
   return { success: true };
 }
+
+export async function updateActiveLease(
+  orgSlug: string,
+  leaseId: string,
+  _prev: LeaseActionState,
+  formData: FormData
+): Promise<LeaseActionState> {
+  const ctx = await requireStaffContext(orgSlug);
+  if (!canManageLeases(ctx.role)) {
+    return { error: "You don't have permission to manage leases." };
+  }
+
+  const tenantName = String(formData.get("tenant_display_name") ?? "").trim();
+  const tenantPhone = String(formData.get("tenant_phone") ?? "").trim() || null;
+  const tenantEmail = String(formData.get("tenant_email") ?? "").trim() || null;
+  const startDate = String(formData.get("start_date") ?? "").trim();
+  const endDate = String(formData.get("end_date") ?? "").trim();
+  const billingCadence = String(formData.get("billing_cadence") ?? "annual") as BillingCadence;
+
+  if (!tenantName || !startDate || !endDate) {
+    return { error: "Tenant name and lease dates are required." };
+  }
+
+  const admin = createAdminClient();
+
+  const { data: current } = await admin
+    .from("leases")
+    .select(
+      "id, unit_id, units!inner(organization_id, site_id)"
+    )
+    .eq("id", leaseId)
+    .eq("status", "active")
+    .maybeSingle();
+
+  if (!current) return { error: "Active lease not found." };
+
+  const orgId =
+    current.units &&
+    typeof current.units === "object" &&
+    !Array.isArray(current.units) &&
+    "organization_id" in current.units
+      ? (current.units as { organization_id: string }).organization_id
+      : null;
+
+  if (orgId !== ctx.org.id) return { error: "Lease not found." };
+
+  let tenantUserId: string | null = null;
+  if (tenantEmail) {
+    const { data: usersPage } = await admin.auth.admin.listUsers();
+    tenantUserId =
+      usersPage.users.find(
+        (u) => u.email?.toLowerCase() === tenantEmail.toLowerCase()
+      )?.id ?? null;
+  }
+
+  const updatePayload: Record<string, string | null> = {
+    tenant_display_name: tenantName,
+    tenant_phone: tenantPhone,
+    tenant_email: tenantEmail,
+    start_date: startDate,
+    end_date: endDate,
+    billing_cadence: billingCadence,
+  };
+  if (tenantUserId) updatePayload.tenant_user_id = tenantUserId;
+
+  const { error: updateError } = await admin
+    .from("leases")
+    .update(updatePayload)
+    .eq("id", leaseId);
+
+  if (updateError) return { error: updateError.message };
+
+  await regenerateLedgerForUnit(admin, ctx.org.id, current.unit_id);
+
+  revalidatePath(`/d/${orgSlug}/tenants`);
+  revalidatePath(`/d/${orgSlug}/tenants/${leaseId}`);
+  revalidatePath(`/d/${orgSlug}/properties`);
+  return { success: true };
+}
+
+export async function endActiveLease(
+  orgSlug: string,
+  leaseId: string
+): Promise<LeaseActionState> {
+  const ctx = await requireStaffContext(orgSlug);
+  if (!canManageLeases(ctx.role)) {
+    return { error: "You don't have permission to manage leases." };
+  }
+
+  const admin = createAdminClient();
+
+  const { data: lease } = await admin
+    .from("leases")
+    .select("id, unit_id, units!inner(organization_id)")
+    .eq("id", leaseId)
+    .eq("status", "active")
+    .maybeSingle();
+
+  if (!lease) return { error: "Active lease not found." };
+
+  const orgId =
+    lease.units &&
+    typeof lease.units === "object" &&
+    !Array.isArray(lease.units) &&
+    "organization_id" in lease.units
+      ? (lease.units as { organization_id: string }).organization_id
+      : null;
+
+  if (orgId !== ctx.org.id) return { error: "Lease not found." };
+
+  const { error: endError } = await admin
+    .from("leases")
+    .update({ status: "ended" })
+    .eq("id", leaseId);
+
+  if (endError) return { error: endError.message };
+
+  const { error: unitError } = await admin
+    .from("units")
+    .update({ status: "vacant" })
+    .eq("id", lease.unit_id);
+
+  if (unitError) return { error: unitError.message };
+
+  revalidatePath(`/d/${orgSlug}/tenants`);
+  revalidatePath(`/d/${orgSlug}/tenants/${leaseId}`);
+  revalidatePath(`/d/${orgSlug}/properties`);
+  return { success: true };
+}

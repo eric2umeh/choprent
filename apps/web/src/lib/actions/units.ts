@@ -136,6 +136,25 @@ export async function setupUnitDetails(
 
   if (!unit) return { error: "Unit not found." };
 
+  const { data: activeLease } = await admin
+    .from("leases")
+    .select("id")
+    .eq("unit_id", unitId)
+    .eq("status", "active")
+    .maybeSingle();
+
+  const shouldEndTenancy =
+    !!activeLease && (status === "vacant" || !tenantName);
+
+  let resolvedStatus: "vacant" | "occupied" | "maintenance";
+  if (shouldEndTenancy) {
+    resolvedStatus = "vacant";
+  } else if (tenantName) {
+    resolvedStatus = "occupied";
+  } else {
+    resolvedStatus = status;
+  }
+
   const { error: unitError } = await admin
     .from("units")
     .update({
@@ -144,7 +163,7 @@ export async function setupUnitDetails(
       is_composite: isCompositeCode(unitCode),
       composite_note: compositeNote,
       property_type: propertyType,
-      status: tenantName ? "occupied" : status,
+      status: resolvedStatus,
       arrears_balance_ngn: arrears,
     })
     .eq("id", unitId);
@@ -156,14 +175,13 @@ export async function setupUnitDetails(
     return { error: unitError.message };
   }
 
-  const { data: activeLease } = await admin
-    .from("leases")
-    .select("id")
-    .eq("unit_id", unitId)
-    .eq("status", "active")
-    .maybeSingle();
-
-  if (tenantName) {
+  if (shouldEndTenancy && activeLease) {
+    const { error: endError } = await admin
+      .from("leases")
+      .update({ status: "ended" })
+      .eq("id", activeLease.id);
+    if (endError) return { error: endError.message };
+  } else if (tenantName) {
     const { start, end } = currentYearRange();
     let tenantUserId: string | null = null;
     if (tenantEmail) {
@@ -227,7 +245,7 @@ export async function setupUnitDetails(
     }
   }
 
-  if (activeLease) {
+  if (activeLease && !shouldEndTenancy) {
     await admin
       .from("leases")
       .update({ billing_cadence: billingCadence })

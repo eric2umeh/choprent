@@ -1,8 +1,10 @@
 import { PageHeader } from "@/components/ui/page-header";
 import { TenantDetailClient } from "@/components/tenants/tenant-detail-client";
 import { requireStaffContext } from "@/lib/auth/session";
+import { canManageLeases } from "@/lib/auth/roles";
 import { getLeaseDetail } from "@/lib/data/leases";
 import { listExpensesForUnit } from "@/lib/data/expenses";
+import { listSettlementAccounts } from "@/lib/data/settlement-accounts";
 import { notFound } from "next/navigation";
 import Link from "next/link";
 
@@ -13,10 +15,14 @@ export default async function TenantDetailPage({
 }) {
   const { orgSlug, leaseId } = await params;
   const ctx = await requireStaffContext(orgSlug);
+  const canManage = canManageLeases(ctx.role);
   const lease = await getLeaseDetail(ctx.org.id, leaseId);
   if (!lease) notFound();
 
-  const unitExpenses = await listExpensesForUnit(ctx.org.id, lease.unitId);
+  const [unitExpenses, settlementAccounts] = await Promise.all([
+    listExpensesForUnit(ctx.org.id, lease.unitId),
+    listSettlementAccounts(ctx.org.id),
+  ]);
 
   return (
     <div>
@@ -29,7 +35,13 @@ export default async function TenantDetailPage({
           </Link>
         }
       />
-      <TenantDetailClient orgSlug={orgSlug} lease={lease} unitExpenses={unitExpenses} />
+      <TenantDetailClient
+        orgSlug={orgSlug}
+        lease={lease}
+        unitExpenses={unitExpenses}
+        canManage={canManage}
+        settlementAccounts={settlementAccounts}
+      />
     </div>
   );
 }
