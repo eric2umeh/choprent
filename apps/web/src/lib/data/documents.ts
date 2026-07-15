@@ -10,6 +10,7 @@ export type DocumentType =
   | "payment"
   | "maintenance"
   | "issue"
+  | "government"
   | "other"
   | "statement"
   | "attachment";
@@ -145,8 +146,12 @@ export async function listDocumentsForUnit(
   orgId: string,
   unitId: string
 ): Promise<DocumentListItem[]> {
-  const rows = await fetchScopedDocumentRows(orgId, "unit_id", unitId);
-  return mapDocumentRows(orgId, rows);
+  const [rows, expenseDocs] = await Promise.all([
+    fetchScopedDocumentRows(orgId, "unit_id", unitId),
+    listExpenseAttachmentsForUnit(orgId, unitId),
+  ]);
+  const mapped = await mapDocumentRows(orgId, rows);
+  return mergeDocumentLists(mapped, expenseDocs);
 }
 
 export async function listDocumentsForProperty(
@@ -170,16 +175,92 @@ export async function listDocumentsForProperty(
   );
 }
 
+/** Documents visible for a tenancy: lease-linked + unit-linked (incl. expense attachments). */
 export async function listDocumentsForTenant(
   orgId: string,
   unitId: string,
   leaseId: string
 ): Promise<DocumentListItem[]> {
-  const all = await listDocumentsForOrg(orgId);
-  return all.filter(
-    (d) =>
-      d.leaseId === leaseId ||
-      d.unitId === unitId ||
-      (d.unitId === null && d.leaseId === null)
-  );
+  const [leaseRows, unitDocs] = await Promise.all([
+    fetchScopedDocumentRows(orgId, "lease_id", leaseId),
+    listDocumentsForUnit(orgId, unitId),
+  ]);
+  const leaseDocs = await mapDocumentRows(orgId, leaseRows);
+  return mergeDocumentLists(leaseDocs, unitDocs);
+}
+
+function mergeDocumentLists(
+  primary: DocumentListItem[],
+  extra: DocumentListItem[]
+): DocumentListItem[] {
+  const seenPaths = new Set(primary.map((d) => d.filePath));
+  const seenIds = new Set(primary.map((d) => d.id));
+  const merged = [...primary];
+  for (const doc of extra) {
+    if (seenIds.has(doc.id) || seenPaths.has(doc.filePath)) continue;
+    seenIds.add(doc.id);
+    seenPaths.add(doc.filePath);
+    merged.push(doc);
+  }
+  return merged.sort((a, b) => b.issuedAt.localeCompare(a.issuedAt));
+}
+
+function expenseCategoryToDocType(category: string): DocumentType {
+  if (category === "government") return "government";
+  if (category === "maintenance" || category === "repairs") return "maintenance";
+  if (category === "other") return "other";
+  return "attachment";
+}
+
+/** Expense attachments on a unit that may not yet have a management_documents row. */
+async function listExpenseAttachmentsForUnit(
+  orgId: string,
+  unitId: string
+): Promise<DocumentListItem[]> {
+  try {
+    const admin = createAdminClient();
+    const { data, error } = await admin
+      .from("property_expenses")
+      .select(
+        "id, description, category, attachment_url, expense_date, created_by, unit_id, site_id, units(unit_code)"
+      )
+      .eq("organization_id", orgId)
+      .eq("unit_id", unitId)
+      .not("attachment_url", "is", null)
+      .order("expense_date", { ascending: false });
+
+    if (error || !data?.length) return [];
+
+    const actors = await resolveActorLabels(
+      orgId,
+      data.map((row) => row.created_by as string | null)
+    );
+
+    return data
+      .filter((row) => typeof row.attachment_url === "string" && row.attachment_url.length > 0)
+      .map((row) => {
+        const units = row.units as
+          | { unit_code: string }
+          | { unit_code: string }[]
+          | null;
+        const unitCode = Array.isArray(units)
+          ? units[0]?.unit_code ?? null
+          : units?.unit_code ?? null;
+
+        return {
+          id: `expense:${row.id}`,
+          title: row.description as string,
+          docType: expenseCategoryToDocType(String(row.category)),
+          unitCode,
+          unitId: (row.unit_id as string) ?? unitId,
+          leaseId: null,
+          siteId: (row.site_id as string) ?? null,
+          filePath: row.attachment_url as string,
+          issuedAt: String(row.expense_date),
+          issuedByName: actorLabel(actors, row.created_by as string | null),
+        } satisfies DocumentListItem;
+      });
+  } catch {
+    return [];
+  }
 }
