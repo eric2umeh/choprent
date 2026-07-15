@@ -11,6 +11,7 @@ export const DOCUMENT_CATEGORY_OPTIONS: {
   { value: "maintenance", label: "Maintenance" },
   { value: "issue", label: "Issue" },
   { value: "notice", label: "Notice" },
+  { value: "government", label: "Government" },
   { value: "other", label: "Other" },
 ];
 
@@ -22,6 +23,7 @@ const LABELS: Record<string, string> = {
   maintenance: "Maintenance",
   issue: "Issue",
   notice: "Notice",
+  government: "Government",
   other: "Other",
   statement: "Statement",
   attachment: "Attachment",
