@@ -37,6 +37,25 @@ export async function getDocumentDownloadUrl(
 ): Promise<DocumentActionState> {
   if (asTenant) {
     const ctx = await requireTenantContext(orgSlug);
+
+    if (documentId.startsWith("expense:")) {
+      const expenseId = documentId.slice("expense:".length);
+      const admin = createAdminClient();
+      const { data: expense } = await admin
+        .from("property_expenses")
+        .select("attachment_url, unit_id")
+        .eq("id", expenseId)
+        .eq("organization_id", ctx.org.id)
+        .maybeSingle();
+
+      if (!expense?.attachment_url || expense.unit_id !== ctx.unitId) {
+        return { error: "You don't have access to this document." };
+      }
+
+      const url = await createSignedStorageUrl("documents", expense.attachment_url);
+      return url ? { downloadUrl: url } : { error: "Could not generate download link." };
+    }
+
     const docs = await listDocumentsForOrg(ctx.org.id);
     const doc = docs.find((d) => d.id === documentId);
     if (!doc) return { error: "Document not found." };
@@ -68,6 +87,21 @@ export async function getDocumentDownloadUrl(
 
   const ctx = await requireStaffContext(orgSlug);
   const admin = createAdminClient();
+
+  if (documentId.startsWith("expense:")) {
+    const expenseId = documentId.slice("expense:".length);
+    const { data: expense } = await admin
+      .from("property_expenses")
+      .select("attachment_url")
+      .eq("id", expenseId)
+      .eq("organization_id", ctx.org.id)
+      .maybeSingle();
+
+    if (!expense?.attachment_url) return { error: "Document not found." };
+    const url = await createSignedStorageUrl("documents", expense.attachment_url);
+    return url ? { downloadUrl: url } : { error: "Could not generate download link." };
+  }
+
   const { data: doc } = await admin
     .from("management_documents")
     .select("file_url")
