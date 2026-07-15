@@ -7,6 +7,7 @@ import { getPropertyForOrg } from "@/lib/data/sites";
 import { revalidatePropertyDashboardPaths } from "@/lib/routes/revalidate-dashboard";
 import { inferContentType } from "@/lib/documents/upload";
 import { createAdminClient } from "@/lib/supabase/admin";
+import type { DocumentType } from "@/lib/data/documents";
 import type { ExpenseCategory } from "@/types/database";
 
 export type ExpenseActionState = {
@@ -25,6 +26,12 @@ const CATEGORIES: ExpenseCategory[] = [
   "government",
   "other",
 ];
+
+function expenseCategoryToDocType(category: ExpenseCategory): DocumentType {
+  if (category === "government") return "government";
+  if (category === "maintenance" || category === "repairs") return "maintenance";
+  return "other";
+}
 
 export async function saveExpense(
   orgSlug: string,
@@ -121,6 +128,33 @@ export async function saveExpense(
   } else {
     const { error } = await admin.from("property_expenses").insert(payload);
     if (error) return { error: error.message };
+  }
+
+  // Mirror unit expense attachments into management_documents so they appear
+  // on tenant / unit document tables (e.g. AEPD under Government).
+  if (attachmentUrl && unitId) {
+    let leaseId: string | null = null;
+    const { data: activeLease } = await admin
+      .from("leases")
+      .select("id")
+      .eq("unit_id", unitId)
+      .eq("status", "active")
+      .maybeSingle();
+    leaseId = activeLease?.id ?? null;
+
+    await admin.from("management_documents").insert({
+      organization_id: ctx.org.id,
+      site_id: siteId,
+      unit_id: unitId,
+      lease_id: leaseId,
+      doc_type: expenseCategoryToDocType(category),
+      title: description,
+      file_url: attachmentUrl,
+      issued_by: ctx.user.id,
+    });
+
+    revalidatePath(`/d/${orgSlug}/tenants`);
+    if (leaseId) revalidatePath(`/d/${orgSlug}/tenants/${leaseId}`);
   }
 
   revalidatePath(`/d/${orgSlug}/expenses`);
