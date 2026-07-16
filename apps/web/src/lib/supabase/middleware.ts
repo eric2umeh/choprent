@@ -1,7 +1,7 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { createServerClient, type CookieOptions } from "@supabase/ssr";
 
-const PUBLIC_PREFIXES = ["/", "/login", "/auth", "/access-pending"];
+const PUBLIC_PREFIXES = ["/", "/login", "/auth", "/access-pending", "/invite"];
 
 function isPublicPath(pathname: string): boolean {
   if (pathname === "/") return true;

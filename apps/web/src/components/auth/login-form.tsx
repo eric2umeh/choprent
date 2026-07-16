@@ -286,7 +286,8 @@ export function LoginForm() {
                 ))}
               </div>
               <p className="mt-1.5 text-[11px] text-muted">
-                Shop tenants are added by the plaza manager when your lease starts.
+                Shop tenants do not use this form. Your manager sends a direct invite
+                link to the email on your lease — that opens your tenant dashboard.
               </p>
             </div>
           )}

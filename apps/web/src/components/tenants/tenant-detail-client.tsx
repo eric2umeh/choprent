@@ -14,12 +14,14 @@ import { LeaseForm } from "@/components/leases/lease-form";
 import { confirmDialog } from "@/components/ui/confirm-dialog";
 import { toast } from "@/components/ui/toast";
 import { endActiveLease } from "@/lib/actions/leases";
+import { inviteTenant } from "@/lib/actions/tenant-invite";
 import type { LeaseDetail } from "@/lib/data/leases";
 import type { ExpenseListItem } from "@/lib/data/expenses";
 import type { DocumentListItem } from "@/lib/data/documents";
 import type { SettlementAccountItem } from "@/lib/data/settlement-accounts";
 import { formatNaira } from "@/lib/auth/roles";
 import { formatDisplayDate, formatDateRange } from "@/lib/utils/format-date";
+import { Mail } from "lucide-react";
 
 export function TenantDetailClient({
   orgSlug,
@@ -39,6 +41,58 @@ export function TenantDetailClient({
   const router = useRouter();
   const [editOpen, setEditOpen] = useState(false);
   const [ending, startEnd] = useTransition();
+  const [inviting, startInvite] = useTransition();
+
+  function handleInviteTenant() {
+    if (!lease.tenantEmail) {
+      toast.error("Add a tenant email on the lease first, then send the invite.");
+      return;
+    }
+    startInvite(async () => {
+      const result = await inviteTenant(orgSlug, lease.id);
+      if (result.error) {
+        toast.error(result.error);
+        return;
+      }
+      if (result.devInviteUrl) {
+        toast.success("Invite created (dev). Copy the link from the console or below.");
+        await confirmDialog({
+          title: "Tenant invite link (dev)",
+          message: result.devInviteUrl,
+          confirmLabel: "Done",
+        });
+      } else {
+        toast.success(
+          result.alreadyLinked
+            ? `Invite sent to ${lease.tenantEmail}. They can set a password and open their dashboard.`
+            : `Invite sent to ${lease.tenantEmail}.`
+        );
+      }
+      router.refresh();
+    });
+  }
+
+  async function handleEndTenancy() {
+    const { confirmed } = await confirmDialog({
+      title: "End tenancy?",
+      message: `End the lease for ${lease.tenantName} on unit ${lease.unitCode}? The unit will be marked vacant.`,
+      confirmLabel: "End tenancy",
+      destructive: true,
+    });
+    if (!confirmed) return;
+
+    startEnd(async () => {
+      const result = await endActiveLease(orgSlug, lease.id);
+      if (result.error) {
+        toast.error(result.error);
+        return;
+      }
+      toast.success("Tenancy ended. Unit is now vacant.");
+      router.push(`/d/${orgSlug}/tenants`);
+      router.refresh();
+    });
+  }
+
   const paymentColumns: Column<LeaseDetail["payments"][number]>[] = [
     {
       key: "date",
@@ -138,27 +192,6 @@ export function TenantDetailClient({
     },
   ];
 
-  async function handleEndTenancy() {
-    const { confirmed } = await confirmDialog({
-      title: "End tenancy?",
-      message: `End the lease for ${lease.tenantName} on unit ${lease.unitCode}? The unit will be marked vacant.`,
-      confirmLabel: "End tenancy",
-      destructive: true,
-    });
-    if (!confirmed) return;
-
-    startEnd(async () => {
-      const result = await endActiveLease(orgSlug, lease.id);
-      if (result.error) {
-        toast.error(result.error);
-        return;
-      }
-      toast.success("Tenancy ended. Unit is now vacant.");
-      router.push(`/d/${orgSlug}/tenants`);
-      router.refresh();
-    });
-  }
-
   return (
     <div className="space-y-0">
       {canManage && lease.status === "active" && (
@@ -170,6 +203,17 @@ export function TenantDetailClient({
           >
             Edit lease
           </button>
+          {lease.tenantEmail && (
+            <button
+              type="button"
+              className="btn-ghost inline-flex items-center gap-1.5 px-3 py-1.5 text-sm"
+              onClick={handleInviteTenant}
+              disabled={inviting}
+            >
+              <Mail className="h-4 w-4" />
+              {lease.tenantUserId ? "Resend portal invite" : "Invite to portal"}
+            </button>
+          )}
           <button
             type="button"
             className="rounded-lg border border-red-200 px-3 py-1.5 text-sm font-semibold text-red-600 hover:bg-red-50 disabled:opacity-60"
@@ -226,6 +270,11 @@ export function TenantDetailClient({
             <div>
               <dt className="text-label normal-case">Email</dt>
               <dd className="text-detail-value break-all">{lease.tenantEmail}</dd>
+              <dd className="text-detail-meta">
+                {lease.tenantUserId
+                  ? "Portal access linked"
+                  : "Portal invite not accepted yet"}
+              </dd>
             </div>
           )}
           {(lease.createdAt || lease.createdByName) && (
