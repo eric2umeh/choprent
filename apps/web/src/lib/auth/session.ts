@@ -218,11 +218,46 @@ export async function resolvePostLoginPath(): Promise<string> {
 
   const { data: membership } = await supabase
     .from("memberships")
-    .select("organization_id, organizations(id, slug)")
+    .select("organization_id, role, organizations(id, slug)")
     .eq("user_id", user.id)
     .in("role", ["owner", "admin", "manager", "agent"])
     .limit(1)
     .maybeSingle();
+
+  const staffRole = membership?.role as MembershipRole | undefined;
+  const isCoreStaff =
+    staffRole === "owner" || staffRole === "admin" || staffRole === "manager";
+
+  const { data: lease } = await supabase
+    .from("leases")
+    .select("units!inner(unit_code, sites!inner(organizations!inner(id, slug)))")
+    .eq("tenant_user_id", user.id)
+    .eq("status", "active")
+    .limit(1)
+    .maybeSingle();
+
+  const unitsPayload = lease?.units;
+  let tenantPath: string | null = null;
+  if (unitsPayload && typeof unitsPayload === "object" && !Array.isArray(unitsPayload)) {
+    const unit = unitsPayload as {
+      sites?: {
+        organizations?: { id?: string; slug?: string } | { id?: string; slug?: string }[];
+      };
+    };
+    const orgs = unit.sites?.organizations;
+    const org = Array.isArray(orgs) ? orgs[0] : orgs;
+    if (org?.slug && org.id) {
+      tenantPath = `/t/${canonicalOrgSlug({ id: org.id, slug: org.slug })}`;
+    } else if (org?.slug) {
+      tenantPath = `/t/${org.slug === LEGACY_ORG_SLUG ? PILOT_ORG_SLUG : org.slug}`;
+    }
+  }
+
+  // Active tenancy wins over agent-only accounts (common when someone
+  // signed up with the wrong role picker). Owners/admins/managers stay on staff.
+  if (tenantPath && (!isCoreStaff || !membership)) {
+    return tenantPath;
+  }
 
   const orgFromMembership = orgFromJoin(membership?.organizations);
 
@@ -245,30 +280,7 @@ export async function resolvePostLoginPath(): Promise<string> {
   const adminPath = await getStaffDashboardPathAdmin(user.id);
   if (adminPath) return adminPath;
 
-  const { data: lease } = await supabase
-    .from("leases")
-    .select("units!inner(unit_code, sites!inner(organizations!inner(id, slug)))")
-    .eq("tenant_user_id", user.id)
-    .eq("status", "active")
-    .limit(1)
-    .maybeSingle();
-
-  const unitsPayload = lease?.units;
-  if (unitsPayload && typeof unitsPayload === "object" && !Array.isArray(unitsPayload)) {
-    const unit = unitsPayload as {
-      sites?: {
-        organizations?: { id?: string; slug?: string } | { id?: string; slug?: string }[];
-      };
-    };
-    const orgs = unit.sites?.organizations;
-    const org = Array.isArray(orgs) ? orgs[0] : orgs;
-    if (org?.slug && org.id) {
-      return `/t/${canonicalOrgSlug({ id: org.id, slug: org.slug })}`;
-    }
-    if (org?.slug) {
-      return `/t/${org.slug === LEGACY_ORG_SLUG ? PILOT_ORG_SLUG : org.slug}`;
-    }
-  }
+  if (tenantPath) return tenantPath;
 
   return "/access-pending";
 }

@@ -18,6 +18,7 @@ export type LeaseListItem = {
   tenantName: string;
   tenantPhone: string | null;
   tenantEmail: string | null;
+  tenantUserId: string | null;
   startDate: string;
   endDate: string;
   billingCadence: BillingCadence;
@@ -55,6 +56,7 @@ type LeaseRow = {
   tenant_display_name: string;
   tenant_phone: string | null;
   tenant_email: string | null;
+  tenant_user_id: string | null;
   start_date: string;
   end_date: string;
   billing_cadence: BillingCadence;
@@ -181,6 +183,7 @@ async function mapLeaseRows(
         tenantName: row.tenant_display_name,
         tenantPhone: row.tenant_phone,
         tenantEmail: row.tenant_email,
+        tenantUserId: row.tenant_user_id,
         startDate: row.start_date,
         endDate: row.end_date,
         billingCadence: row.billing_cadence,
@@ -195,7 +198,7 @@ async function mapLeaseRows(
 }
 
 const leaseSelect =
-  "id, unit_id, tenant_display_name, tenant_phone, tenant_email, start_date, end_date, billing_cadence, status, created_at, created_by, units!inner(unit_code, site_id, organization_id, arrears_balance_ngn, sites(name, slug))";
+  "id, unit_id, tenant_display_name, tenant_phone, tenant_email, tenant_user_id, start_date, end_date, billing_cadence, status, created_at, created_by, units!inner(unit_code, site_id, organization_id, arrears_balance_ngn, sites(name, slug))";
 
 export async function listLeasesForOrg(orgId: string): Promise<LeaseListItem[]> {
   try {
