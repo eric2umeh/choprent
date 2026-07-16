@@ -11,6 +11,7 @@ import { getTenantLedger } from "@/lib/data/ledger";
 import { parseDocumentType } from "@/lib/documents/categories";
 import {
   collectFilesFromFormData,
+  inferContentType,
   insertManagementDocuments,
   readDocumentUploadFromFormData,
 } from "@/lib/documents/upload";
@@ -324,5 +325,255 @@ export async function uploadLeaseDocumentsFromForm(
   if (result.error) return { error: result.error };
   revalidateDocumentPaths(orgSlug);
   revalidatePath(`/d/${orgSlug}/tenants/${leaseId}`);
+  return { success: true };
+}
+
+function docTypeToExpenseCategory(docType: DocumentType): string {
+  if (docType === "government") return "government";
+  if (docType === "maintenance") return "maintenance";
+  return "other";
+}
+
+async function uploadReplacementFile(
+  admin: ReturnType<typeof createAdminClient>,
+  orgId: string,
+  unitId: string | null,
+  siteId: string | null,
+  file: File
+): Promise<{ path?: string; error?: string }> {
+  if (file.size > 20 * 1024 * 1024) {
+    return { error: "File must be 20MB or less." };
+  }
+  const ext = file.name.split(".").pop()?.toLowerCase() ?? "bin";
+  const contentType = inferContentType(file, ext);
+  const path = `${orgId}/${unitId ?? siteId ?? "plaza"}/${crypto.randomUUID()}.${ext}`;
+  const { error } = await admin.storage
+    .from("documents")
+    .upload(path, file, { upsert: false, contentType });
+  if (error) return { error: error.message };
+  return { path };
+}
+
+export async function updateDocument(
+  orgSlug: string,
+  documentId: string,
+  formData: FormData
+): Promise<DocumentActionState> {
+  const ctx = await requireStaffContext(orgSlug);
+  if (!canManageLeases(ctx.role)) {
+    return { error: "You don't have permission to edit documents." };
+  }
+
+  const title = String(formData.get("title") ?? "").trim();
+  const docType = parseDocumentType(String(formData.get("doc_type") ?? "other"));
+  const replacement = formData.get("file");
+  const newFile =
+    replacement instanceof File && replacement.size > 0 ? replacement : null;
+
+  if (!title) return { error: "Title is required." };
+
+  const admin = createAdminClient();
+
+  if (documentId.startsWith("expense:")) {
+    const expenseId = documentId.slice("expense:".length);
+    const { data: expense } = await admin
+      .from("property_expenses")
+      .select("id, attachment_url, unit_id, site_id")
+      .eq("id", expenseId)
+      .eq("organization_id", ctx.org.id)
+      .maybeSingle();
+
+    if (!expense) return { error: "Document not found." };
+
+    let attachmentUrl = expense.attachment_url as string | null;
+    if (newFile) {
+      const uploaded = await uploadReplacementFile(
+        admin,
+        ctx.org.id,
+        expense.unit_id,
+        expense.site_id,
+        newFile
+      );
+      if (uploaded.error || !uploaded.path) {
+        return { error: uploaded.error ?? "Could not upload file." };
+      }
+      if (attachmentUrl) {
+        await admin.storage.from("documents").remove([attachmentUrl]);
+        await admin
+          .from("management_documents")
+          .delete()
+          .eq("organization_id", ctx.org.id)
+          .eq("file_url", attachmentUrl);
+      }
+      attachmentUrl = uploaded.path;
+
+      await admin.from("management_documents").insert({
+        organization_id: ctx.org.id,
+        site_id: expense.site_id,
+        unit_id: expense.unit_id,
+        lease_id: null,
+        doc_type: docType,
+        title,
+        file_url: attachmentUrl,
+        issued_by: ctx.user.id,
+      });
+    }
+
+    const { error } = await admin
+      .from("property_expenses")
+      .update({
+        description: title,
+        category: docTypeToExpenseCategory(docType),
+        attachment_url: attachmentUrl,
+        updated_at: new Date().toISOString(),
+      })
+      .eq("id", expenseId);
+
+    if (error) return { error: error.message };
+
+    if (!newFile && attachmentUrl) {
+      await admin
+        .from("management_documents")
+        .update({ title, doc_type: docType })
+        .eq("organization_id", ctx.org.id)
+        .eq("file_url", attachmentUrl);
+    }
+
+    revalidateDocumentPaths(orgSlug);
+    revalidatePath(`/d/${orgSlug}/expenses`);
+    return { success: true };
+  }
+
+  const { data: doc } = await admin
+    .from("management_documents")
+    .select("id, file_url, unit_id, site_id, lease_id")
+    .eq("id", documentId)
+    .eq("organization_id", ctx.org.id)
+    .maybeSingle();
+
+  if (!doc) return { error: "Document not found." };
+
+  let fileUrl = doc.file_url as string;
+  if (newFile) {
+    const uploaded = await uploadReplacementFile(
+      admin,
+      ctx.org.id,
+      doc.unit_id,
+      doc.site_id,
+      newFile
+    );
+    if (uploaded.error || !uploaded.path) {
+      return { error: uploaded.error ?? "Could not upload file." };
+    }
+    await admin.storage.from("documents").remove([fileUrl]);
+    await admin
+      .from("property_expenses")
+      .update({ attachment_url: uploaded.path })
+      .eq("organization_id", ctx.org.id)
+      .eq("attachment_url", fileUrl);
+    fileUrl = uploaded.path;
+  }
+
+  const { error } = await admin
+    .from("management_documents")
+    .update({
+      title,
+      doc_type: docType,
+      file_url: fileUrl,
+    })
+    .eq("id", documentId);
+
+  if (error) {
+    if (error.message.includes("invalid input value for enum")) {
+      return {
+        error:
+          "Document category not supported yet. Run the latest database migration, then try again.",
+      };
+    }
+    return { error: error.message };
+  }
+
+  revalidateDocumentPaths(orgSlug);
+  if (doc.lease_id) revalidatePath(`/d/${orgSlug}/tenants/${doc.lease_id}`);
+  return { success: true };
+}
+
+export async function deleteDocument(
+  orgSlug: string,
+  documentId: string
+): Promise<DocumentActionState> {
+  const ctx = await requireStaffContext(orgSlug);
+  if (!canManageLeases(ctx.role)) {
+    return { error: "You don't have permission to delete documents." };
+  }
+
+  const admin = createAdminClient();
+
+  if (documentId.startsWith("expense:")) {
+    const expenseId = documentId.slice("expense:".length);
+    const { data: expense } = await admin
+      .from("property_expenses")
+      .select("id, attachment_url")
+      .eq("id", expenseId)
+      .eq("organization_id", ctx.org.id)
+      .maybeSingle();
+
+    if (!expense) return { error: "Document not found." };
+
+    const filePath = expense.attachment_url as string | null;
+    if (filePath) {
+      await admin
+        .from("management_documents")
+        .delete()
+        .eq("organization_id", ctx.org.id)
+        .eq("file_url", filePath);
+      await admin.storage.from("documents").remove([filePath]);
+    }
+
+    const { error } = await admin
+      .from("property_expenses")
+      .update({
+        attachment_url: null,
+        updated_at: new Date().toISOString(),
+      })
+      .eq("id", expenseId);
+
+    if (error) return { error: error.message };
+
+    revalidateDocumentPaths(orgSlug);
+    revalidatePath(`/d/${orgSlug}/expenses`);
+    return { success: true };
+  }
+
+  const { data: doc } = await admin
+    .from("management_documents")
+    .select("id, file_url, lease_id")
+    .eq("id", documentId)
+    .eq("organization_id", ctx.org.id)
+    .maybeSingle();
+
+  if (!doc) return { error: "Document not found." };
+
+  const filePath = doc.file_url as string;
+
+  const { error } = await admin
+    .from("management_documents")
+    .delete()
+    .eq("id", documentId);
+
+  if (error) return { error: error.message };
+
+  await admin
+    .from("property_expenses")
+    .update({ attachment_url: null, updated_at: new Date().toISOString() })
+    .eq("organization_id", ctx.org.id)
+    .eq("attachment_url", filePath);
+
+  if (filePath) {
+    await admin.storage.from("documents").remove([filePath]);
+  }
+
+  revalidateDocumentPaths(orgSlug);
+  if (doc.lease_id) revalidatePath(`/d/${orgSlug}/tenants/${doc.lease_id}`);
   return { success: true };
 }

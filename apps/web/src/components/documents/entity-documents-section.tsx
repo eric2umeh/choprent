@@ -1,15 +1,21 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { getDocumentDownloadUrl } from "@/lib/actions/documents";
+import { useRouter } from "next/navigation";
+import {
+  deleteDocument,
+  getDocumentDownloadUrl,
+} from "@/lib/actions/documents";
 import { formatDocumentCategory } from "@/lib/documents/categories";
 import type { DocumentListItem } from "@/lib/data/documents";
 import { formatDisplayDate } from "@/lib/utils/format-date";
 import { ListPanel } from "@/components/ui/page-header";
 import { ResponsiveDataTable, type Column } from "@/components/ui/responsive-table";
+import { confirmDialog } from "@/components/ui/confirm-dialog";
 import { toast } from "@/components/ui/toast";
 import { AddDocumentModal } from "@/components/documents/add-document-modal";
-import { Download, Plus } from "lucide-react";
+import { EditDocumentModal } from "@/components/documents/edit-document-modal";
+import { Download, Pencil, Plus, Trash2 } from "lucide-react";
 
 type UnitOption = { id: string; unitCode: string };
 type LeaseOption = { id: string; tenantName: string; unitCode: string; unitId: string };
@@ -35,9 +41,13 @@ export function EntityDocumentsSection({
   units?: UnitOption[];
   leases?: LeaseOption[];
 }) {
+  const router = useRouter();
   const [showAdd, setShowAdd] = useState(false);
+  const [editingDoc, setEditingDoc] = useState<DocumentListItem | null>(null);
   const [downloadingId, setDownloadingId] = useState<string | null>(null);
+  const [busyId, setBusyId] = useState<string | null>(null);
   const [, startDownload] = useTransition();
+  const [, startDelete] = useTransition();
 
   function handleDownload(docId: string) {
     setDownloadingId(docId);
@@ -52,6 +62,28 @@ export function EntityDocumentsSection({
     });
   }
 
+  async function handleDelete(doc: DocumentListItem) {
+    const { confirmed } = await confirmDialog({
+      title: "Delete document?",
+      message: `Delete “${doc.title}”? This cannot be undone.`,
+      confirmLabel: "Delete",
+      destructive: true,
+    });
+    if (!confirmed) return;
+
+    setBusyId(doc.id);
+    startDelete(async () => {
+      const result = await deleteDocument(orgSlug, doc.id);
+      setBusyId(null);
+      if (result.error) {
+        toast.error(result.error);
+        return;
+      }
+      toast.success("Document deleted.");
+      router.refresh();
+    });
+  }
+
   const columns: Column<DocumentListItem>[] = [
     {
       key: "title",
@@ -60,7 +92,9 @@ export function EntityDocumentsSection({
       render: (d) => (
         <div>
           <span className="text-table-cell-strong">{d.title}</span>
-          <span className="text-table-sub lg:hidden">{formatDocumentCategory(d.docType)}</span>
+          <span className="text-table-sub lg:hidden">
+            {formatDocumentCategory(d.docType)}
+          </span>
         </div>
       ),
     },
@@ -69,7 +103,9 @@ export function EntityDocumentsSection({
       header: "Category",
       className: "hidden lg:table-cell",
       render: (d) => (
-        <span className="text-table-cell-muted">{formatDocumentCategory(d.docType)}</span>
+        <span className="text-table-cell-muted">
+          {formatDocumentCategory(d.docType)}
+        </span>
       ),
     },
     {
@@ -93,18 +129,48 @@ export function EntityDocumentsSection({
       key: "actions",
       header: "",
       render: (d) => (
-        <button
-          type="button"
-          className="btn-ghost inline-flex items-center gap-1 px-2 py-1 text-xs"
-          disabled={downloadingId === d.id}
-          onClick={(e) => {
-            e.stopPropagation();
-            handleDownload(d.id);
-          }}
-        >
-          <Download className="h-3.5 w-3.5" />
-          {downloadingId === d.id ? "…" : "Download"}
-        </button>
+        <div className="flex flex-wrap items-center justify-end gap-1">
+          <button
+            type="button"
+            className="btn-ghost inline-flex items-center gap-1 px-2 py-1 text-xs"
+            disabled={downloadingId === d.id || busyId === d.id}
+            onClick={(e) => {
+              e.stopPropagation();
+              handleDownload(d.id);
+            }}
+          >
+            <Download className="h-3.5 w-3.5" />
+            {downloadingId === d.id ? "…" : "Download"}
+          </button>
+          {canManage && (
+            <>
+              <button
+                type="button"
+                className="btn-ghost inline-flex items-center gap-1 px-2 py-1 text-xs"
+                disabled={busyId === d.id}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setEditingDoc(d);
+                }}
+              >
+                <Pencil className="h-3.5 w-3.5" />
+                Edit
+              </button>
+              <button
+                type="button"
+                className="icon-btn-danger"
+                title="Delete document"
+                disabled={busyId === d.id}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  void handleDelete(d);
+                }}
+              >
+                <Trash2 className="h-3.5 w-3.5" />
+              </button>
+            </>
+          )}
+        </div>
       ),
     },
   ];
@@ -133,16 +199,24 @@ export function EntityDocumentsSection({
       </ListPanel>
 
       {canManage && (
-        <AddDocumentModal
-          orgSlug={orgSlug}
-          open={showAdd}
-          onClose={() => setShowAdd(false)}
-          units={units}
-          leases={leases}
-          defaultUnitId={defaultUnitId}
-          defaultLeaseId={defaultLeaseId}
-          defaultSiteId={defaultSiteId}
-        />
+        <>
+          <AddDocumentModal
+            orgSlug={orgSlug}
+            open={showAdd}
+            onClose={() => setShowAdd(false)}
+            units={units}
+            leases={leases}
+            defaultUnitId={defaultUnitId}
+            defaultLeaseId={defaultLeaseId}
+            defaultSiteId={defaultSiteId}
+          />
+          <EditDocumentModal
+            orgSlug={orgSlug}
+            document={editingDoc}
+            open={!!editingDoc}
+            onClose={() => setEditingDoc(null)}
+          />
+        </>
       )}
     </>
   );
