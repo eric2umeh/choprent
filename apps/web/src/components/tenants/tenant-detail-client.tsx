@@ -54,12 +54,23 @@ export function TenantDetailClient({
         toast.error(result.error);
         return;
       }
-      if (result.devInviteUrl) {
-        toast.success("Invite created (dev). Copy the link from the console or below.");
+      if (result.inviteUrl) {
+        try {
+          await navigator.clipboard.writeText(result.inviteUrl);
+          toast.success("Email is not configured — invite link copied. Share it with the tenant.");
+        } catch {
+          toast.success("Email is not configured — copy the invite link below and share it.");
+        }
         await confirmDialog({
-          title: "Tenant invite link (dev)",
-          message: result.devInviteUrl,
+          title: "Share this invite link",
+          message:
+            "Email sending is not set up, so the invite was not emailed. " +
+            "Send this link to the tenant (WhatsApp/SMS). It expires in 7 days.",
           confirmLabel: "Done",
+          input: {
+            label: "Invite link",
+            defaultValue: result.inviteUrl,
+          },
         });
       } else {
         toast.success(

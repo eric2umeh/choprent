@@ -13,8 +13,8 @@ export type TenantInviteActionState = {
   error?: string;
   success?: boolean;
   emailSent?: boolean;
-  /** Dev-only when Resend is unavailable */
-  devInviteUrl?: string;
+  /** Present when the email could not be sent — share this link manually. */
+  inviteUrl?: string;
   email?: string;
   orgSlug?: string;
   alreadyLinked?: boolean;
@@ -151,17 +151,17 @@ export async function inviteTenant(
     };
   }
 
+  // Email delivery unavailable (e.g. RESEND_API_KEY not set) — the invite is
+  // still valid, so hand the link to staff to share via WhatsApp/SMS.
   if (process.env.NODE_ENV === "development") {
     console.info("[tenant-invite:dev link]", inviteUrl);
-    return {
-      success: true,
-      emailSent: false,
-      devInviteUrl: inviteUrl,
-      alreadyLinked: !!(existingUserId || lease.tenant_user_id),
-    };
   }
-
-  return { error: sent.error ?? "Could not send invite email." };
+  return {
+    success: true,
+    emailSent: false,
+    inviteUrl,
+    alreadyLinked: !!(existingUserId || lease.tenant_user_id),
+  };
 }
 
 export type TenantInvitePreview = {
