@@ -210,6 +210,45 @@ async function getStaffDashboardPathAdmin(userId: string): Promise<string | null
   }
 }
 
+async function getActiveTenantPortalPath(userId: string): Promise<string | null> {
+  try {
+    const admin = createAdminClient();
+    const { data: lease } = await admin
+      .from("leases")
+      .select(
+        "id, units!inner(id, unit_code, organization_id, sites!inner(organizations!inner(id, slug)))"
+      )
+      .eq("tenant_user_id", userId)
+      .eq("status", "active")
+      .limit(1)
+      .maybeSingle();
+
+    if (!lease) return null;
+
+    const unitsPayload = lease.units;
+    if (!unitsPayload || typeof unitsPayload !== "object" || Array.isArray(unitsPayload)) {
+      return null;
+    }
+
+    const unit = unitsPayload as {
+      sites?: {
+        organizations?: { id?: string; slug?: string } | { id?: string; slug?: string }[];
+      };
+    };
+    const orgs = unit.sites?.organizations;
+    const org = Array.isArray(orgs) ? orgs[0] : orgs;
+    if (org?.slug && org.id) {
+      return `/t/${canonicalOrgSlug({ id: org.id, slug: org.slug })}`;
+    }
+    if (org?.slug) {
+      return `/t/${org.slug === LEGACY_ORG_SLUG ? PILOT_ORG_SLUG : org.slug}`;
+    }
+    return null;
+  } catch {
+    return null;
+  }
+}
+
 export async function resolvePostLoginPath(): Promise<string> {
   const user = await getSessionUser();
   if (!user) return "/login";
@@ -228,34 +267,12 @@ export async function resolvePostLoginPath(): Promise<string> {
   const isCoreStaff =
     staffRole === "owner" || staffRole === "admin" || staffRole === "manager";
 
-  const { data: lease } = await supabase
-    .from("leases")
-    .select("units!inner(unit_code, sites!inner(organizations!inner(id, slug)))")
-    .eq("tenant_user_id", user.id)
-    .eq("status", "active")
-    .limit(1)
-    .maybeSingle();
-
-  const unitsPayload = lease?.units;
-  let tenantPath: string | null = null;
-  if (unitsPayload && typeof unitsPayload === "object" && !Array.isArray(unitsPayload)) {
-    const unit = unitsPayload as {
-      sites?: {
-        organizations?: { id?: string; slug?: string } | { id?: string; slug?: string }[];
-      };
-    };
-    const orgs = unit.sites?.organizations;
-    const org = Array.isArray(orgs) ? orgs[0] : orgs;
-    if (org?.slug && org.id) {
-      tenantPath = `/t/${canonicalOrgSlug({ id: org.id, slug: org.slug })}`;
-    } else if (org?.slug) {
-      tenantPath = `/t/${org.slug === LEGACY_ORG_SLUG ? PILOT_ORG_SLUG : org.slug}`;
-    }
-  }
+  // Use admin lookup so nested RLS joins cannot hide an active tenancy.
+  const tenantPath = await getActiveTenantPortalPath(user.id);
 
   // Active tenancy wins over agent-only accounts (common when someone
   // signed up with the wrong role picker). Owners/admins/managers stay on staff.
-  if (tenantPath && (!isCoreStaff || !membership)) {
+  if (tenantPath && !isCoreStaff) {
     return tenantPath;
   }
 
@@ -309,8 +326,8 @@ export async function requireTenantContext(
   if (!org) org = await getOrganizationBySlugAdmin(orgSlug);
   if (!org) notFound();
 
-  const supabase = await createClient();
-  const { data: lease } = await supabase
+  const admin = createAdminClient();
+  const { data: lease } = await admin
     .from("leases")
     .select("id, tenant_display_name, units!inner(id, unit_code, organization_id)")
     .eq("tenant_user_id", user.id)

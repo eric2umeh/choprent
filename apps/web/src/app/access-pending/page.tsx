@@ -19,6 +19,14 @@ export default async function AccessPendingPage() {
           Landlords get a private workspace. Managers and agents need an invite
           from their landlord after signing up.
         </p>
+        <p className="mt-3 rounded-lg border border-border bg-surface-subtle px-3 py-2 text-sm text-muted">
+          Shop tenants: use the invite link from your manager — do not pick a
+          role here. If you already accepted an invite,{" "}
+          <a href="/login" className="underline text-foreground">
+            sign in
+          </a>{" "}
+          with that email and you will go straight to your tenant dashboard.
+        </p>
 
         <div className="mt-5">
           <CompleteSetupForm email={user.email ?? user.displayName} />
