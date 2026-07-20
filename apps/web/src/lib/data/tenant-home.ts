@@ -1,5 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import { getTenantLedger } from "@/lib/data/ledger";
+import { formatBillingPeriodLabel } from "@/lib/charges/period-ranges";
 import { isPaystackDvaEnabled } from "@/lib/paystack/client";
 
 export type SettlementAccount = {
@@ -45,16 +46,21 @@ export async function getTenantHomeSummary(
 
   const { data: openPeriod } = await supabase
     .from("ledger_periods")
-    .select("period_label, period_start")
+    .select("period_start, period_end")
     .eq("unit_id", unitId)
     .eq("status", "open")
     .order("period_start", { ascending: false })
     .limit(1)
     .maybeSingle();
 
+  const periodLabel =
+    openPeriod?.period_start && openPeriod?.period_end
+      ? formatBillingPeriodLabel(openPeriod.period_start, openPeriod.period_end)
+      : openPeriod?.period_start?.slice(0, 4) ?? null;
+
   return {
     balance,
-    periodLabel: openPeriod?.period_label ?? openPeriod?.period_start?.slice(0, 4) ?? null,
+    periodLabel,
     settlement: payAccount,
     pendingPayments: pendingCount ?? 0,
     recentLines: lines.slice(0, 3).map((l) => ({

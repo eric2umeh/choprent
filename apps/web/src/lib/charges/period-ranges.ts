@@ -6,11 +6,15 @@ export type BillingPeriodRange = {
   periodLabel: string;
 };
 
-function toIsoDate(d: Date): string {
-  return d.toISOString().slice(0, 10);
+/** Format a local calendar date without UTC shifting (safe in WAT / UTC+1). */
+export function toIsoDate(d: Date): string {
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${y}-${m}-${day}`;
 }
 
-function parseDate(iso: string): Date {
+export function parseDate(iso: string): Date {
   const [y, m, d] = iso.split("-").map(Number);
   return new Date(y, m - 1, d);
 }
@@ -29,7 +33,36 @@ function addYearsMinusOneDay(date: Date, years: number): Date {
   return result;
 }
 
-/** Calendar billing periods clipped to lease dates. */
+const MONTHS = [
+  "Jan",
+  "Feb",
+  "Mar",
+  "Apr",
+  "May",
+  "Jun",
+  "Jul",
+  "Aug",
+  "Sep",
+  "Oct",
+  "Nov",
+  "Dec",
+] as const;
+
+/** Human label for a billing window, e.g. "Apr 2026–Mar 2027". */
+export function formatBillingPeriodLabel(periodStart: string, periodEnd: string): string {
+  const start = parseDate(periodStart);
+  const end = parseDate(periodEnd);
+  const startLabel = `${MONTHS[start.getMonth()]} ${start.getFullYear()}`;
+  const endLabel = `${MONTHS[end.getMonth()]} ${end.getFullYear()}`;
+  if (startLabel === endLabel) return startLabel;
+  return `${startLabel}–${endLabel}`;
+}
+
+/**
+ * Billing periods clipped to lease dates.
+ * Annual cadence uses lease-anniversary years (e.g. 1 Apr → 31 Mar),
+ * not calendar Jan–Dec years.
+ */
 export function listBillingPeriods(
   leaseStart: string,
   leaseEnd: string,
@@ -46,11 +79,13 @@ export function listBillingPeriods(
     while (periodStart <= end) {
       const anniversaryEnd = addYearsMinusOneDay(periodStart, 1);
       const periodEnd = anniversaryEnd > end ? new Date(end) : anniversaryEnd;
+      const periodStartIso = toIsoDate(periodStart);
+      const periodEndIso = toIsoDate(periodEnd);
 
       periods.push({
-        periodStart: toIsoDate(periodStart),
-        periodEnd: toIsoDate(periodEnd),
-        periodLabel: String(periodStart.getFullYear()),
+        periodStart: periodStartIso,
+        periodEnd: periodEndIso,
+        periodLabel: formatBillingPeriodLabel(periodStartIso, periodEndIso),
       });
 
       if (periodEnd >= end) break;

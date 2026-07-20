@@ -106,30 +106,20 @@ function propertyNameFromRow(units: LeaseRow["units"]): string {
   return site?.name ?? "Property";
 }
 
-function currentYearBounds() {
-  const year = new Date().getFullYear();
-  return {
-    year,
-    start: `${year}-01-01`,
-    end: `${year + 1}-01-01`,
-  };
-}
-
 async function getLeaseFinancials(
   admin: ReturnType<typeof createAdminClient>,
   leaseId: string,
   unitId: string,
   arrearsBalance: number
 ): Promise<{ expected: number; paid: number; arrears: number }> {
-  const { start, end } = currentYearBounds();
   const arrears = Number(arrearsBalance ?? 0);
 
+  // Use open periods for this lease (anniversary windows), not calendar Jan–Dec.
   const { data: periods } = await admin
     .from("ledger_periods")
     .select("expected_total_ngn, paid_total_ngn, status, lease_id, period_start")
     .eq("unit_id", unitId)
-    .gte("period_start", start)
-    .lt("period_start", end)
+    .eq("status", "open")
     .order("period_start", { ascending: false });
 
   if (periods?.length) {
@@ -210,7 +200,17 @@ export async function listLeasesForOrg(orgId: string): Promise<LeaseListItem[]> 
       .order("start_date", { ascending: false });
 
     if (!data) return [];
-    const leases = await mapLeaseRows(data as LeaseRow[], admin);
+    const rows = data as LeaseRow[];
+    const { repairStaleLedgerPeriodsForUnit } = await import(
+      "@/lib/charges/generate-ledger"
+    );
+    const unitIds = [...new Set(rows.map((r) => r.unit_id))];
+    await Promise.all(
+      unitIds.map((unitId) =>
+        repairStaleLedgerPeriodsForUnit(admin, orgId, unitId)
+      )
+    );
+    const leases = await mapLeaseRows(rows, admin);
     return sortByNaturalKey(leases, (lease) => lease.unitCode);
   } catch {
     return [];
@@ -231,6 +231,12 @@ export async function getLeaseDetail(
       .maybeSingle();
 
     if (!row) return null;
+
+    const unitId = (row as LeaseRow).unit_id;
+    const { repairStaleLedgerPeriodsForUnit } = await import(
+      "@/lib/charges/generate-ledger"
+    );
+    await repairStaleLedgerPeriodsForUnit(admin, orgId, unitId);
 
     const mapped = (await mapLeaseRows([row as LeaseRow], admin))[0];
 
