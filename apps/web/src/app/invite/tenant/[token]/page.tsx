@@ -20,7 +20,9 @@ export default async function TenantInvitePage({
           </Link>
           <h1 className="mt-4 text-page-title">Tenant portal invite</h1>
           <p className="mt-1 text-page-desc">
-            Set your password to access your unit dashboard.
+            {preview.alreadyAccepted
+              ? "Enter your password to open your tenant dashboard."
+              : "Set your password to access your unit dashboard."}
           </p>
         </div>
 

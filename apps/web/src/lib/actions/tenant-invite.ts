@@ -192,14 +192,6 @@ export async function getTenantInvitePreview(
 
   if (!invite) return { error: "This invite link is invalid or has expired." };
 
-  if (invite.accepted_at) {
-    return { alreadyAccepted: true, error: "This invite was already used. Sign in instead." };
-  }
-
-  if (new Date(invite.expires_at).getTime() < Date.now()) {
-    return { expired: true, error: "This invite link has expired. Ask your manager to send a new one." };
-  }
-
   const org = invite.organizations as
     | { id: string; name: string; slug: string }
     | { id: string; name: string; slug: string }[]
@@ -219,13 +211,30 @@ export async function getTenantInvitePreview(
   const units = leaseRow?.units;
   const unit = Array.isArray(units) ? units[0] : units;
 
-  return {
+  const base = {
     email: invite.email,
     tenantName: leaseRow?.tenant_display_name,
     unitCode: unit?.unit_code,
     orgName: orgRow?.name,
     orgSlug: orgRow ? canonicalOrgSlug(orgRow) : undefined,
   };
+
+  if (invite.accepted_at) {
+    return {
+      ...base,
+      alreadyAccepted: true,
+    };
+  }
+
+  if (new Date(invite.expires_at).getTime() < Date.now()) {
+    return {
+      ...base,
+      expired: true,
+      error: "This invite link has expired. Ask your manager to send a new one.",
+    };
+  }
+
+  return base;
 }
 
 export async function acceptTenantInvite(
@@ -249,20 +258,60 @@ export async function acceptTenantInvite(
     .maybeSingle();
 
   if (!invite) return { error: "This invite link is invalid or has expired." };
-  if (invite.accepted_at) {
-    return { error: "This invite was already used. Sign in instead." };
-  }
-  if (new Date(invite.expires_at).getTime() < Date.now()) {
-    return { error: "This invite link has expired. Ask your manager to send a new one." };
-  }
 
-  const email = invite.email.toLowerCase();
   const org = invite.organizations as
     | { id: string; slug: string }
     | { id: string; slug: string }[]
     | null;
   const orgRow = Array.isArray(org) ? org[0] : org;
   if (!orgRow) return { error: "Organization not found." };
+
+  const email = invite.email.toLowerCase();
+
+  // Idempotent: if invite was already accepted, still allow sign-in to the portal
+  // as long as the lease is linked (or can be linked) to this email.
+  if (invite.accepted_at) {
+    let userId = await findAuthUserIdByEmail(admin, email);
+    if (!userId) {
+      return {
+        error: "This invite was already used. Sign in with the password you created.",
+      };
+    }
+
+    const { data: lease } = await admin
+      .from("leases")
+      .select("id, tenant_user_id, status")
+      .eq("id", invite.lease_id)
+      .maybeSingle();
+
+    if (!lease || lease.status !== "active") {
+      return { error: "This tenancy is no longer active." };
+    }
+
+    if (lease.tenant_user_id !== userId) {
+      await admin
+        .from("leases")
+        .update({ tenant_user_id: userId, tenant_email: email })
+        .eq("id", invite.lease_id);
+    }
+
+    // Ensure password matches what they just entered (re-entry after a failed redirect).
+    await admin.auth.admin.updateUserById(userId, {
+      password,
+      email_confirm: true,
+    });
+
+    return {
+      success: true,
+      email,
+      orgSlug: canonicalOrgSlug(orgRow),
+      alreadyLinked: true,
+    };
+  }
+
+  if (new Date(invite.expires_at).getTime() < Date.now()) {
+    return { error: "This invite link has expired. Ask your manager to send a new one." };
+  }
 
   const { data: lease } = await admin
     .from("leases")
