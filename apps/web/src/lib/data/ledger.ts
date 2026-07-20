@@ -1,5 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { repairStaleLedgerPeriodsForUnit } from "@/lib/charges/generate-ledger";
 
 export type LedgerLineItem = {
   id: string;
@@ -13,6 +14,14 @@ export async function getTenantLedger(
   orgId: string,
   unitId: string
 ): Promise<{ lines: LedgerLineItem[]; balance: number }> {
+  // Drop calendar-year leftovers (e.g. Jan–Dec split of an Apr–Mar lease)
+  // before summing outstanding so tenant dashboards show one anniversary period.
+  try {
+    await repairStaleLedgerPeriodsForUnit(createAdminClient(), orgId, unitId);
+  } catch {
+    // Continue with whatever periods exist if repair fails.
+  }
+
   try {
     return await fetchTenantLedger(orgId, unitId, false);
   } catch {
@@ -29,7 +38,9 @@ async function fetchTenantLedger(
 
   const { data: periods } = await client
     .from("ledger_periods")
-    .select("id, period_start, expected_total_ngn, paid_total_ngn, arrears_opening_ngn")
+    .select(
+      "id, period_start, period_end, expected_total_ngn, paid_total_ngn, arrears_opening_ngn"
+    )
     .eq("unit_id", unitId)
     .order("period_start", { ascending: false });
 

@@ -203,6 +203,15 @@ async function fetchUnitDetail(
 
   if (!row) return null;
 
+  try {
+    const { repairStaleLedgerPeriodsForUnit } = await import(
+      "@/lib/charges/generate-ledger"
+    );
+    await repairStaleLedgerPeriodsForUnit(createAdminClient(), orgId, row.id);
+  } catch {
+    // Continue with existing periods if repair fails.
+  }
+
   const mapped = await mapUnitRows([row]);
   const base = mapped[0];
   if (!base) return null;
