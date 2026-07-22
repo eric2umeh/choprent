@@ -2,6 +2,7 @@ import { Suspense } from "react";
 import { ListLoadingFallback } from "@/components/ui/list-loading-fallback";
 import { PageHeader } from "@/components/ui/page-header";
 import { LeasesList } from "@/components/leases/leases-list";
+import { TenantsSectionTabs } from "@/components/tenants/tenants-section-tabs";
 import { requireStaffContext } from "@/lib/auth/session";
 import { canManageLeases } from "@/lib/auth/roles";
 import { listLeasesForOrg, listVacantUnitsForLease } from "@/lib/data/leases";
@@ -28,6 +29,7 @@ export default async function TenantsPage({
         title="Tenants"
         description="Active tenancies, contacts, and renewals"
       />
+      <TenantsSectionTabs orgSlug={orgSlug} />
       <Suspense fallback={<ListLoadingFallback />}>
         <LeasesList
           orgSlug={orgSlug}
