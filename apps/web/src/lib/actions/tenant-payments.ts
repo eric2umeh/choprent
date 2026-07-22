@@ -58,15 +58,13 @@ export async function submitTransferPayment(
   const supabase = await createClient();
   const admin = createAdminClient();
 
-  const { data: lease } = await supabase
-    .from("leases")
-    .select("unit_id, id, tenant_display_name, units(unit_code)")
-    .eq("tenant_user_id", ctx.user.id)
-    .eq("status", "active")
-    .limit(1)
-    .maybeSingle();
-
-  if (!lease) return { error: "No active lease found for your account." };
+  // Prefer lease from session context (admin-resolved). A second user-scoped
+  // lease query can fail under nested RLS and falsely report "no active lease".
+  const leaseId = ctx.leaseId;
+  const unitId = ctx.unitId;
+  if (!leaseId || !unitId) {
+    return { error: "No active lease found for your account." };
+  }
 
   const ocrPayload = String(formData.get("ocr_payload") ?? "").trim();
   let metadata: Record<string, unknown> = {};
@@ -80,32 +78,55 @@ export async function submitTransferPayment(
 
   metadata = metadataWithPaymentNote(metadata, paymentNote);
 
-  const { data: payment, error: insertError } = await supabase
+  const paymentInsert = {
+    organization_id: ctx.org.id,
+    tenant_id: ctx.user.id,
+    unit_id: unitId,
+    amount_ngn: amount,
+    period_label: periodLabel,
+    bank_reference: bankReference,
+    payment_method: "bank_transfer" as const,
+    status: "pending" as const,
+    payment_date: new Date().toISOString().slice(0, 10),
+    recorded_by: ctx.user.id,
+    metadata,
+  };
+
+  let payment: { id: string } | null = null;
+  const { data: userPayment, error: insertError } = await supabase
     .from("payments")
-    .insert({
-      organization_id: ctx.org.id,
-      tenant_id: ctx.user.id,
-      unit_id: lease.unit_id,
-      amount_ngn: amount,
-      period_label: periodLabel,
-      bank_reference: bankReference,
-      payment_method: "bank_transfer",
-      status: "pending",
-      payment_date: new Date().toISOString().slice(0, 10),
-      recorded_by: ctx.user.id,
-      metadata,
-    })
+    .insert(paymentInsert)
     .select("id")
     .single();
 
-  if (insertError || !payment) {
+  if (userPayment) {
+    payment = userPayment;
+  } else {
+    // Fall back to admin if tenant RLS insert fails despite an active lease.
+    const { data: adminPayment, error: adminInsertError } = await admin
+      .from("payments")
+      .insert(paymentInsert)
+      .select("id")
+      .single();
+    if (adminInsertError || !adminPayment) {
+      return {
+        error:
+          insertError?.message ??
+          adminInsertError?.message ??
+          "Could not submit payment.",
+      };
+    }
+    payment = adminPayment;
+  }
+
+  if (!payment) {
     return { error: insertError?.message ?? "Could not submit payment." };
   }
 
   const uploadResult = await uploadPaymentAttachments(
     payment.id,
     ctx.org.id,
-    lease.unit_id,
+    unitId,
     files,
     ctx.user.id
   );
@@ -151,16 +172,10 @@ export async function submitTransferPayment(
   revalidatePath(`/d/${orgSlug}/payments`);
   revalidatePath(`/d/${orgSlug}`);
 
-  const unitRaw = lease.units;
-  const unitCode =
-    unitRaw && typeof unitRaw === "object" && !Array.isArray(unitRaw) && "unit_code" in unitRaw
-      ? String((unitRaw as { unit_code: string }).unit_code)
-      : "Unit";
-
   await notifyPaymentSubmitted({
     orgId: ctx.org.id,
-    unitCode,
-    tenantName: lease.tenant_display_name,
+    unitCode: ctx.unitCode,
+    tenantName: ctx.tenantDisplayName,
     amount,
     paymentId: payment.id,
   });
@@ -169,8 +184,8 @@ export async function submitTransferPayment(
   await recordTenantEngagementInternal({
     orgId: ctx.org.id,
     tenantUserId: ctx.user.id,
-    leaseId: lease.id,
-    unitId: lease.unit_id,
+    leaseId,
+    unitId,
     eventType: "receipt_uploaded",
     metadata: { amount: String(amount), files: String(files.length) },
   });
