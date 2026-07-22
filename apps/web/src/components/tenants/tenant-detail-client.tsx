@@ -282,9 +282,19 @@ export function TenantDetailClient({
               <dt className="text-label normal-case">Email</dt>
               <dd className="text-detail-value break-all">{lease.tenantEmail}</dd>
               <dd className="text-detail-meta">
-                {lease.tenantUserId
-                  ? "Portal access linked"
-                  : "Portal invite not accepted yet"}
+                {lease.tenantUserId ? (
+                  <>
+                    Portal access linked ·{" "}
+                    <Link
+                      href={`/d/${orgSlug}/tenants/portal/${lease.tenantUserId}`}
+                      className="text-section-link"
+                    >
+                      View app account
+                    </Link>
+                  </>
+                ) : (
+                  "Portal invite not accepted yet"
+                )}
               </dd>
             </div>
           )}
