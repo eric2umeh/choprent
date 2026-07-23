@@ -46,6 +46,81 @@ export async function loadUnitBillingProfile(
   };
 }
 
+/**
+ * Move allocations + paid totals from a stale calendar period onto the
+ * matching anniversary period, then delete the stale row.
+ */
+async function mergeAndDeleteStalePeriod(
+  admin: AdminClient,
+  stale: {
+    id: string;
+    period_start: string;
+    paid_total_ngn: number;
+  },
+  targetPeriodId: string | null
+): Promise<void> {
+  const paid = Number(stale.paid_total_ngn ?? 0);
+
+  if (targetPeriodId && targetPeriodId !== stale.id) {
+    const { data: allocations } = await admin
+      .from("payment_allocations")
+      .select("id, amount_ngn")
+      .eq("ledger_period_id", stale.id);
+
+    for (const alloc of allocations ?? []) {
+      await admin
+        .from("payment_allocations")
+        .update({ ledger_period_id: targetPeriodId })
+        .eq("id", alloc.id);
+    }
+
+    if (paid > 0) {
+      const { data: target } = await admin
+        .from("ledger_periods")
+        .select("paid_total_ngn, expected_total_ngn, arrears_opening_ngn")
+        .eq("id", targetPeriodId)
+        .maybeSingle();
+
+      if (target) {
+        const newPaid = Number(target.paid_total_ngn) + paid;
+        const expected = Number(target.expected_total_ngn);
+        const arrearsOpen = Number(target.arrears_opening_ngn);
+        await admin
+          .from("ledger_periods")
+          .update({
+            paid_total_ngn: newPaid,
+            arrears_closing_ngn: Math.max(expected + arrearsOpen - newPaid, 0),
+          })
+          .eq("id", targetPeriodId);
+      }
+    }
+  } else if (paid > 0 && !targetPeriodId) {
+    // No target — drop allocations so the stale row can be removed safely.
+    await admin.from("payment_allocations").delete().eq("ledger_period_id", stale.id);
+  }
+
+  await admin.from("ledger_lines").delete().eq("ledger_period_id", stale.id);
+  await admin.from("ledger_periods").delete().eq("id", stale.id);
+}
+
+function pickTargetPeriodId(
+  expectedStarts: string[],
+  idByStart: Map<string, string>,
+  staleStart: string
+): string | null {
+  if (expectedStarts.length === 1) {
+    return idByStart.get(expectedStarts[0]) ?? null;
+  }
+  // Prefer the anniversary window that contains the stale start date.
+  for (const start of expectedStarts) {
+    if (staleStart >= start) {
+      const id = idByStart.get(start);
+      if (id) return id;
+    }
+  }
+  return idByStart.get(expectedStarts[0] ?? "") ?? null;
+}
+
 /** Regenerate charge templates, ledger periods, and lines for an active lease. */
 export async function generateLedgerForLease(
   admin: AdminClient,
@@ -62,7 +137,10 @@ export async function generateLedgerForLease(
   const { orgId, unitId, leaseId, leaseStart, leaseEnd, cadence, profile } =
     input;
 
-  if (profile.baseRentNgn <= 0 && sumChargeLines(buildPeriodChargeLines(profile, cadence, true)) <= 0) {
+  if (
+    profile.baseRentNgn <= 0 &&
+    sumChargeLines(buildPeriodChargeLines(profile, cadence, true)) <= 0
+  ) {
     return;
   }
 
@@ -94,8 +172,16 @@ export async function generateLedgerForLease(
         scope: "unit",
         scope_id: unitId,
         charge_kind: line.chargeKind,
-        calculation: line.chargeKind === "service" || line.chargeKind === "vat" ? "percent" : "fixed",
-        amount: line.chargeKind === "service" ? profile.servicePct : line.chargeKind === "vat" ? profile.vatPct : annualAmount,
+        calculation:
+          line.chargeKind === "service" || line.chargeKind === "vat"
+            ? "percent"
+            : "fixed",
+        amount:
+          line.chargeKind === "service"
+            ? profile.servicePct
+            : line.chargeKind === "vat"
+              ? profile.vatPct
+              : annualAmount,
         billing_period: cadence,
         effective_from: leaseStart,
         priority: line.priority,
@@ -107,6 +193,8 @@ export async function generateLedgerForLease(
   }
 
   const periods = listBillingPeriods(leaseStart, leaseEnd, cadence);
+  const expectedStarts = periods.map((p) => p.periodStart);
+  const idByStart = new Map<string, string>();
 
   let isFirst = true;
   for (const periodRange of periods) {
@@ -145,6 +233,7 @@ export async function generateLedgerForLease(
       .single();
 
     if (!period) continue;
+    idByStart.set(periodRange.periodStart, period.id);
 
     await admin.from("ledger_lines").delete().eq("ledger_period_id", period.id);
 
@@ -161,20 +250,13 @@ export async function generateLedgerForLease(
     }
   }
 
-  const { data: stalePeriods } = await admin
+  const { data: openPeriods } = await admin
     .from("ledger_periods")
-    .select("id, paid_total_ngn")
+    .select("id, period_start, period_end, billing_cadence, paid_total_ngn")
     .eq("unit_id", unitId)
     .eq("status", "open");
 
-  for (const stale of stalePeriods ?? []) {
-    const { data: full } = await admin
-      .from("ledger_periods")
-      .select("period_start, period_end, billing_cadence, paid_total_ngn")
-      .eq("id", stale.id)
-      .maybeSingle();
-
-    if (!full) continue;
+  for (const full of openPeriods ?? []) {
     const expectedEnd = periods.find(
       (p) => p.periodStart === full.period_start
     )?.periodEnd;
@@ -182,10 +264,14 @@ export async function generateLedgerForLease(
       full.billing_cadence === cadence &&
       !!expectedEnd &&
       expectedEnd === full.period_end;
-    if (!keep && Number(full.paid_total_ngn) === 0) {
-      await admin.from("ledger_lines").delete().eq("ledger_period_id", stale.id);
-      await admin.from("ledger_periods").delete().eq("id", stale.id);
-    }
+    if (keep) continue;
+
+    const targetId = pickTargetPeriodId(
+      expectedStarts,
+      idByStart,
+      full.period_start
+    );
+    await mergeAndDeleteStalePeriod(admin, full, targetId);
   }
 }
 
@@ -219,7 +305,6 @@ export async function repairStaleLedgerPeriodsForUnit(
     .eq("unit_id", unitId)
     .eq("status", "open");
 
-  // Calendar-year leftovers (Jan–Dec) or wrong end dates need regeneration.
   const hasStale = (openPeriods ?? []).some((p) => {
     const expectedEnd = expectedByStart.get(p.period_start);
     return !expectedEnd || expectedEnd !== p.period_end;
@@ -233,16 +318,24 @@ export async function repairStaleLedgerPeriodsForUnit(
   const profile = await loadUnitBillingProfile(admin, unitId);
 
   if (!profile || profile.baseRentNgn <= 0) {
+    const idByStart = new Map<string, string>();
+    for (const p of openPeriods ?? []) {
+      const expectedEnd = expectedByStart.get(p.period_start);
+      if (expectedEnd && expectedEnd === p.period_end) {
+        idByStart.set(p.period_start, p.id);
+      }
+    }
+    const expectedStarts = expected.map((p) => p.periodStart);
     for (const period of openPeriods ?? []) {
       const expectedEnd = expectedByStart.get(period.period_start);
       const isExpected = !!expectedEnd && expectedEnd === period.period_end;
-      if (!isExpected && Number(period.paid_total_ngn) === 0) {
-        await admin
-          .from("ledger_lines")
-          .delete()
-          .eq("ledger_period_id", period.id);
-        await admin.from("ledger_periods").delete().eq("id", period.id);
-      }
+      if (isExpected) continue;
+      const targetId = pickTargetPeriodId(
+        expectedStarts,
+        idByStart,
+        period.period_start
+      );
+      await mergeAndDeleteStalePeriod(admin, period, targetId);
     }
     return true;
   }

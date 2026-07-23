@@ -11,7 +11,7 @@ import { ResponsiveDataTable, type Column } from "@/components/ui/responsive-tab
 import { ViewToggle, type ViewMode } from "@/components/ui/view-toggle";
 import { RecordCashForm } from "@/components/payments/record-cash-form";
 import { TenantPaymentStatusBadge } from "@/components/tenants/tenant-payment-status-badge";
-import { rejectPayment, unverifyPayment, verifyPayment } from "@/lib/actions/payments";
+import { rejectPayment, unverifyPayment, verifyPayment, deletePayment } from "@/lib/actions/payments";
 import { EditCashForm } from "@/components/payments/edit-cash-form";
 import { getReceiptDownloadUrl } from "@/lib/actions/documents";
 import type { PaymentListItem } from "@/lib/data/payments";
@@ -19,7 +19,8 @@ import { formatNaira } from "@/lib/auth/roles";
 import { formatDisplayDate } from "@/lib/utils/format-date";
 import { toast } from "@/components/ui/toast";
 import { Spinner } from "@/components/ui/spinner";
-import { Check, X, FileImage, Pencil, Undo2 } from "lucide-react";
+import { confirmDialog } from "@/components/ui/confirm-dialog";
+import { Check, X, FileImage, Pencil, Undo2, Trash2 } from "lucide-react";
 
 function methodLabel(m: string) {
   const map: Record<string, string> = {
@@ -58,7 +59,9 @@ export function PaymentsList({
   const [showCashForm, setShowCashForm] = useState(false);
   const [editingPayment, setEditingPayment] = useState<PaymentListItem | null>(null);
   const [actingId, setActingId] = useState<string | null>(null);
-  const [actingType, setActingType] = useState<"verify" | "reject" | "unverify" | null>(null);
+  const [actingType, setActingType] = useState<
+    "verify" | "reject" | "unverify" | "delete" | null
+  >(null);
   const [receiptLoadingId, setReceiptLoadingId] = useState<string | null>(null);
   const [, startTransition] = useTransition();
 
@@ -122,6 +125,29 @@ export function PaymentsList({
       if (result.error) toast.error(result.error);
       else {
         toast.info("Payment unverified — back in pending queue.");
+        router.refresh();
+      }
+    });
+  }
+
+  function handleDelete(payment: PaymentListItem) {
+    startTransition(async () => {
+      const { confirmed } = await confirmDialog({
+        title: "Delete this payment?",
+        message: `Remove ${formatNaira(payment.amount)} for ${payment.unitCode} (${payment.tenantName}). Verified amounts are removed from the tenant balance.`,
+        confirmLabel: "Delete payment",
+        destructive: true,
+      });
+      if (!confirmed) return;
+
+      setActingId(payment.id);
+      setActingType("delete");
+      const result = await deletePayment(orgSlug, payment.id);
+      setActingId(null);
+      setActingType(null);
+      if (result.error) toast.error(result.error);
+      else {
+        toast.success("Payment deleted. Tenant balance updated.");
         router.refresh();
       }
     });
@@ -237,10 +263,32 @@ export function PaymentsList({
           canVerify &&
           p.paymentMethod === "cash_recorded" &&
           p.status !== "rejected";
+        const canDelete =
+          canVerify && p.paymentMethod !== "dedicated_account";
+
+        const deleteBtn = canDelete ? (
+          <button
+            type="button"
+            disabled={actingId !== null}
+            onClick={(e) => {
+              e.stopPropagation();
+              handleDelete(p);
+            }}
+            className="inline-flex items-center gap-1 rounded-lg border border-red-200 px-2 py-1 text-[11px] font-semibold text-red-600 transition-all duration-200 hover:bg-red-50 active:scale-95 disabled:opacity-60"
+            title="Delete payment"
+          >
+            {actingId === p.id && actingType === "delete" ? (
+              <Spinner size="sm" className="text-red-600" />
+            ) : (
+              <Trash2 className="h-3 w-3" />
+            )}
+            Delete
+          </button>
+        ) : null;
 
         if (canVerify && p.status === "pending") {
           return (
-            <div className="flex gap-1">
+            <div className="flex flex-wrap gap-1">
               <button
                 type="button"
                 disabled={actingId !== null}
@@ -272,6 +320,7 @@ export function PaymentsList({
                   <X className="h-3 w-3" />
                 )}
               </button>
+              {deleteBtn}
             </div>
           );
         }
@@ -282,38 +331,59 @@ export function PaymentsList({
           p.paymentMethod !== "dedicated_account"
         ) {
           return (
-            <button
-              type="button"
-              disabled={actingId !== null}
-              className="btn-ghost inline-flex gap-1 px-2 py-1 text-xs text-amber-800"
-              onClick={(e) => {
-                e.stopPropagation();
-                handleUnverify(p.id);
-              }}
-            >
-              {actingId === p.id && actingType === "unverify" ? (
-                <Spinner size="sm" />
-              ) : (
-                <Undo2 className="h-3.5 w-3.5" />
+            <div className="flex flex-wrap gap-1">
+              <button
+                type="button"
+                disabled={actingId !== null}
+                className="btn-ghost inline-flex gap-1 px-2 py-1 text-xs text-amber-800"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleUnverify(p.id);
+                }}
+              >
+                {actingId === p.id && actingType === "unverify" ? (
+                  <Spinner size="sm" />
+                ) : (
+                  <Undo2 className="h-3.5 w-3.5" />
+                )}
+                Unverify
+              </button>
+              {canEdit && (
+                <button
+                  type="button"
+                  className="btn-ghost inline-flex gap-1 px-2 py-1 text-xs"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setEditingPayment(p);
+                  }}
+                >
+                  <Pencil className="h-3.5 w-3.5" />
+                  Edit
+                </button>
               )}
-              Unverify
-            </button>
+              {deleteBtn}
+            </div>
           );
         }
 
-        if (canEdit) {
+        if (canEdit || canDelete) {
           return (
-            <button
-              type="button"
-              className="btn-ghost inline-flex gap-1 px-2 py-1 text-xs"
-              onClick={(e) => {
-                e.stopPropagation();
-                setEditingPayment(p);
-              }}
-            >
-              <Pencil className="h-3.5 w-3.5" />
-              Edit
-            </button>
+            <div className="flex flex-wrap gap-1">
+              {canEdit && (
+                <button
+                  type="button"
+                  className="btn-ghost inline-flex gap-1 px-2 py-1 text-xs"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setEditingPayment(p);
+                  }}
+                >
+                  <Pencil className="h-3.5 w-3.5" />
+                  Edit
+                </button>
+              )}
+              {deleteBtn}
+            </div>
           );
         }
 

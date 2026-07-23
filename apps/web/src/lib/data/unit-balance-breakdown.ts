@@ -78,6 +78,14 @@ export async function getUnitBalanceBreakdown(
     .order("period_start", { ascending: true });
 
   for (const period of periods ?? []) {
+    // Skip calendar leftovers that are not on the lease anniversary schedule.
+    if (
+      periodLabelsByStart.size > 0 &&
+      !periodLabelsByStart.has(period.period_start)
+    ) {
+      continue;
+    }
+
     const owed = Math.max(
       Number(period.expected_total_ngn) +
         Number(period.arrears_opening_ngn) -
