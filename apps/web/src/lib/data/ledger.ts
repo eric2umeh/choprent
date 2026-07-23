@@ -1,6 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { repairStaleLedgerPeriodsForUnit } from "@/lib/charges/generate-ledger";
+import { listBillingPeriods } from "@/lib/charges/period-ranges";
 
 export type LedgerLineItem = {
   id: string;
@@ -35,16 +36,41 @@ async function fetchTenantLedger(
   useAdmin: boolean
 ): Promise<{ lines: LedgerLineItem[]; balance: number }> {
   const client = useAdmin ? createAdminClient() : await createClient();
+  const admin = createAdminClient();
 
-  const { data: periods } = await client
+  const { data: lease } = await admin
+    .from("leases")
+    .select("start_date, end_date, billing_cadence")
+    .eq("unit_id", unitId)
+    .eq("status", "active")
+    .maybeSingle();
+
+  const expectedStarts = new Set(
+    lease
+      ? listBillingPeriods(
+          lease.start_date,
+          lease.end_date,
+          lease.billing_cadence
+        ).map((p) => p.periodStart)
+      : []
+  );
+
+  const { data: allPeriods } = await client
     .from("ledger_periods")
     .select(
-      "id, period_start, period_end, expected_total_ngn, paid_total_ngn, arrears_opening_ngn"
+      "id, period_start, period_end, expected_total_ngn, paid_total_ngn, arrears_opening_ngn, status"
     )
     .eq("unit_id", unitId)
     .order("period_start", { ascending: false });
 
-  const periodIds = (periods ?? []).map((p) => p.id);
+  // Balance only from schedule-matching open periods (ignore calendar leftovers).
+  const periods = (allPeriods ?? []).filter((p) => {
+    if (p.status && p.status !== "open") return false;
+    if (expectedStarts.size === 0) return true;
+    return expectedStarts.has(p.period_start);
+  });
+
+  const periodIds = periods.map((p) => p.id);
   let ledgerLines: LedgerLineItem[] = [];
 
   if (periodIds.length > 0) {
@@ -92,15 +118,13 @@ async function fetchTenantLedger(
     .maybeSingle();
 
   let balance = Number(unit?.arrears_balance_ngn ?? 0);
-  if (periods?.length) {
-    for (const p of periods) {
-      balance += Math.max(
-        Number(p.expected_total_ngn) +
-          Number(p.arrears_opening_ngn) -
-          Number(p.paid_total_ngn),
-        0
-      );
-    }
+  for (const p of periods) {
+    balance += Math.max(
+      Number(p.expected_total_ngn) +
+        Number(p.arrears_opening_ngn) -
+        Number(p.paid_total_ngn),
+      0
+    );
   }
 
   if (combined.length === 0 && balance === 0 && !useAdmin) {
