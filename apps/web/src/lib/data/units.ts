@@ -6,6 +6,7 @@ import { isUuid } from "@/lib/utils/slug";
 import type { UnitListItem, UnitDetail } from "@/lib/data/unit-types";
 import type { PropertyType, UnitStatus } from "@/types/database";
 import { actorLabel, resolveActorLabels } from "@/lib/data/audit-actors";
+import { listBillingPeriods } from "@/lib/charges/period-ranges";
 
 type UnitRow = {
   id: string;
@@ -42,7 +43,7 @@ async function mapUnitRows(rows: UnitRow[]): Promise<UnitListItem[]> {
   const [{ data: leases }, { data: accounts }, { data: periods }] = await Promise.all([
     admin
       .from("leases")
-      .select("unit_id, tenant_display_name")
+      .select("unit_id, tenant_display_name, start_date, end_date, billing_cadence")
       .in("unit_id", unitIds)
       .eq("status", "active"),
     admin
@@ -51,7 +52,7 @@ async function mapUnitRows(rows: UnitRow[]): Promise<UnitListItem[]> {
       .in("unit_id", unitIds),
     admin
       .from("ledger_periods")
-      .select("unit_id, expected_total_ngn, status")
+      .select("unit_id, period_start, expected_total_ngn, status")
       .in("unit_id", unitIds)
       .eq("status", "open"),
   ]);
@@ -62,9 +63,29 @@ async function mapUnitRows(rows: UnitRow[]): Promise<UnitListItem[]> {
   const accountByUnit = new Map(
     (accounts ?? []).map((a) => [a.unit_id, a.account_number])
   );
+
+  const expectedStartsByUnit = new Map<string, Set<string>>();
+  for (const lease of leases ?? []) {
+    const starts = new Set(
+      listBillingPeriods(
+        lease.start_date,
+        lease.end_date,
+        lease.billing_cadence
+      ).map((p) => p.periodStart)
+    );
+    expectedStartsByUnit.set(lease.unit_id, starts);
+  }
+
   const rentByUnit = new Map<string, number>();
   for (const period of periods ?? []) {
-    rentByUnit.set(period.unit_id, Number(period.expected_total_ngn ?? 0));
+    const allowed = expectedStartsByUnit.get(period.unit_id);
+    if (allowed && allowed.size > 0 && !allowed.has(period.period_start)) {
+      continue;
+    }
+    rentByUnit.set(
+      period.unit_id,
+      (rentByUnit.get(period.unit_id) ?? 0) + Number(period.expected_total_ngn ?? 0)
+    );
   }
 
   return rows.map((u) => ({
