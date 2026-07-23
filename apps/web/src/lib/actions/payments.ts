@@ -291,6 +291,56 @@ export async function unverifyPayment(
   return { success: true };
 }
 
+/** Permanently remove a payment and reverse any ledger allocation / arrears credit. */
+export async function deletePayment(
+  orgSlug: string,
+  paymentId: string
+): Promise<PaymentActionState> {
+  const ctx = await requireStaffContext(orgSlug);
+  if (!canVerifyPayments(ctx.role)) {
+    return { error: "You don't have permission to delete payments." };
+  }
+
+  const admin = createAdminClient();
+  const { data: payment } = await admin
+    .from("payments")
+    .select("id, status, organization_id, unit_id, payment_method, amount_ngn")
+    .eq("id", paymentId)
+    .eq("organization_id", ctx.org.id)
+    .maybeSingle();
+
+  if (!payment) return { error: "Payment not found." };
+  if (payment.payment_method === "dedicated_account") {
+    return { error: "DVA auto-matched payments cannot be deleted here." };
+  }
+
+  // Reverse ledger / arrears impact before removing the row.
+  if (payment.status === "verified" || payment.status === "auto_matched") {
+    const { error: deallocError } = await admin.rpc("deallocate_payment", {
+      p_payment_id: paymentId,
+    });
+    if (deallocError) return { error: deallocError.message };
+  }
+
+  await admin.from("payment_attachments").delete().eq("payment_id", paymentId);
+
+  const { error: deleteError } = await admin
+    .from("payments")
+    .delete()
+    .eq("id", paymentId);
+
+  if (deleteError) return { error: deleteError.message };
+
+  revalidatePath(`/d/${orgSlug}/payments`);
+  revalidatePath(`/d/${orgSlug}`);
+  revalidatePath(`/d/${orgSlug}/tenants`);
+  if (payment.unit_id) {
+    revalidatePath(`/t/${orgSlug}`);
+    revalidatePath(`/t/${orgSlug}/ledger`);
+  }
+  return { success: true };
+}
+
 export async function updateCashPayment(
   orgSlug: string,
   _prev: PaymentActionState,
