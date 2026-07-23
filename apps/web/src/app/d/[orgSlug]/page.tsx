@@ -4,7 +4,6 @@ import { StatCard } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { ListRow, SectionHeader } from "@/components/ui/section-header";
 import { requireStaffContext } from "@/lib/auth/session";
-import { isPrivilegedRole } from "@/lib/auth/roles";
 import { getDashboardStats } from "@/lib/data/dashboard-stats";
 import { getActivityFeed } from "@/lib/data/activity-feed";
 import { DashboardLiveSync } from "@/components/dashboard/dashboard-live-sync";
@@ -12,11 +11,9 @@ import { listPaymentsForOrg } from "@/lib/data/payments";
 import { listUnitsForOrg } from "@/lib/data/units";
 import { unitPath } from "@/lib/routes/dashboard-paths";
 import { formatPropertyType } from "@/lib/data/unit-types";
-import {
-  countUnreadNotifications,
-  listNotificationsForUser,
-} from "@/lib/data/notifications";
+import { listNotificationsForUser } from "@/lib/data/notifications";
 import { StaffNotificationsPanel } from "@/components/notifications/staff-notification-bell";
+import { MarkDashboardNotificationsRead } from "@/components/notifications/mark-dashboard-notifications-read";
 import { PilotSetupChecklist } from "@/components/onboarding/pilot-setup-checklist";
 import { formatNaira } from "@/lib/auth/roles";
 import { formatDisplayDate } from "@/lib/utils/format-date";
@@ -43,10 +40,15 @@ export default async function DashboardHomePage({
   ]);
 
   const pending = payments.filter((p) => p.status === "pending");
+  const hasUnread = notifications.some((n) => !n.read);
 
   return (
     <div>
       <DashboardLiveSync orgId={ctx.org.id} />
+      <MarkDashboardNotificationsRead
+        orgSlug={orgSlug}
+        hasUnread={hasUnread}
+      />
       <PageHeader title="Dashboard" description={ctx.org.name} />
 
       <StaffNotificationsPanel notifications={notifications} />
