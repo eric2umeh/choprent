@@ -7,6 +7,7 @@ import {
   type TenantPaymentStatus,
 } from "@/lib/data/tenant-payment-status";
 import { actorLabel, resolveActorLabels } from "@/lib/data/audit-actors";
+import { listBillingPeriods } from "@/lib/charges/period-ranges";
 
 export type LeaseListItem = {
   id: string;
@@ -110,21 +111,53 @@ async function getLeaseFinancials(
   admin: ReturnType<typeof createAdminClient>,
   leaseId: string,
   unitId: string,
-  arrearsBalance: number
+  arrearsBalance: number,
+  leaseMeta?: {
+    startDate: string;
+    endDate: string;
+    billingCadence: BillingCadence;
+  }
 ): Promise<{ expected: number; paid: number; arrears: number }> {
   const arrears = Number(arrearsBalance ?? 0);
 
-  // Use open periods for this lease (anniversary windows), not calendar Jan–Dec.
+  let startDate = leaseMeta?.startDate;
+  let endDate = leaseMeta?.endDate;
+  let cadence = leaseMeta?.billingCadence;
+
+  if (!startDate || !endDate || !cadence) {
+    const { data: lease } = await admin
+      .from("leases")
+      .select("start_date, end_date, billing_cadence")
+      .eq("id", leaseId)
+      .maybeSingle();
+    startDate = lease?.start_date;
+    endDate = lease?.end_date;
+    cadence = lease?.billing_cadence;
+  }
+
+  const expectedStarts = new Set(
+    startDate && endDate && cadence
+      ? listBillingPeriods(startDate, endDate, cadence).map((p) => p.periodStart)
+      : []
+  );
+
+  // Only anniversary (or schedule-matching) open periods — never sum calendar leftovers.
   const { data: periods } = await admin
     .from("ledger_periods")
-    .select("expected_total_ngn, paid_total_ngn, status, lease_id, period_start")
+    .select(
+      "expected_total_ngn, paid_total_ngn, status, lease_id, period_start, period_end"
+    )
     .eq("unit_id", unitId)
     .eq("status", "open")
     .order("period_start", { ascending: false });
 
   if (periods?.length) {
     const forLease = periods.filter((p) => p.lease_id === leaseId);
-    const relevant = forLease.length > 0 ? forLease : periods;
+    const pool = forLease.length > 0 ? forLease : periods;
+    const relevant =
+      expectedStarts.size > 0
+        ? pool.filter((p) => expectedStarts.has(p.period_start))
+        : pool;
     const expected = relevant.reduce(
       (sum, p) => sum + Number(p.expected_total_ngn),
       0
@@ -160,7 +193,12 @@ async function mapLeaseRows(
         admin,
         row.id,
         row.unit_id,
-        unit?.arrears_balance_ngn ?? 0
+        unit?.arrears_balance_ngn ?? 0,
+        {
+          startDate: row.start_date,
+          endDate: row.end_date,
+          billingCadence: row.billing_cadence,
+        }
       );
 
       return {
