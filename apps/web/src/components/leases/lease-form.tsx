@@ -269,6 +269,27 @@ export function LeaseForm({
           </div>
         </div>
 
+        <label className="flex cursor-pointer items-start gap-2.5 rounded-lg border border-border bg-surface-subtle/50 px-3 py-2.5">
+          <input
+            type="checkbox"
+            name="fixed_end_date"
+            value="on"
+            defaultChecked={lease ? lease.autoRenew === false : false}
+            disabled={loading}
+            className="mt-0.5"
+          />
+          <span>
+            <span className="block text-sm font-medium text-foreground">
+              Fixed end date (manual renewal)
+            </span>
+            <span className="mt-0.5 block text-xs text-muted">
+              Leave unchecked (default) to auto-renew each year after the end
+              date. Check this if the tenancy must stop on the end date until
+              you renew it manually.
+            </span>
+          </span>
+        </label>
+
         <div>
           <label className="text-label normal-case">Billing cadence</label>
           <select

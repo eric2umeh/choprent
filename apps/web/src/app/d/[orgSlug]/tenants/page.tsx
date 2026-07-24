@@ -27,7 +27,7 @@ export default async function TenantsPage({
     <div>
       <PageHeader
         title="Tenants"
-        description="Active tenancies, contacts, and renewals"
+        description="Current tenancies, contacts, and renewals"
       />
       <TenantsSectionTabs orgSlug={orgSlug} />
       <Suspense fallback={<ListLoadingFallback />}>

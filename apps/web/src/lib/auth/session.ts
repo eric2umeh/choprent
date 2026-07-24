@@ -329,7 +329,9 @@ export async function requireTenantContext(
   const admin = createAdminClient();
   const { data: lease } = await admin
     .from("leases")
-    .select("id, tenant_display_name, units!inner(id, unit_code, organization_id)")
+    .select(
+      "id, tenant_display_name, start_date, end_date, auto_renew, status, unit_id, units!inner(id, unit_code, organization_id)"
+    )
     .eq("tenant_user_id", user.id)
     .eq("status", "active")
     .eq("units.organization_id", org.id)
@@ -337,6 +339,16 @@ export async function requireTenantContext(
     .maybeSingle();
 
   if (!lease) redirect("/login?error=no_access");
+
+  const { ensureAutoRenewedLease } = await import("@/lib/leases/auto-renew");
+  await ensureAutoRenewedLease(admin, org.id, {
+    id: lease.id,
+    unit_id: lease.unit_id,
+    start_date: lease.start_date,
+    end_date: lease.end_date,
+    status: lease.status,
+    auto_renew: lease.auto_renew,
+  });
 
   const unitsPayload = lease.units;
   const unitCode =

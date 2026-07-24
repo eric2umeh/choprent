@@ -7,11 +7,19 @@ import { CompactCard } from "@/components/ui/card";
 import { FilterBar, FilterSelect } from "@/components/ui/filter-bar";
 import { ListPanel, ListToolbar } from "@/components/ui/page-header";
 import { Pagination, usePagination } from "@/components/ui/pagination";
-import { ResponsiveDataTable, type Column } from "@/components/ui/responsive-table";
+import {
+  ResponsiveDataTable,
+  type Column,
+} from "@/components/ui/responsive-table";
 import { ViewToggle, type ViewMode } from "@/components/ui/view-toggle";
 import { RecordCashForm } from "@/components/payments/record-cash-form";
 import { TenantPaymentStatusBadge } from "@/components/tenants/tenant-payment-status-badge";
-import { rejectPayment, unverifyPayment, verifyPayment, deletePayment } from "@/lib/actions/payments";
+import {
+  rejectPayment,
+  unverifyPayment,
+  verifyPayment,
+  deletePayment,
+} from "@/lib/actions/payments";
 import { EditCashForm } from "@/components/payments/edit-cash-form";
 import { getReceiptDownloadUrl } from "@/lib/actions/documents";
 import type { PaymentListItem } from "@/lib/data/payments";
@@ -32,7 +40,8 @@ function methodLabel(m: string) {
 }
 
 function statusBadge(status: string) {
-  if (status === "verified" || status === "auto_matched") return "success" as const;
+  if (status === "verified" || status === "auto_matched")
+    return "success" as const;
   if (status === "pending") return "warning" as const;
   return "danger" as const;
 }
@@ -57,7 +66,9 @@ export function PaymentsList({
   const [rentStatusFilter, setRentStatusFilter] = useState("all");
   const [methodFilter, setMethodFilter] = useState("all");
   const [showCashForm, setShowCashForm] = useState(false);
-  const [editingPayment, setEditingPayment] = useState<PaymentListItem | null>(null);
+  const [editingPayment, setEditingPayment] = useState<PaymentListItem | null>(
+    null,
+  );
   const [actingId, setActingId] = useState<string | null>(null);
   const [actingType, setActingType] = useState<
     "verify" | "reject" | "unverify" | "delete" | null
@@ -83,7 +94,8 @@ export function PaymentsList({
     });
   }, [payments, search, statusFilter, rentStatusFilter, methodFilter]);
 
-  const { page, setPage, totalPages, slice, pageSize } = usePagination(filtered);
+  const { page, setPage, totalPages, slice, pageSize } =
+    usePagination(filtered);
 
   function handleVerify(paymentId: string) {
     setActingId(paymentId);
@@ -130,18 +142,18 @@ export function PaymentsList({
     });
   }
 
-  function handleDelete(payment: PaymentListItem) {
-    startTransition(async () => {
-      const { confirmed } = await confirmDialog({
-        title: "Delete this payment?",
-        message: `Remove ${formatNaira(payment.amount)} for ${payment.unitCode} (${payment.tenantName}). Verified amounts are removed from the tenant balance.`,
-        confirmLabel: "Delete payment",
-        destructive: true,
-      });
-      if (!confirmed) return;
+  async function handleDelete(payment: PaymentListItem) {
+    const { confirmed } = await confirmDialog({
+      title: "Delete this payment?",
+      message: `Remove ${formatNaira(payment.amount)} for ${payment.unitCode} (${payment.tenantName}). Verified amounts are removed from the tenant balance.`,
+      confirmLabel: "Delete payment",
+      destructive: true,
+    });
+    if (!confirmed) return;
 
-      setActingId(payment.id);
-      setActingType("delete");
+    setActingId(payment.id);
+    setActingType("delete");
+    startTransition(async () => {
       const result = await deletePayment(orgSlug, payment.id);
       setActingId(null);
       setActingType(null);
@@ -168,7 +180,9 @@ export function PaymentsList({
       key: "unit",
       header: "Unit",
       mobilePrimary: true,
-      render: (p) => <span className="text-table-cell-strong">{p.unitCode}</span>,
+      render: (p) => (
+        <span className="text-table-cell-strong">{p.unitCode}</span>
+      ),
     },
     {
       key: "tenant",
@@ -180,7 +194,9 @@ export function PaymentsList({
       key: "amount",
       header: "Amount",
       mobilePrimary: true,
-      render: (p) => <span className="text-money">{formatNaira(p.amount)}</span>,
+      render: (p) => (
+        <span className="text-money">{formatNaira(p.amount)}</span>
+      ),
     },
     {
       key: "rentStatus",
@@ -206,7 +222,9 @@ export function PaymentsList({
       key: "method",
       header: "Method",
       render: (p) => (
-        <span className="text-table-cell-muted">{methodLabel(p.paymentMethod)}</span>
+        <span className="text-table-cell-muted">
+          {methodLabel(p.paymentMethod)}
+        </span>
       ),
     },
     {
@@ -226,9 +244,7 @@ export function PaymentsList({
     {
       key: "status",
       header: "Status",
-      render: (p) => (
-        <Badge variant={statusBadge(p.status)}>{p.status}</Badge>
-      ),
+      render: (p) => <Badge variant={statusBadge(p.status)}>{p.status}</Badge>,
     },
     {
       key: "receipt",
@@ -263,8 +279,7 @@ export function PaymentsList({
           canVerify &&
           p.paymentMethod === "cash_recorded" &&
           p.status !== "rejected";
-        const canDelete =
-          canVerify && p.paymentMethod !== "dedicated_account";
+        const canDelete = canVerify && p.paymentMethod !== "dedicated_account";
 
         const deleteBtn = canDelete ? (
           <button
@@ -489,11 +504,15 @@ export function PaymentsList({
                   <div>
                     <div className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
                       <span className="text-list-primary">{p.unitCode}</span>
-                      <span className="text-list-secondary">{p.tenantName}</span>
+                      <span className="text-list-secondary">
+                        {p.tenantName}
+                      </span>
                     </div>
                     <p className="mt-1.5 text-money">{formatNaira(p.amount)}</p>
                     {p.periodLabel && (
-                      <span className="mt-1 inline-flex text-meta-pill">{p.periodLabel}</span>
+                      <span className="mt-1 inline-flex text-meta-pill">
+                        {p.periodLabel}
+                      </span>
                     )}
                   </div>
                   <Badge variant={statusBadge(p.status)}>{p.status}</Badge>
