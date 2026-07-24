@@ -5,7 +5,8 @@ import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
 
 const TABS = [
-  { href: "/tenants", id: "tenancies", label: "All tenancies" },
+  { href: "/tenants", id: "tenancies", label: "Current" },
+  { href: "/tenants/former", id: "former", label: "Former" },
   { href: "/tenants/portal", id: "portal", label: "App accounts" },
 ] as const;
 
@@ -22,10 +23,8 @@ export function TenantsSectionTabs({ orgSlug }: { orgSlug: string }) {
         const path = `${base}${tab.href}`;
         const active =
           tab.id === "tenancies"
-            ? pathname === path ||
-              (pathname.startsWith(`${base}/tenants/`) &&
-                !pathname.includes("/tenants/portal"))
-            : pathname.startsWith(path);
+            ? pathname === path
+            : pathname === path || pathname.startsWith(`${path}/`);
 
         return (
           <Link
