@@ -23,6 +23,7 @@ export type LeaseListItem = {
   startDate: string;
   endDate: string;
   billingCadence: BillingCadence;
+  autoRenew: boolean;
   status: "draft" | "active" | "ended" | "renewed";
   annualTotal: number;
   paidAmount: number;
@@ -61,6 +62,7 @@ type LeaseRow = {
   start_date: string;
   end_date: string;
   billing_cadence: BillingCadence;
+  auto_renew?: boolean | null;
   status: LeaseListItem["status"];
   created_at?: string;
   created_by?: string | null;
@@ -215,6 +217,7 @@ async function mapLeaseRows(
         startDate: row.start_date,
         endDate: row.end_date,
         billingCadence: row.billing_cadence,
+        autoRenew: row.auto_renew !== false,
         status: row.status,
         annualTotal: expected,
         paidAmount: paid,
@@ -226,28 +229,67 @@ async function mapLeaseRows(
 }
 
 const leaseSelect =
+  "id, unit_id, tenant_display_name, tenant_phone, tenant_email, tenant_user_id, start_date, end_date, billing_cadence, auto_renew, status, created_at, created_by, units!inner(unit_code, site_id, organization_id, arrears_balance_ngn, sites(name, slug))";
+
+const leaseSelectFallback =
   "id, unit_id, tenant_display_name, tenant_phone, tenant_email, tenant_user_id, start_date, end_date, billing_cadence, status, created_at, created_by, units!inner(unit_code, site_id, organization_id, arrears_balance_ngn, sites(name, slug))";
 
-export async function listLeasesForOrg(orgId: string): Promise<LeaseListItem[]> {
+export async function listLeasesForOrg(
+  orgId: string,
+  options?: { status?: "active" | "former" }
+): Promise<LeaseListItem[]> {
   try {
     const admin = createAdminClient();
-    const { data } = await admin
-      .from("leases")
-      .select(leaseSelect)
-      .eq("units.organization_id", orgId)
-      .order("start_date", { ascending: false });
 
-    if (!data) return [];
-    const rows = data as LeaseRow[];
-    const { repairStaleLedgerPeriodsForUnit } = await import(
-      "@/lib/charges/generate-ledger"
-    );
-    const unitIds = [...new Set(rows.map((r) => r.unit_id))];
-    await Promise.all(
-      unitIds.map((unitId) =>
-        repairStaleLedgerPeriodsForUnit(admin, orgId, unitId)
-      )
-    );
+    async function fetchRows(select: string) {
+      let query = admin
+        .from("leases")
+        .select(select)
+        .eq("units.organization_id", orgId)
+        .order("start_date", { ascending: false });
+
+      if (options?.status === "former") {
+        query = query.in("status", ["ended", "renewed"]);
+      } else {
+        query = query.eq("status", "active");
+      }
+      return query;
+    }
+
+    let { data, error } = await fetchRows(leaseSelect);
+    if (error) {
+      ({ data, error } = await fetchRows(leaseSelectFallback));
+    }
+    if (error || !data) return [];
+
+    let rows = data as unknown as LeaseRow[];
+
+    if (options?.status !== "former") {
+      const { ensureAutoRenewedLease } = await import("@/lib/leases/auto-renew");
+      const { repairStaleLedgerPeriodsForUnit } = await import(
+        "@/lib/charges/generate-ledger"
+      );
+      rows = await Promise.all(
+        rows.map(async (row) => {
+          const renewed = await ensureAutoRenewedLease(admin, orgId, {
+            id: row.id,
+            unit_id: row.unit_id,
+            start_date: row.start_date,
+            end_date: row.end_date,
+            status: row.status,
+            auto_renew: row.auto_renew,
+          });
+          return { ...row, end_date: renewed.end_date };
+        })
+      );
+      const unitIds = [...new Set(rows.map((r) => r.unit_id))];
+      await Promise.all(
+        unitIds.map((unitId) =>
+          repairStaleLedgerPeriodsForUnit(admin, orgId, unitId)
+        )
+      );
+    }
+
     const leases = await mapLeaseRows(rows, admin);
     return sortByNaturalKey(leases, (lease) => lease.unitCode);
   } catch {
@@ -270,13 +312,28 @@ export async function getLeaseDetail(
 
     if (!row) return null;
 
-    const unitId = (row as LeaseRow).unit_id;
+    const leaseRow = row as LeaseRow;
+    const unitId = leaseRow.unit_id;
+
+    if (leaseRow.status === "active") {
+      const { ensureAutoRenewedLease } = await import("@/lib/leases/auto-renew");
+      const renewed = await ensureAutoRenewedLease(admin, orgId, {
+        id: leaseRow.id,
+        unit_id: leaseRow.unit_id,
+        start_date: leaseRow.start_date,
+        end_date: leaseRow.end_date,
+        status: leaseRow.status,
+        auto_renew: leaseRow.auto_renew,
+      });
+      leaseRow.end_date = renewed.end_date;
+    }
+
     const { repairStaleLedgerPeriodsForUnit } = await import(
       "@/lib/charges/generate-ledger"
     );
     await repairStaleLedgerPeriodsForUnit(admin, orgId, unitId);
 
-    const mapped = (await mapLeaseRows([row as LeaseRow], admin))[0];
+    const mapped = (await mapLeaseRows([leaseRow], admin))[0];
 
     const actorLabels = await resolveActorLabels(orgId, [row.created_by]);
 
