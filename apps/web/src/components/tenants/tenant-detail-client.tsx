@@ -84,22 +84,29 @@ export function TenantDetailClient({
   }
 
   async function handleEndTenancy() {
-    const { confirmed } = await confirmDialog({
+    const { confirmed, value } = await confirmDialog({
       title: "End tenancy?",
-      message: `End the lease for ${lease.tenantName} on unit ${lease.unitCode}? The unit will be marked vacant.`,
+      message: `End the lease for ${lease.tenantName} on unit ${lease.unitCode}? Choose the last day of the tenancy. The unit will be marked vacant and this tenant moves to Former.`,
       confirmLabel: "End tenancy",
       destructive: true,
+      input: {
+        label: "End date",
+        defaultValue: new Date().toISOString().slice(0, 10),
+        type: "date",
+      },
     });
     if (!confirmed) return;
 
+    const endDate = value?.trim() || new Date().toISOString().slice(0, 10);
+
     startEnd(async () => {
-      const result = await endActiveLease(orgSlug, lease.id);
+      const result = await endActiveLease(orgSlug, lease.id, endDate);
       if (result.error) {
         toast.error(result.error);
         return;
       }
       toast.success("Tenancy ended. Unit is now vacant.");
-      router.push(`/d/${orgSlug}/tenants`);
+      router.push(`/d/${orgSlug}/tenants/former`);
       router.refresh();
     });
   }
@@ -271,7 +278,12 @@ export function TenantDetailClient({
           </div>
           <div>
             <dt className="text-label normal-case">Billing cadence</dt>
-            <dd className="text-detail-value capitalize">{lease.billingCadence}</dd>
+            <dd className="text-detail-value capitalize">
+              {lease.billingCadence}
+              {lease.autoRenew
+                ? " · auto-renews"
+                : " · fixed end (manual renewal)"}
+            </dd>
           </div>
           <div>
             <dt className="text-label normal-case">Phone</dt>
