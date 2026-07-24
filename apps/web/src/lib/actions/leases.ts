@@ -32,6 +32,8 @@ export async function createLease(
   const billingCadence = String(formData.get("billing_cadence") ?? "annual") as BillingCadence;
   const settlementAccountId =
     String(formData.get("settlement_account_id") ?? "").trim() || null;
+  // Checkbox "fixed_end_date" means manual renewal (auto_renew = false).
+  const autoRenew = formData.get("fixed_end_date") !== "on";
 
   if (!unitId || !tenantName || !startDate || !endDate) {
     return { error: "Unit, tenant name, and lease dates are required." };
@@ -90,6 +92,7 @@ export async function createLease(
     start_date: startDate,
     end_date: endDate,
     billing_cadence: billingCadence,
+    auto_renew: autoRenew,
     status: "active",
     created_by: ctx.user.id,
   }).select("id").single();
@@ -140,6 +143,7 @@ export async function renewLease(
   const startDate = String(formData.get("start_date") ?? "").trim();
   const endDate = String(formData.get("end_date") ?? "").trim();
   const billingCadence = String(formData.get("billing_cadence") ?? "annual") as BillingCadence;
+  const autoRenew = formData.get("fixed_end_date") !== "on";
 
   if (!startDate || !endDate) {
     return { error: "New lease dates are required." };
@@ -185,6 +189,7 @@ export async function renewLease(
     start_date: startDate,
     end_date: endDate,
     billing_cadence: billingCadence,
+    auto_renew: autoRenew,
     status: "active",
     renewed_from_lease_id: leaseId,
     created_by: ctx.user.id,
@@ -221,6 +226,7 @@ export async function updateActiveLease(
   const startDate = String(formData.get("start_date") ?? "").trim();
   const endDate = String(formData.get("end_date") ?? "").trim();
   const billingCadence = String(formData.get("billing_cadence") ?? "annual") as BillingCadence;
+  const autoRenew = formData.get("fixed_end_date") !== "on";
 
   if (!tenantName || !startDate || !endDate) {
     return { error: "Tenant name and lease dates are required." };
@@ -258,13 +264,14 @@ export async function updateActiveLease(
       )?.id ?? null;
   }
 
-  const updatePayload: Record<string, string | null> = {
+  const updatePayload: Record<string, string | boolean | null> = {
     tenant_display_name: tenantName,
     tenant_phone: tenantPhone,
     tenant_email: tenantEmail,
     start_date: startDate,
     end_date: endDate,
     billing_cadence: billingCadence,
+    auto_renew: autoRenew,
   };
   if (tenantUserId) updatePayload.tenant_user_id = tenantUserId;
 
@@ -303,7 +310,8 @@ export async function updateActiveLease(
 
 export async function endActiveLease(
   orgSlug: string,
-  leaseId: string
+  leaseId: string,
+  endDate?: string
 ): Promise<LeaseActionState> {
   const ctx = await requireStaffContext(orgSlug);
   if (!canManageLeases(ctx.role)) {
@@ -314,7 +322,7 @@ export async function endActiveLease(
 
   const { data: lease } = await admin
     .from("leases")
-    .select("id, unit_id, units!inner(organization_id)")
+    .select("id, unit_id, start_date, end_date, units!inner(organization_id)")
     .eq("id", leaseId)
     .eq("status", "active")
     .maybeSingle();
@@ -331,9 +339,21 @@ export async function endActiveLease(
 
   if (orgId !== ctx.org.id) return { error: "Lease not found." };
 
+  const resolvedEnd =
+    endDate?.trim() ||
+    new Date().toISOString().slice(0, 10);
+
+  if (resolvedEnd < lease.start_date) {
+    return { error: "End date cannot be before the tenancy start date." };
+  }
+
   const { error: endError } = await admin
     .from("leases")
-    .update({ status: "ended" })
+    .update({
+      status: "ended",
+      end_date: resolvedEnd,
+      auto_renew: false,
+    })
     .eq("id", leaseId);
 
   if (endError) return { error: endError.message };
@@ -346,6 +366,7 @@ export async function endActiveLease(
   if (unitError) return { error: unitError.message };
 
   revalidatePath(`/d/${orgSlug}/tenants`);
+  revalidatePath(`/d/${orgSlug}/tenants/former`);
   revalidatePath(`/d/${orgSlug}/tenants/${leaseId}`);
   revalidatePath(`/d/${orgSlug}/properties`);
   return { success: true };
