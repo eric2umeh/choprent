@@ -22,7 +22,7 @@ export type PaymentActionState = {
 
 export async function fetchUnitBalanceBreakdown(
   orgSlug: string,
-  unitId: string
+  unitId: string,
 ) {
   const ctx = await requireStaffContext(orgSlug);
   if (!unitId) return { rows: [], total: 0 };
@@ -31,7 +31,7 @@ export async function fetchUnitBalanceBreakdown(
 
 export async function verifyPayment(
   orgSlug: string,
-  paymentId: string
+  paymentId: string,
 ): Promise<PaymentActionState> {
   const ctx = await requireStaffContext(orgSlug);
   if (!canVerifyPayments(ctx.role)) {
@@ -43,7 +43,9 @@ export async function verifyPayment(
 
   const { data: payment } = await admin
     .from("payments")
-    .select("id, status, organization_id, unit_id, amount_ngn, units(unit_code)")
+    .select(
+      "id, status, organization_id, unit_id, amount_ngn, units(unit_code)",
+    )
     .eq("id", paymentId)
     .eq("organization_id", ctx.org.id)
     .maybeSingle();
@@ -78,13 +80,17 @@ export async function verifyPayment(
     await runPaymentAllocation(paymentId);
   } catch (err) {
     return {
-      error: err instanceof Error ? err.message : "Verified but allocation failed.",
+      error:
+        err instanceof Error ? err.message : "Verified but allocation failed.",
     };
   }
 
   const unitRaw = payment.units;
   const unitCode =
-    unitRaw && typeof unitRaw === "object" && !Array.isArray(unitRaw) && "unit_code" in unitRaw
+    unitRaw &&
+    typeof unitRaw === "object" &&
+    !Array.isArray(unitRaw) &&
+    "unit_code" in unitRaw
       ? String((unitRaw as { unit_code: string }).unit_code)
       : "Unit";
 
@@ -105,7 +111,7 @@ export async function verifyPayment(
 export async function rejectPayment(
   orgSlug: string,
   paymentId: string,
-  reason?: string
+  reason?: string,
 ): Promise<PaymentActionState> {
   const ctx = await requireStaffContext(orgSlug);
   if (!canVerifyPayments(ctx.role)) {
@@ -145,7 +151,7 @@ export async function rejectPayment(
 export async function recordCashPayment(
   orgSlug: string,
   _prev: PaymentActionState,
-  formData: FormData
+  formData: FormData,
 ): Promise<PaymentActionState> {
   const ctx = await requireStaffContext(orgSlug);
   if (!canVerifyPayments(ctx.role)) {
@@ -203,7 +209,7 @@ export async function recordCashPayment(
       ctx.org.id,
       unitId,
       attachmentFiles,
-      ctx.user.id
+      ctx.user.id,
     );
     if (uploadResult.error) return { error: uploadResult.error };
 
@@ -213,7 +219,7 @@ export async function recordCashPayment(
       if (!uploadResult.attachmentsInDb && uploadResult.paths.length > 0) {
         update.metadata = metadataWithPaymentNote(
           { attachment_paths: uploadResult.paths },
-          paymentNote
+          paymentNote,
         );
       }
       await admin.from("payments").update(update).eq("id", payment.id);
@@ -236,7 +242,8 @@ export async function recordCashPayment(
     await runPaymentAllocation(payment.id);
   } catch (err) {
     return {
-      error: err instanceof Error ? err.message : "Recorded but allocation failed.",
+      error:
+        err instanceof Error ? err.message : "Recorded but allocation failed.",
     };
   }
 
@@ -247,7 +254,7 @@ export async function recordCashPayment(
 
 export async function unverifyPayment(
   orgSlug: string,
-  paymentId: string
+  paymentId: string,
 ): Promise<PaymentActionState> {
   const ctx = await requireStaffContext(orgSlug);
   if (!isPrivilegedRole(ctx.role)) {
@@ -294,7 +301,7 @@ export async function unverifyPayment(
 /** Permanently remove a payment and reverse any ledger allocation / arrears credit. */
 export async function deletePayment(
   orgSlug: string,
-  paymentId: string
+  paymentId: string,
 ): Promise<PaymentActionState> {
   const ctx = await requireStaffContext(orgSlug);
   if (!canVerifyPayments(ctx.role)) {
@@ -322,14 +329,29 @@ export async function deletePayment(
     if (deallocError) return { error: deallocError.message };
   }
 
+  // Best-effort attachment cleanup (do not block delete).
   await admin.from("payment_attachments").delete().eq("payment_id", paymentId);
+  await admin.from("payment_allocations").delete().eq("payment_id", paymentId);
 
   const { error: deleteError } = await admin
     .from("payments")
     .delete()
     .eq("id", paymentId);
 
-  if (deleteError) return { error: deleteError.message };
+  if (deleteError) {
+    // Fallback: soft-void if hard delete is blocked by FKs / policies.
+    const { error: voidError } = await admin
+      .from("payments")
+      .update({
+        status: "rejected",
+        rejection_reason: "Deleted by staff",
+        verified_by: null,
+        verified_at: null,
+        amount_ngn: 0,
+      })
+      .eq("id", paymentId);
+    if (voidError) return { error: deleteError.message };
+  }
 
   revalidatePath(`/d/${orgSlug}/payments`);
   revalidatePath(`/d/${orgSlug}`);
@@ -344,7 +366,7 @@ export async function deletePayment(
 export async function updateCashPayment(
   orgSlug: string,
   _prev: PaymentActionState,
-  formData: FormData
+  formData: FormData,
 ): Promise<PaymentActionState> {
   const ctx = await requireStaffContext(orgSlug);
   if (!canVerifyPayments(ctx.role)) {
