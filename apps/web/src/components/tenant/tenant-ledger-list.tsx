@@ -100,7 +100,7 @@ export function TenantLedgerList({
             setSearch(v);
             setPage(1);
           }}
-          searchPlaceholder="Search ledger…"
+          searchPlaceholder="Search transactions…"
         >
           <FilterSelect
             label="Type"
@@ -127,7 +127,7 @@ export function TenantLedgerList({
           <ResponsiveDataTable
             rows={slice}
             columns={columns}
-            emptyMessage="No ledger entries match your filters"
+            emptyMessage="No transactions match your filters"
           />
         ) : (
           <div className="grid gap-2 p-3">
