@@ -20,14 +20,14 @@ export const RENT_FAQ_ENTRIES: FaqEntry[] = [
     ],
     question: "How do I pay my rent?",
     answer:
-      "Transfer to the shop account shown on your Home screen, then open Pay and upload your receipt (you can attach multiple files). Management will verify and update your ledger.",
+      "Transfer to the shop account shown on your Home screen, then open Pay and upload your receipt (you can attach multiple files). Management will verify and update your transactions.",
   },
   {
     id: "service-charge",
     keywords: ["service", "service charge", "levy", "maintenance fee", "plaza fee"],
     question: "What is service charge?",
     answer:
-      "Service charge covers shared plaza costs (cleaning, security, common areas). It is calculated as a percentage of your rent and appears on your ledger with rent each billing period.",
+      "Service charge covers shared plaza costs (cleaning, security, common areas). It is calculated as a percentage of your rent and appears in your transactions with rent each billing period.",
   },
   {
     id: "receipt",
@@ -41,14 +41,14 @@ export const RENT_FAQ_ENTRIES: FaqEntry[] = [
     keywords: ["balance", "owe", "arrears", "debt", "outstanding", "how much"],
     question: "How do I check what I owe?",
     answer:
-      "Your balance due is on the Home screen. Open Ledger for a full breakdown by rent, service charge, VAT, and other lines per period.",
+      "Your balance due is on the Home screen. Open Transactions for a full breakdown by rent, service charge, VAT, and other lines per period.",
   },
   {
     id: "due-date",
     keywords: ["due", "when", "deadline", "late", "date", "expire"],
     question: "When is rent due?",
     answer:
-      "Due dates follow your lease billing cadence (annual, quarterly, or monthly). Check your ledger for each period. Contact management if you need a payment plan.",
+      "Due dates follow your lease billing cadence (annual, quarterly, or monthly). Check your transactions for each period. Contact management if you need a payment plan.",
   },
   {
     id: "verify-time",
