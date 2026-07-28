@@ -15,7 +15,7 @@ export default async function TenantHelpPage({
         <h1 className="text-section-title">Help &amp; FAQ</h1>
         <p className="mt-1 text-list-meta">
           Quick answers about paying rent at your plaza. For lease-specific amounts,
-          check Home and Ledger.
+          check Home and Transactions.
         </p>
       </div>
       <TenantFaqChat />
