@@ -20,7 +20,7 @@ export default async function TenantLedgerPage({
     <div>
       <TenantEngagementBeacon orgSlug={orgSlug} eventType="ledger_viewed" />
       <PageHeader
-        title="Ledger"
+        title="Transactions"
         description="Charges, payments, and running balance"
       />
       <Suspense fallback={<ListLoadingFallback />}>

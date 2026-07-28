@@ -57,13 +57,82 @@ export async function getDocumentDownloadUrl(
       return url ? { downloadUrl: url } : { error: "Could not generate download link." };
     }
 
+    if (
+      documentId.startsWith("payment:") ||
+      documentId.startsWith("payment-att:")
+    ) {
+      const admin = createAdminClient();
+      let filePath: string | null = null;
+
+      if (documentId.startsWith("payment-att:")) {
+        const attId = documentId.slice("payment-att:".length);
+        const { data: att } = await admin
+          .from("payment_attachments")
+          .select("file_url, payment_id, payments!inner(unit_id, organization_id)")
+          .eq("id", attId)
+          .maybeSingle();
+        const pay = att?.payments as
+          | { unit_id: string; organization_id: string }
+          | { unit_id: string; organization_id: string }[]
+          | null;
+        const payment = Array.isArray(pay) ? pay[0] : pay;
+        if (
+          !att?.file_url ||
+          !payment ||
+          payment.organization_id !== ctx.org.id ||
+          payment.unit_id !== ctx.unitId
+        ) {
+          return { error: "You don't have access to this document." };
+        }
+        filePath = att.file_url;
+      } else {
+        const paymentId = documentId.slice("payment:".length);
+        const { data: payment } = await admin
+          .from("payments")
+          .select("receipt_file_url, unit_id")
+          .eq("id", paymentId)
+          .eq("organization_id", ctx.org.id)
+          .maybeSingle();
+        if (
+          !payment?.receipt_file_url ||
+          payment.unit_id !== ctx.unitId
+        ) {
+          return { error: "You don't have access to this document." };
+        }
+        filePath = payment.receipt_file_url;
+      }
+
+      if (!filePath) {
+        return { error: "You don't have access to this document." };
+      }
+
+      const url = await createSignedStorageUrl("receipts", filePath);
+      return url ? { downloadUrl: url } : { error: "Could not generate download link." };
+    }
+
     const docs = await listDocumentsForOrg(ctx.org.id);
     const doc = docs.find((d) => d.id === documentId);
     if (!doc) return { error: "Document not found." };
+    if (doc.docType === "tenancy_agreement") {
+      return { error: "You don't have access to this document." };
+    }
+
+    let tenantSiteId: string | null = null;
+    if (doc.unitId === null && doc.siteId) {
+      const admin = createAdminClient();
+      const { data: unit } = await admin
+        .from("units")
+        .select("site_id")
+        .eq("id", ctx.unitId)
+        .maybeSingle();
+      tenantSiteId = unit?.site_id ?? null;
+    }
+
     const allowed =
-      doc.unitId === null ||
+      doc.leaseId === ctx.leaseId ||
       doc.unitId === ctx.unitId ||
-      doc.leaseId === ctx.leaseId;
+      (doc.unitId === null &&
+        (doc.siteId === null || doc.siteId === tenantSiteId));
     if (!allowed) {
       return { error: "You don't have access to this document." };
     }

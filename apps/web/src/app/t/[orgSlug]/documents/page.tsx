@@ -22,7 +22,7 @@ export default async function TenantDocumentsPage({
     <div>
       <PageHeader
         title="Documents"
-        description="Statements and letters from management"
+        description="Letters, receipts, and files from management"
       />
       <Suspense fallback={<ListLoadingFallback />}>
         <DocumentsList

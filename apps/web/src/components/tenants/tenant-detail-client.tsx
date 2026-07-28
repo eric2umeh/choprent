@@ -246,8 +246,17 @@ export function TenantDetailClient({
         <dl className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
           <div>
             <dt className="text-label normal-case">Rent status</dt>
-            <dd className="mt-1">
-              <TenantPaymentStatusBadge status={lease.paymentStatus} />
+            <dd className="mt-1 flex flex-col items-start gap-1">
+              <span className="text-detail-value tabular-nums">
+                {formatNaira(
+                  Math.max(0, lease.annualTotal - lease.paidAmount) +
+                    Math.max(0, lease.arrears)
+                )}
+              </span>
+              <TenantPaymentStatusBadge
+                status={lease.paymentStatus}
+                className="text-[10px] font-medium"
+              />
             </dd>
           </div>
           <div>

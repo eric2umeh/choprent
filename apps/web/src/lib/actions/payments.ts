@@ -249,6 +249,7 @@ export async function recordCashPayment(
 
   revalidatePath(`/d/${orgSlug}/payments`);
   revalidatePath(`/d/${orgSlug}`);
+  revalidatePath(`/t/${orgSlug}/documents`);
   return { success: true };
 }
 
@@ -359,6 +360,7 @@ export async function deletePayment(
   if (payment.unit_id) {
     revalidatePath(`/t/${orgSlug}`);
     revalidatePath(`/t/${orgSlug}/ledger`);
+    revalidatePath(`/t/${orgSlug}/documents`);
   }
   return { success: true };
 }

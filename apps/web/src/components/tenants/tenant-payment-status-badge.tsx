@@ -9,11 +9,16 @@ import {
 
 export function TenantPaymentStatusBadge({
   status,
+  className,
 }: {
   status: TenantPaymentStatus;
+  className?: string;
 }) {
   return (
-    <Badge variant={tenantPaymentStatusBadgeVariant(status)}>
+    <Badge
+      variant={tenantPaymentStatusBadgeVariant(status)}
+      className={className}
+    >
       {tenantPaymentStatusLabel(status)}
     </Badge>
   );

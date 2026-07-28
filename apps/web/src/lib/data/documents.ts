@@ -175,32 +175,59 @@ export async function listDocumentsForProperty(
   );
 }
 
-/** Documents visible for a tenancy: lease-linked + unit-linked (incl. expense attachments). */
+/** Documents visible for a tenancy: lease/unit/property docs + payment receipts (no tenancy agreement). */
 export async function listDocumentsForTenant(
   orgId: string,
   unitId: string,
   leaseId: string
 ): Promise<DocumentListItem[]> {
-  const [leaseRows, unitDocs] = await Promise.all([
+  const admin = createAdminClient();
+  const { data: unit } = await admin
+    .from("units")
+    .select("site_id")
+    .eq("id", unitId)
+    .eq("organization_id", orgId)
+    .maybeSingle();
+
+  const siteId = unit?.site_id ?? null;
+
+  const [leaseRows, unitDocs, paymentDocs, propertyDocs] = await Promise.all([
     fetchScopedDocumentRows(orgId, "lease_id", leaseId),
     listDocumentsForUnit(orgId, unitId),
+    listPaymentAttachmentsForUnit(orgId, unitId),
+    siteId
+      ? listDocumentsForProperty(orgId, siteId)
+      : Promise.resolve([] as DocumentListItem[]),
   ]);
   const leaseDocs = await mapDocumentRows(orgId, leaseRows);
-  return mergeDocumentLists(leaseDocs, unitDocs);
+
+  // Property-level docs for tenants: site-wide letters (no unit) + this unit's docs.
+  // Exclude other shops' unit-scoped documents from the same property.
+  const propertyVisible = propertyDocs.filter(
+    (d) => d.unitId === null || d.unitId === unitId
+  );
+
+  return mergeDocumentLists(
+    leaseDocs,
+    unitDocs,
+    paymentDocs,
+    propertyVisible
+  ).filter((d) => d.docType !== "tenancy_agreement");
 }
 
 function mergeDocumentLists(
-  primary: DocumentListItem[],
-  extra: DocumentListItem[]
+  ...lists: DocumentListItem[][]
 ): DocumentListItem[] {
-  const seenPaths = new Set(primary.map((d) => d.filePath));
-  const seenIds = new Set(primary.map((d) => d.id));
-  const merged = [...primary];
-  for (const doc of extra) {
-    if (seenIds.has(doc.id) || seenPaths.has(doc.filePath)) continue;
-    seenIds.add(doc.id);
-    seenPaths.add(doc.filePath);
-    merged.push(doc);
+  const seenPaths = new Set<string>();
+  const seenIds = new Set<string>();
+  const merged: DocumentListItem[] = [];
+  for (const list of lists) {
+    for (const doc of list) {
+      if (seenIds.has(doc.id) || seenPaths.has(doc.filePath)) continue;
+      seenIds.add(doc.id);
+      seenPaths.add(doc.filePath);
+      merged.push(doc);
+    }
   }
   return merged.sort((a, b) => b.issuedAt.localeCompare(a.issuedAt));
 }
@@ -210,6 +237,82 @@ function expenseCategoryToDocType(category: string): DocumentType {
   if (category === "maintenance" || category === "repairs") return "maintenance";
   if (category === "other") return "other";
   return "attachment";
+}
+
+/** Payment receipts for a unit — shown in the tenant Docs folder. */
+async function listPaymentAttachmentsForUnit(
+  orgId: string,
+  unitId: string
+): Promise<DocumentListItem[]> {
+  try {
+    const admin = createAdminClient();
+    const { data: payments, error } = await admin
+      .from("payments")
+      .select(
+        "id, amount_ngn, payment_date, created_at, receipt_file_url, period_label, status, recorded_by, payment_attachments(id, file_url, file_name, created_at)"
+      )
+      .eq("organization_id", orgId)
+      .eq("unit_id", unitId)
+      .in("status", ["pending", "verified", "auto_matched"])
+      .order("created_at", { ascending: false });
+
+    if (error || !payments?.length) return [];
+
+    const docs: DocumentListItem[] = [];
+
+    for (const payment of payments) {
+      const date = String(
+        (payment.payment_date ?? payment.created_at ?? "").toString().slice(0, 10)
+      );
+      const amount = Number(payment.amount_ngn);
+      const period = payment.period_label
+        ? ` · ${payment.period_label}`
+        : "";
+      const titleBase = `Payment receipt${period} · ₦${amount.toLocaleString("en-NG")}`;
+
+      const attachments = payment.payment_attachments as
+        | { id: string; file_url: string; file_name: string | null; created_at: string }[]
+        | null;
+
+      if (attachments?.length) {
+        for (const att of attachments) {
+          if (!att.file_url) continue;
+          docs.push({
+            id: `payment-att:${att.id}`,
+            title: att.file_name?.trim() || titleBase,
+            docType: "receipt",
+            unitCode: null,
+            unitId,
+            leaseId: null,
+            siteId: null,
+            filePath: att.file_url,
+            issuedAt: String(att.created_at).slice(0, 10) || date,
+            issuedByName: null,
+          });
+        }
+        continue;
+      }
+
+      if (payment.receipt_file_url) {
+        docs.push({
+          id: `payment:${payment.id}`,
+          title: titleBase,
+          docType: "receipt",
+          unitCode: null,
+          unitId,
+          leaseId: null,
+          siteId: null,
+          filePath: payment.receipt_file_url as string,
+          issuedAt: date,
+          issuedByName: null,
+        });
+      }
+    }
+
+    return docs;
+  } catch {
+    return [];
+  }
 }
 
 /** Expense attachments on a unit that may not yet have a management_documents row. */

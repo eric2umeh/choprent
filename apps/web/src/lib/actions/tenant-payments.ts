@@ -168,6 +168,7 @@ export async function submitTransferPayment(
   revalidatePath(`/t/${orgSlug}`);
   revalidatePath(`/t/${orgSlug}/pay`);
   revalidatePath(`/t/${orgSlug}/ledger`);
+  revalidatePath(`/t/${orgSlug}/documents`);
   revalidatePath(`/d/${orgSlug}/reports`);
   revalidatePath(`/d/${orgSlug}/payments`);
   revalidatePath(`/d/${orgSlug}`);
