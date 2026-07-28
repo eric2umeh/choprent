@@ -25,7 +25,7 @@ export function TenantFaqChat() {
     {
       id: "welcome",
       role: "bot",
-      text: "Hi! I'm the ChopRent help assistant. Ask a question about paying rent, receipts, or your ledger.",
+      text: "Hi! I'm the ChopRent help assistant. Ask a question about paying rent, receipts, or your transactions.",
     },
   ]);
 
