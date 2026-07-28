@@ -3,6 +3,7 @@ import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { CopyAccountButton } from "@/components/tenant/copy-account-button";
 import { TenantInstallAppCard } from "@/components/pwa/add-to-home-screen";
+import { TenantPaymentStatusBadge } from "@/components/tenants/tenant-payment-status-badge";
 import { requireTenantContext } from "@/lib/auth/session";
 import { getTenantHomeSummary } from "@/lib/data/tenant-home";
 import { listNotificationsForUser } from "@/lib/data/notifications";
@@ -24,6 +25,8 @@ export default async function TenantHomePage({
   );
   const notifications = await listNotificationsForUser(ctx.user.id, ctx.org.id);
 
+  const befs = summary.befsAccount;
+
   return (
     <div className="space-y-0">
       <TenantInstallAppCard orgSlug={orgSlug} />
@@ -31,28 +34,44 @@ export default async function TenantHomePage({
       <TenantNotificationsList notifications={notifications} />
 
       <div className="border-b border-green-200 bg-green-50 px-3 py-3">
-        <p className="text-stat-label text-green-800">Balance due</p>
+        <p className="text-stat-label text-green-800">Outstanding</p>
         <p className="text-stat-value">{formatNaira(summary.balance)}</p>
-        <p className="text-list-meta">
+        <div className="mt-1.5">
+          <TenantPaymentStatusBadge status={summary.rentStatus} className="text-[10px]" />
+        </div>
+        <p className="mt-1.5 text-list-meta">
           Shop {ctx.unitCode}
           {summary.periodLabel ? ` · ${summary.periodLabel}` : ""}
         </p>
       </div>
 
-      {summary.settlement ? (
+      {befs && (
         <Card className="rounded-none border-x-0 border-t-0 shadow-none">
-          <p className="text-stat-label">
-            {summary.settlement.isDva ? "Pay to your shop account (DVA)" : "Pay to shop account"}
-          </p>
+          <p className="text-stat-label">BEFS account number</p>
           <p className="mt-1 font-mono text-lg font-bold tracking-wide text-foreground">
-            {summary.settlement.accountNumber}
+            {befs.accountNumber}
           </p>
           <p className="text-list-meta">
-            {summary.settlement.bankName} · {summary.settlement.accountName}
+            {befs.bankName} · {befs.accountName}
           </p>
-          <CopyAccountButton accountNumber={summary.settlement.accountNumber} />
+          <CopyAccountButton accountNumber={befs.accountNumber} />
         </Card>
-      ) : (
+      )}
+
+      {summary.dva && (
+        <Card className="rounded-none border-x-0 border-t-0 shadow-none">
+          <p className="text-stat-label">Pay to your shop account (DVA)</p>
+          <p className="mt-1 font-mono text-lg font-bold tracking-wide text-foreground">
+            {summary.dva.accountNumber}
+          </p>
+          <p className="text-list-meta">
+            {summary.dva.bankName} · {summary.dva.accountName}
+          </p>
+          <CopyAccountButton accountNumber={summary.dva.accountNumber} />
+        </Card>
+      )}
+
+      {!befs && !summary.dva && (
         <Card className="rounded-none border-x-0 border-t-0 shadow-none">
           <p className="text-list-meta">
             Settlement account not configured — contact management.
@@ -72,7 +91,7 @@ export default async function TenantHomePage({
           href={`/t/${orgSlug}/ledger`}
           className="btn-ghost flex flex-col items-center gap-1.5 py-3 text-center text-xs"
         >
-          View ledger
+          View transactions
         </Link>
         <Link
           href={`/t/${orgSlug}/help`}
