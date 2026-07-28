@@ -124,7 +124,21 @@ export function LeasesList({
     {
       key: "rentStatus",
       header: "Rent status",
-      render: (l) => <TenantPaymentStatusBadge status={l.paymentStatus} />,
+      render: (l) => {
+        const outstanding =
+          Math.max(0, l.annualTotal - l.paidAmount) + Math.max(0, l.arrears);
+        return (
+          <div className="flex flex-col items-start gap-1">
+            <span className="text-table-cell-strong tabular-nums">
+              {formatNaira(outstanding)}
+            </span>
+            <TenantPaymentStatusBadge
+              status={l.paymentStatus}
+              className="text-[10px] font-medium"
+            />
+          </div>
+        );
+      },
     },
     {
       key: "period",
@@ -281,7 +295,18 @@ export function LeasesList({
                       {l.billingCadence}
                     </p>
                   </div>
-                  <TenantPaymentStatusBadge status={l.paymentStatus} />
+                  <div className="flex flex-col items-end gap-1">
+                    <span className="text-sm font-semibold tabular-nums">
+                      {formatNaira(
+                        Math.max(0, l.annualTotal - l.paidAmount) +
+                          Math.max(0, l.arrears)
+                      )}
+                    </span>
+                    <TenantPaymentStatusBadge
+                      status={l.paymentStatus}
+                      className="text-[10px] font-medium"
+                    />
+                  </div>
                 </div>
                 <div className="mt-2 flex items-center justify-between">
                   <span className="text-xs font-semibold">
