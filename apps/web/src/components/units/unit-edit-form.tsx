@@ -11,6 +11,10 @@ import {
   PROPERTY_TYPE_OPTIONS,
   type UnitDetail,
 } from "@/lib/data/unit-types";
+import {
+  formatSettlementAccountLabel,
+  type SettlementAccountItem,
+} from "@/lib/settlement/format-account";
 import { FormPanel } from "@/components/ui/form-panel";
 import { LoadingButton } from "@/components/ui/loading-button";
 import { confirmDialog } from "@/components/ui/confirm-dialog";
@@ -23,12 +27,14 @@ export function UnitEditForm({
   orgSlug,
   propertyId,
   unit,
+  settlementAccounts = [],
   canDelete = false,
   onSaved,
 }: {
   orgSlug: string;
   propertyId: string;
   unit: UnitDetail;
+  settlementAccounts?: SettlementAccountItem[];
   canDelete?: boolean;
   onSaved?: () => void;
 }) {
@@ -133,6 +139,40 @@ export function UnitEditForm({
           disabled={pending}
         />
       </div>
+
+      {settlementAccounts.length > 0 && (
+        <div>
+          <label className="text-label normal-case">
+            Rent collection Bank Account
+          </label>
+          <select
+            name="settlement_account_id"
+            defaultValue={unit.settlementAccountId ?? ""}
+            className="input-field mt-1"
+            disabled={pending}
+          >
+            <option value="">
+              {(() => {
+                const fallback =
+                  settlementAccounts.find((a) => a.isDefault) ??
+                  settlementAccounts[0];
+                return fallback
+                  ? `Default · ${formatSettlementAccountLabel(fallback)}`
+                  : "Property default";
+              })()}
+            </option>
+            {settlementAccounts.map((a) => (
+              <option key={a.id} value={a.id}>
+                {formatSettlementAccountLabel(a)}
+                {a.isDefault ? " (default)" : ""}
+              </option>
+            ))}
+          </select>
+          <p className="mt-0.5 text-[11px] text-muted">
+            Tenants on this unit see this account unless the lease overrides it.
+          </p>
+        </div>
+      )}
 
       <div className="rounded-xl border border-border bg-surface-subtle/40 p-3">
         <h3 className="text-sm font-semibold text-foreground">Tenant &amp; billing</h3>
