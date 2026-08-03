@@ -25,7 +25,7 @@ export default async function TenantHomePage({
   );
   const notifications = await listNotificationsForUser(ctx.user.id, ctx.org.id);
 
-  const befs = summary.befsAccount;
+  const payTo = summary.settlement;
 
   return (
     <div className="space-y-0">
@@ -45,33 +45,20 @@ export default async function TenantHomePage({
         </p>
       </div>
 
-      {befs && (
+      {payTo ? (
         <Card className="rounded-none border-x-0 border-t-0 shadow-none">
-          <p className="text-stat-label">BEFS account number</p>
+          <p className="text-stat-label">
+            {payTo.isDva ? "Pay to your shop account (DVA)" : "BEFS account number"}
+          </p>
           <p className="mt-1 font-mono text-lg font-bold tracking-wide text-foreground">
-            {befs.accountNumber}
+            {payTo.accountNumber}
           </p>
           <p className="text-list-meta">
-            {befs.bankName} · {befs.accountName}
+            {payTo.bankName} · {payTo.accountName}
           </p>
-          <CopyAccountButton accountNumber={befs.accountNumber} />
+          <CopyAccountButton accountNumber={payTo.accountNumber} />
         </Card>
-      )}
-
-      {summary.dva && (
-        <Card className="rounded-none border-x-0 border-t-0 shadow-none">
-          <p className="text-stat-label">Pay to your shop account (DVA)</p>
-          <p className="mt-1 font-mono text-lg font-bold tracking-wide text-foreground">
-            {summary.dva.accountNumber}
-          </p>
-          <p className="text-list-meta">
-            {summary.dva.bankName} · {summary.dva.accountName}
-          </p>
-          <CopyAccountButton accountNumber={summary.dva.accountNumber} />
-        </Card>
-      )}
-
-      {!befs && !summary.dva && (
+      ) : (
         <Card className="rounded-none border-x-0 border-t-0 shadow-none">
           <p className="text-list-meta">
             Settlement account not configured — contact management.
