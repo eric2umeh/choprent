@@ -6,6 +6,7 @@ import { resolveProperty } from "@/lib/data/sites";
 import { listUnitsForOrg } from "@/lib/data/units";
 import { listExpensesForProperty } from "@/lib/data/expenses";
 import { listDocumentsForProperty } from "@/lib/data/documents";
+import { listSettlementAccounts } from "@/lib/data/settlement-accounts";
 import { isPaystackDvaEnabled } from "@/lib/paystack/client";
 import { propertyPath } from "@/lib/routes/dashboard-paths";
 import { isUuid } from "@/lib/utils/slug";
@@ -25,12 +26,16 @@ export default async function PropertyDetailPage({
   }
 
   const units = await listUnitsForOrg(ctx.org.id, property.id);
-  const [expenses, documents] = await Promise.all([
+  const [expenses, documents, settlementAccounts] = await Promise.all([
     listExpensesForProperty(ctx.org.id, property.id),
     listDocumentsForProperty(ctx.org.id, property.id),
+    listSettlementAccounts(ctx.org.id),
   ]);
   const paystackDvaEnabled = isPaystackDvaEnabled();
   const canManageDocs = canManageLeases(ctx.role);
+  const propertyAccounts = settlementAccounts.filter(
+    (a) => a.siteId === property.id
+  );
 
   return (
     <PropertyDetailPageClient
@@ -39,6 +44,7 @@ export default async function PropertyDetailPage({
       units={units}
       expenses={expenses}
       documents={documents}
+      settlementAccounts={propertyAccounts}
       canManage={canAddUnits(ctx.role)}
       canManageDocuments={canManageDocs}
       paystackDvaEnabled={paystackDvaEnabled}
