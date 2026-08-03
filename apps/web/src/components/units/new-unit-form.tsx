@@ -4,6 +4,10 @@ import { useActionState, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { createUnit, type UnitActionState } from "@/lib/actions/units";
 import { PROPERTY_TYPE_OPTIONS } from "@/lib/data/unit-types";
+import {
+  formatSettlementAccountLabel,
+  type SettlementAccountItem,
+} from "@/lib/settlement/format-account";
 import { FormPanel } from "@/components/ui/form-panel";
 import { DocumentUploadField } from "@/components/ui/document-upload-field";
 import { LoadingButton } from "@/components/ui/loading-button";
@@ -15,12 +19,14 @@ export function NewUnitForm({
   orgSlug,
   propertyId,
   propertyName,
+  settlementAccounts = [],
   stayOnPage = false,
   onSaved,
 }: {
   orgSlug: string;
   propertyId: string;
   propertyName: string;
+  settlementAccounts?: SettlementAccountItem[];
   /** When true, reset form after save instead of navigating away. */
   stayOnPage?: boolean;
   onSaved?: (unitId: string) => void;
@@ -118,6 +124,37 @@ export function NewUnitForm({
             disabled={pending}
           />
         </div>
+
+        {settlementAccounts.length > 0 && (
+          <div>
+            <label className="text-label normal-case">
+              Rent collection Bank Account
+            </label>
+            <select
+              name="settlement_account_id"
+              className="input-field mt-1.5"
+              defaultValue=""
+              disabled={pending}
+            >
+              <option value="">
+                {(() => {
+                  const fallback =
+                    settlementAccounts.find((a) => a.isDefault) ??
+                    settlementAccounts[0];
+                  return fallback
+                    ? `Default · ${formatSettlementAccountLabel(fallback)}`
+                    : "Property default";
+                })()}
+              </option>
+              {settlementAccounts.map((a) => (
+                <option key={a.id} value={a.id}>
+                  {formatSettlementAccountLabel(a)}
+                  {a.isDefault ? " (default)" : ""}
+                </option>
+              ))}
+            </select>
+          </div>
+        )}
 
         <DocumentUploadField disabled={pending} defaultDocType="other" />
 
