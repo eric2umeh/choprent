@@ -18,11 +18,11 @@ export type TenantHomeSummary = {
   balance: number;
   periodLabel: string | null;
   rentStatus: TenantPaymentStatus;
-  /** Dedicated shop VA when enabled. */
+  /** Dedicated shop VA when enabled and no settlement account is assigned. */
   dva: SettlementAccount | null;
-  /** Plaza / BEFS collection account for transfers. */
+  /** Resolved rent-collection account (lease → unit → property default). */
   befsAccount: SettlementAccount | null;
-  /** Preferred pay-to account (DVA first, else BEFS). */
+  /** Single pay-to account shown on the tenant dashboard. */
   settlement: SettlementAccount | null;
   pendingPayments: number;
   recentLines: {
@@ -72,7 +72,6 @@ export async function getTenantHomeSummary(
         .maybeSingle(),
     ]);
 
-  // Prefer settlement resolution via admin if RLS hid the account.
   let resolvedBefs = befsAccount;
   if (!resolvedBefs) {
     try {
@@ -94,13 +93,14 @@ export async function getTenantHomeSummary(
   const arrears = Number(leaseFinancials.data?.arrears_balance_ngn ?? 0);
   const rentStatus = deriveTenantPaymentStatus(expected, paid, arrears);
 
-  const payAccount = dva ?? resolvedBefs;
+  // Prefer staff-assigned settlement; only fall back to DVA when none is set.
+  const payAccount = resolvedBefs ?? dva;
 
   return {
     balance,
     periodLabel,
     rentStatus,
-    dva,
+    dva: resolvedBefs ? null : dva,
     befsAccount: resolvedBefs,
     settlement: payAccount,
     pendingPayments: pendingCount ?? 0,
@@ -113,6 +113,24 @@ export async function getTenantHomeSummary(
   };
 }
 
+async function fetchAccountById(
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  client: any,
+  accountId: string
+): Promise<SettlementAccount | null> {
+  const { data: account } = await client
+    .from("site_settlement_accounts")
+    .select("bank_name, account_number, account_name")
+    .eq("id", accountId)
+    .maybeSingle();
+  if (!account) return null;
+  return {
+    bankName: account.bank_name as string,
+    accountNumber: account.account_number as string,
+    accountName: account.account_name as string,
+  };
+}
+
 async function resolveSettlementAccount(
   supabase: Awaited<ReturnType<typeof createClient>>,
   leaseId: string,
@@ -120,44 +138,28 @@ async function resolveSettlementAccount(
 ): Promise<SettlementAccount | null> {
   const { data: lease } = await supabase
     .from("leases")
-    .select("settlement_account_id, units!inner(site_id)")
+    .select("settlement_account_id")
     .eq("id", leaseId)
     .maybeSingle();
 
-  const siteId =
-    lease?.units &&
-    typeof lease.units === "object" &&
-    !Array.isArray(lease.units) &&
-    "site_id" in lease.units
-      ? (lease.units as { site_id: string }).site_id
-      : null;
-
   if (lease?.settlement_account_id) {
-    const { data: account } = await supabase
-      .from("site_settlement_accounts")
-      .select("bank_name, account_number, account_name")
-      .eq("id", lease.settlement_account_id)
-      .maybeSingle();
-    if (account) {
-      return {
-        bankName: account.bank_name,
-        accountNumber: account.account_number,
-        accountName: account.account_name,
-      };
-    }
+    const account = await fetchAccountById(supabase, lease.settlement_account_id);
+    if (account) return account;
   }
 
-  if (!siteId) {
-    const { data: unit } = await supabase
-      .from("units")
-      .select("site_id")
-      .eq("id", unitId)
-      .maybeSingle();
-    if (!unit?.site_id) return null;
-    return defaultSettlementForSite(supabase, unit.site_id);
+  const { data: unit } = await supabase
+    .from("units")
+    .select("site_id, settlement_account_id")
+    .eq("id", unitId)
+    .maybeSingle();
+
+  if (unit?.settlement_account_id) {
+    const account = await fetchAccountById(supabase, unit.settlement_account_id);
+    if (account) return account;
   }
 
-  return defaultSettlementForSite(supabase, siteId);
+  if (!unit?.site_id) return null;
+  return defaultSettlementForSite(supabase, unit.site_id);
 }
 
 async function resolveSettlementAccountAdmin(
@@ -169,46 +171,32 @@ async function resolveSettlementAccountAdmin(
 ): Promise<SettlementAccount | null> {
   const { data: lease } = await admin
     .from("leases")
-    .select("settlement_account_id, units!inner(site_id)")
+    .select("settlement_account_id")
     .eq("id", leaseId)
     .maybeSingle();
 
-  const siteId =
-    lease?.units &&
-    typeof lease.units === "object" &&
-    !Array.isArray(lease.units) &&
-    "site_id" in lease.units
-      ? (lease.units as { site_id: string }).site_id
-      : null;
-
   if (lease?.settlement_account_id) {
-    const { data: account } = await admin
-      .from("site_settlement_accounts")
-      .select("bank_name, account_number, account_name")
-      .eq("id", lease.settlement_account_id)
-      .maybeSingle();
-    if (account) {
-      return {
-        bankName: account.bank_name,
-        accountNumber: account.account_number,
-        accountName: account.account_name,
-      };
-    }
+    const account = await fetchAccountById(admin, lease.settlement_account_id);
+    if (account) return account;
   }
 
-  const resolvedSiteId =
-    siteId ??
-    (
-      await admin.from("units").select("site_id").eq("id", unitId).maybeSingle()
-    ).data?.site_id ??
-    null;
+  const { data: unit } = await admin
+    .from("units")
+    .select("site_id, settlement_account_id")
+    .eq("id", unitId)
+    .maybeSingle();
 
-  if (!resolvedSiteId) return null;
+  if (unit?.settlement_account_id) {
+    const account = await fetchAccountById(admin, unit.settlement_account_id);
+    if (account) return account;
+  }
+
+  if (!unit?.site_id) return null;
 
   const { data: account } = await admin
     .from("site_settlement_accounts")
     .select("bank_name, account_number, account_name")
-    .eq("site_id", resolvedSiteId)
+    .eq("site_id", unit.site_id)
     .eq("is_default", true)
     .limit(1)
     .maybeSingle();
