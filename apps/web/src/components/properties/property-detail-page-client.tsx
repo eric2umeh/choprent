@@ -16,6 +16,7 @@ import type { PropertySummary } from "@/lib/data/property-types";
 import type { UnitListItem } from "@/lib/data/unit-types";
 import type { ExpenseListItem } from "@/lib/data/expenses";
 import type { DocumentListItem } from "@/lib/data/documents";
+import type { SettlementAccountItem } from "@/lib/settlement/format-account";
 import { formatSiteType } from "@/lib/data/property-types";
 import { toast } from "@/components/ui/toast";
 import { confirmDialog } from "@/components/ui/confirm-dialog";
@@ -28,6 +29,7 @@ export function PropertyDetailPageClient({
   units,
   expenses,
   documents,
+  settlementAccounts = [],
   canManage,
   canManageDocuments = false,
   paystackDvaEnabled = false,
@@ -37,6 +39,7 @@ export function PropertyDetailPageClient({
   units: UnitListItem[];
   expenses: ExpenseListItem[];
   documents: DocumentListItem[];
+  settlementAccounts?: SettlementAccountItem[];
   canManage: boolean;
   canManageDocuments?: boolean;
   paystackDvaEnabled?: boolean;
@@ -171,6 +174,7 @@ export function PropertyDetailPageClient({
           orgSlug={orgSlug}
           propertyId={property.id}
           propertyName={property.name}
+          settlementAccounts={settlementAccounts}
           stayOnPage
           onSaved={() => setShowAddUnit(false)}
         />
