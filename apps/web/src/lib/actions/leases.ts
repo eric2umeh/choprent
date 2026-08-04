@@ -82,13 +82,24 @@ export async function createLease(
     }
   }
 
+  // Prefer form selection; else unit assignment; else leave null (property default at resolve).
+  let resolvedSettlementId = settlementAccountId;
+  if (!resolvedSettlementId) {
+    const { data: unitRow } = await admin
+      .from("units")
+      .select("settlement_account_id")
+      .eq("id", unitId)
+      .maybeSingle();
+    resolvedSettlementId = unitRow?.settlement_account_id ?? null;
+  }
+
   const { data: newLease, error: insertError } = await admin.from("leases").insert({
     unit_id: unitId,
     tenant_user_id: tenantUserId,
     tenant_display_name: tenantName,
     tenant_phone: tenantPhone,
     tenant_email: tenantEmail,
-    settlement_account_id: settlementAccountId,
+    settlement_account_id: resolvedSettlementId,
     start_date: startDate,
     end_date: endDate,
     billing_cadence: billingCadence,
@@ -144,6 +155,11 @@ export async function renewLease(
   const endDate = String(formData.get("end_date") ?? "").trim();
   const billingCadence = String(formData.get("billing_cadence") ?? "annual") as BillingCadence;
   const autoRenew = formData.get("fixed_end_date") !== "on";
+  const settlementAccountIdRaw = String(
+    formData.get("settlement_account_id") ?? ""
+  ).trim();
+  const settlementAccountProvided = formData.has("settlement_account_id");
+  const settlementAccountId = settlementAccountIdRaw || null;
 
   if (!startDate || !endDate) {
     return { error: "New lease dates are required." };
@@ -154,7 +170,7 @@ export async function renewLease(
   const { data: current } = await admin
     .from("leases")
     .select(
-      "id, unit_id, tenant_user_id, tenant_display_name, tenant_phone, tenant_email, settlement_account_id, units!inner(organization_id)"
+      "id, unit_id, tenant_user_id, tenant_display_name, tenant_phone, tenant_email, settlement_account_id, units!inner(organization_id, site_id)"
     )
     .eq("id", leaseId)
     .eq("status", "active")
@@ -172,6 +188,29 @@ export async function renewLease(
 
   if (orgId !== ctx.org.id) return { error: "Lease not found." };
 
+  const siteId =
+    current.units &&
+    typeof current.units === "object" &&
+    !Array.isArray(current.units) &&
+    "site_id" in current.units
+      ? (current.units as { site_id: string }).site_id
+      : null;
+
+  let nextSettlementId = current.settlement_account_id;
+  if (settlementAccountProvided) {
+    if (settlementAccountId && siteId) {
+      const { data: account } = await admin
+        .from("site_settlement_accounts")
+        .select("id, site_id")
+        .eq("id", settlementAccountId)
+        .maybeSingle();
+      if (!account || account.site_id !== siteId) {
+        return { error: "Settlement account must belong to this unit's property." };
+      }
+    }
+    nextSettlementId = settlementAccountId;
+  }
+
   const { error: endError } = await admin
     .from("leases")
     .update({ status: "ended" })
@@ -185,7 +224,7 @@ export async function renewLease(
     tenant_display_name: current.tenant_display_name,
     tenant_phone: current.tenant_phone,
     tenant_email: current.tenant_email,
-    settlement_account_id: current.settlement_account_id,
+    settlement_account_id: nextSettlementId,
     start_date: startDate,
     end_date: endDate,
     billing_cadence: billingCadence,
@@ -227,6 +266,11 @@ export async function updateActiveLease(
   const endDate = String(formData.get("end_date") ?? "").trim();
   const billingCadence = String(formData.get("billing_cadence") ?? "annual") as BillingCadence;
   const autoRenew = formData.get("fixed_end_date") !== "on";
+  const settlementAccountIdRaw = String(
+    formData.get("settlement_account_id") ?? ""
+  ).trim();
+  const settlementAccountProvided = formData.has("settlement_account_id");
+  const settlementAccountId = settlementAccountIdRaw || null;
 
   if (!tenantName || !startDate || !endDate) {
     return { error: "Tenant name and lease dates are required." };
@@ -255,6 +299,14 @@ export async function updateActiveLease(
 
   if (orgId !== ctx.org.id) return { error: "Lease not found." };
 
+  const siteId =
+    current.units &&
+    typeof current.units === "object" &&
+    !Array.isArray(current.units) &&
+    "site_id" in current.units
+      ? (current.units as { site_id: string }).site_id
+      : null;
+
   let tenantUserId: string | null = null;
   if (tenantEmail) {
     const { data: usersPage } = await admin.auth.admin.listUsers();
@@ -262,6 +314,17 @@ export async function updateActiveLease(
       usersPage.users.find(
         (u) => u.email?.toLowerCase() === tenantEmail.toLowerCase()
       )?.id ?? null;
+  }
+
+  if (settlementAccountProvided && settlementAccountId && siteId) {
+    const { data: account } = await admin
+      .from("site_settlement_accounts")
+      .select("id, site_id")
+      .eq("id", settlementAccountId)
+      .maybeSingle();
+    if (!account || account.site_id !== siteId) {
+      return { error: "Settlement account must belong to this unit's property." };
+    }
   }
 
   const updatePayload: Record<string, string | boolean | null> = {
@@ -274,6 +337,9 @@ export async function updateActiveLease(
     auto_renew: autoRenew,
   };
   if (tenantUserId) updatePayload.tenant_user_id = tenantUserId;
+  if (settlementAccountProvided) {
+    updatePayload.settlement_account_id = settlementAccountId;
+  }
 
   const { error: updateError } = await admin
     .from("leases")
@@ -283,9 +349,6 @@ export async function updateActiveLease(
   if (updateError) return { error: updateError.message };
 
   await regenerateLedgerForUnit(admin, ctx.org.id, current.unit_id);
-
-  const units = current.units as { site_id?: string } | { site_id?: string }[] | null;
-  const siteId = Array.isArray(units) ? units[0]?.site_id : units?.site_id;
 
   const docResult = await uploadDocumentsFromFormData(
     admin,

@@ -6,7 +6,7 @@ import { Tabs, TabPanel } from "@/components/ui/tabs";
 import { SettlementAccountsPanel } from "@/components/account/settlement-accounts-panel";
 import { DvaPanel } from "@/components/account/dva-panel";
 import type { VirtualAccountRow } from "@/lib/paystack/provision-unit-dva";
-import type { SettlementAccountItem } from "@/lib/data/settlement-accounts";
+import type { SettlementAccountItem } from "@/lib/settlement/format-account";
 import type { PropertySummary } from "@/lib/data/property-types";
 
 function buildTabs(paystackDvaEnabled: boolean) {

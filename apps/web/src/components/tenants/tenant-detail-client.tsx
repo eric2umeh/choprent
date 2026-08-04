@@ -18,7 +18,7 @@ import { inviteTenant } from "@/lib/actions/tenant-invite";
 import type { LeaseDetail } from "@/lib/data/leases";
 import type { ExpenseListItem } from "@/lib/data/expenses";
 import type { DocumentListItem } from "@/lib/data/documents";
-import type { SettlementAccountItem } from "@/lib/data/settlement-accounts";
+import type { SettlementAccountItem } from "@/lib/settlement/format-account";
 import { formatNaira } from "@/lib/auth/roles";
 import { formatDisplayDate, formatDateRange } from "@/lib/utils/format-date";
 import { Mail } from "lucide-react";

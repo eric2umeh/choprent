@@ -117,7 +117,7 @@ export function Modal({
         aria-describedby={description ? descId : undefined}
         onTransitionEnd={handleTransitionEnd}
         className={cn(
-          "relative z-10 w-full max-w-md overflow-hidden rounded-t-2xl border border-border bg-white shadow-2xl transition-all duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] sm:rounded-2xl",
+          "relative z-10 flex w-full max-w-md max-h-[min(92dvh,calc(100dvh-2rem))] flex-col overflow-hidden rounded-t-2xl border border-border bg-white shadow-2xl transition-all duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] sm:rounded-2xl",
           sheet
             ? visible
               ? "translate-y-0 opacity-100 sm:scale-100"
@@ -129,7 +129,7 @@ export function Modal({
         )}
       >
         {(title || showCloseButton) && (
-          <div className="flex items-start justify-between gap-3 border-b border-border px-5 py-4">
+          <div className="flex shrink-0 items-start justify-between gap-3 border-b border-border px-5 py-4">
             <div className="min-w-0">
               {title && (
                 <h2 id={titleId} className="text-form-title">
@@ -156,7 +156,12 @@ export function Modal({
           </div>
         )}
 
-        <div className={cn(!title && !showCloseButton ? "" : "px-5 py-4")}>
+        <div
+          className={cn(
+            "min-h-0 flex-1 overflow-y-auto overscroll-contain",
+            !title && !showCloseButton ? "" : "px-5 py-4"
+          )}
+        >
           {children}
         </div>
       </div>

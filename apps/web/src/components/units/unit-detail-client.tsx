@@ -4,12 +4,14 @@ import { useState } from "react";
 import { Modal } from "@/components/ui/modal";
 import { UnitEditForm } from "@/components/units/unit-edit-form";
 import type { UnitDetail } from "@/lib/data/unit-types";
+import type { SettlementAccountItem } from "@/lib/settlement/format-account";
 import { Pencil } from "lucide-react";
 
 export function UnitDetailClient({
   orgSlug,
   propertyId,
   unit,
+  settlementAccounts = [],
   canEdit,
   canDelete = false,
   children,
@@ -17,6 +19,7 @@ export function UnitDetailClient({
   orgSlug: string;
   propertyId: string;
   unit: UnitDetail;
+  settlementAccounts?: SettlementAccountItem[];
   canEdit: boolean;
   canDelete?: boolean;
   children: React.ReactNode;
@@ -50,6 +53,7 @@ export function UnitDetailClient({
           orgSlug={orgSlug}
           propertyId={propertyId}
           unit={unit}
+          settlementAccounts={settlementAccounts}
           canDelete={canDelete}
           onSaved={() => setEditing(false)}
         />

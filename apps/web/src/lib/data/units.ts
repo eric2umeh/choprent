@@ -17,10 +17,17 @@ type UnitRow = {
   arrears_balance_ngn: number;
   is_composite: boolean;
   composite_note: string | null;
+  settlement_account_id?: string | null;
   created_at?: string;
   created_by?: string | null;
   sites: { name?: string; slug?: string } | { name?: string; slug?: string }[] | null;
 };
+
+const unitListSelect =
+  "id, site_id, unit_code, property_type, status, arrears_balance_ngn, is_composite, composite_note, settlement_account_id, created_at, sites(name, slug)";
+
+const unitDetailSelect =
+  "id, site_id, unit_code, property_type, status, arrears_balance_ngn, is_composite, composite_note, settlement_account_id, created_at, created_by, organization_id, sites(name, slug)";
 
 function propertySlugFromRow(sites: UnitRow["sites"]): string | null {
   if (!sites) return null;
@@ -102,6 +109,7 @@ async function mapUnitRows(rows: UnitRow[]): Promise<UnitListItem[]> {
     isComposite: u.is_composite,
     compositeNote: u.composite_note,
     virtualAccount: accountByUnit.get(u.id) ?? null,
+    settlementAccountId: u.settlement_account_id ?? null,
     createdAt: u.created_at?.slice(0, 10) ?? null,
   }));
 }
@@ -114,9 +122,7 @@ export async function listUnitsForOrg(
 
   let query = supabase
     .from("units")
-    .select(
-      "id, site_id, unit_code, property_type, status, arrears_balance_ngn, is_composite, composite_note, created_at, sites(name, slug)"
-    )
+    .select(unitListSelect)
     .eq("organization_id", orgId)
     .order("unit_code");
 
@@ -131,9 +137,7 @@ export async function listUnitsForOrg(
       const admin = createAdminClient();
       let adminQuery = admin
         .from("units")
-        .select(
-          "id, site_id, unit_code, property_type, status, arrears_balance_ngn, is_composite, composite_note, created_at, sites(name, slug)"
-        )
+        .select(unitListSelect)
         .eq("organization_id", orgId)
         .order("unit_code");
       if (siteId) adminQuery = adminQuery.eq("site_id", siteId);
@@ -182,9 +186,7 @@ async function fetchUnitDetail(
   const supabase = await createClient();
   let query = supabase
     .from("units")
-    .select(
-      "id, site_id, unit_code, property_type, status, arrears_balance_ngn, is_composite, composite_note, created_at, created_by, organization_id, sites(name, slug)"
-    )
+    .select(unitDetailSelect)
     .eq("organization_id", orgId);
 
   if (lookup.kind === "id") {
@@ -202,9 +204,7 @@ async function fetchUnitDetail(
       const admin = createAdminClient();
       let adminQuery = admin
         .from("units")
-        .select(
-          "id, site_id, unit_code, property_type, status, arrears_balance_ngn, is_composite, composite_note, created_at, created_by, organization_id, sites(name, slug)"
-        )
+        .select(unitDetailSelect)
         .eq("organization_id", orgId);
 
       if (lookup.kind === "id") {

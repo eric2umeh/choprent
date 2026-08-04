@@ -13,7 +13,10 @@ import { Modal } from "@/components/ui/modal";
 import { SearchableSelect } from "@/components/ui/searchable-select";
 import { toast } from "@/components/ui/toast";
 import type { LeaseListItem } from "@/lib/data/leases";
-import type { SettlementAccountItem } from "@/lib/data/settlement-accounts";
+import {
+  formatSettlementAccountLabel,
+  type SettlementAccountItem,
+} from "@/lib/settlement/format-account";
 
 export function LeaseForm({
   orgSlug,
@@ -27,7 +30,12 @@ export function LeaseForm({
   orgSlug: string;
   mode: "create" | "renew" | "edit";
   lease?: LeaseListItem;
-  vacantUnits?: { id: string; unitCode: string; siteId: string }[];
+  vacantUnits?: {
+    id: string;
+    unitCode: string;
+    siteId: string;
+    settlementAccountId?: string | null;
+  }[];
   settlementAccounts: SettlementAccountItem[];
   open: boolean;
   onClose: () => void;
@@ -37,18 +45,35 @@ export function LeaseForm({
   const [selectedUnitId, setSelectedUnitId] = useState("");
 
   const selectedSiteId = useMemo(() => {
+    if (mode !== "create" && lease) return lease.propertyId;
     return vacantUnits.find((u) => u.id === selectedUnitId)?.siteId ?? null;
-  }, [vacantUnits, selectedUnitId]);
+  }, [vacantUnits, selectedUnitId, mode, lease]);
 
   const accountsForUnit = useMemo(() => {
     if (!selectedSiteId) return [];
     return settlementAccounts.filter((a) => a.siteId === selectedSiteId);
   }, [settlementAccounts, selectedSiteId]);
 
-  const defaultAccountId =
-    accountsForUnit.find((a) => a.isDefault)?.id ??
-    accountsForUnit[0]?.id ??
-    "";
+  const defaultAccountId = useMemo(() => {
+    if (mode !== "create" && lease?.settlementAccountId) {
+      return lease.settlementAccountId;
+    }
+    const unitAccountId = vacantUnits.find(
+      (u) => u.id === selectedUnitId
+    )?.settlementAccountId;
+    if (unitAccountId) return unitAccountId;
+    return (
+      accountsForUnit.find((a) => a.isDefault)?.id ??
+      accountsForUnit[0]?.id ??
+      ""
+    );
+  }, [
+    mode,
+    lease?.settlementAccountId,
+    vacantUnits,
+    selectedUnitId,
+    accountsForUnit,
+  ]);
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -92,7 +117,7 @@ export function LeaseForm({
       ? "Create an active lease on a vacant unit."
       : mode === "renew"
         ? "End the current lease and start a new term."
-        : "Update tenancy dates, contact details, or billing cadence.";
+        : "Update tenancy dates, contact details, billing, or collection account.";
 
   const submitLabel =
     mode === "create"
@@ -129,24 +154,6 @@ export function LeaseForm({
                 className="mt-1"
               />
             </div>
-            {accountsForUnit.length > 0 && (
-              <div>
-                <label className="text-label normal-case">Rent collection account</label>
-                <select
-                  name="settlement_account_id"
-                  className="input-field mt-1"
-                  defaultValue={defaultAccountId}
-                  disabled={loading}
-                >
-                  {accountsForUnit.map((a) => (
-                    <option key={a.id} value={a.id}>
-                      {a.label} · {a.accountNumber}
-                      {a.isDefault ? " (default)" : ""}
-                    </option>
-                  ))}
-                </select>
-              </div>
-            )}
             <div>
               <label className="text-label normal-case">Tenant name</label>
               <input
@@ -232,6 +239,42 @@ export function LeaseForm({
               </div>
             </div>
           </>
+        )}
+
+        {accountsForUnit.length > 0 && (
+          <div>
+            <label className="text-label normal-case">
+              Rent collection Bank Account
+            </label>
+            <select
+              key={`${mode}-${selectedUnitId}-${defaultAccountId}`}
+              name="settlement_account_id"
+              className="input-field mt-1"
+              defaultValue={defaultAccountId}
+              disabled={loading}
+            >
+              <option value="">
+                {(() => {
+                  const fallback =
+                    accountsForUnit.find((a) => a.isDefault) ??
+                    accountsForUnit[0];
+                  return fallback
+                    ? `Default · ${formatSettlementAccountLabel(fallback)}`
+                    : "Use unit / property default";
+                })()}
+              </option>
+              {accountsForUnit.map((a) => (
+                <option key={a.id} value={a.id}>
+                  {formatSettlementAccountLabel(a)}
+                  {a.isDefault ? " (default)" : ""}
+                </option>
+              ))}
+            </select>
+            <p className="mt-0.5 text-[11px] text-muted">
+              This is the only bank account shown on the tenant portal for this
+              tenancy.
+            </p>
+          </div>
         )}
 
         <div className="grid gap-3 sm:grid-cols-2">

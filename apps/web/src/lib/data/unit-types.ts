@@ -14,6 +14,8 @@ export type UnitListItem = {
   isComposite: boolean;
   compositeNote: string | null;
   virtualAccount: string | null;
+  /** Optional rent-collection account for this unit (property accounts list). */
+  settlementAccountId: string | null;
   createdAt: string | null;
 };
 

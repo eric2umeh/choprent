@@ -13,6 +13,7 @@ import { AddDocumentModal } from "@/components/documents/add-document-modal";
 import { deleteProperty } from "@/lib/actions/sites";
 import type { PropertySummary } from "@/lib/data/property-types";
 import type { UnitListItem } from "@/lib/data/unit-types";
+import type { SettlementAccountItem } from "@/lib/settlement/format-account";
 import { formatSiteType } from "@/lib/data/property-types";
 import { toast } from "@/components/ui/toast";
 import { confirmDialog } from "@/components/ui/confirm-dialog";
@@ -24,6 +25,7 @@ export function PropertiesPageClient({
   canManage,
   singleProperty,
   units = [],
+  settlementAccounts = [],
   paystackDvaEnabled = false,
   canManageDocuments = false,
 }: {
@@ -32,6 +34,7 @@ export function PropertiesPageClient({
   canManage: boolean;
   singleProperty?: PropertySummary | null;
   units?: UnitListItem[];
+  settlementAccounts?: SettlementAccountItem[];
   paystackDvaEnabled?: boolean;
   canManageDocuments?: boolean;
 }) {
@@ -164,6 +167,7 @@ export function PropertiesPageClient({
             orgSlug={orgSlug}
             propertyId={singleProperty.id}
             propertyName={singleProperty.name}
+            settlementAccounts={settlementAccounts}
             stayOnPage
             onSaved={() => setShowAddUnit(false)}
           />

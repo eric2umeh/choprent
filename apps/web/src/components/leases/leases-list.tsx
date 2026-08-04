@@ -15,7 +15,7 @@ import { LeaseForm } from "@/components/leases/lease-form";
 import { AddDocumentModal } from "@/components/documents/add-document-modal";
 import { TenantPaymentStatusBadge } from "@/components/tenants/tenant-payment-status-badge";
 import type { LeaseListItem } from "@/lib/data/leases";
-import type { SettlementAccountItem } from "@/lib/data/settlement-accounts";
+import type { SettlementAccountItem } from "@/lib/settlement/format-account";
 import { formatNaira } from "@/lib/auth/roles";
 import { formatDateRange } from "@/lib/utils/format-date";
 
@@ -28,7 +28,12 @@ export function LeasesList({
 }: {
   orgSlug: string;
   leases: LeaseListItem[];
-  vacantUnits: { id: string; unitCode: string; siteId: string }[];
+  vacantUnits: {
+    id: string;
+    unitCode: string;
+    siteId: string;
+    settlementAccountId?: string | null;
+  }[];
   settlementAccounts: SettlementAccountItem[];
   canManage: boolean;
 }) {

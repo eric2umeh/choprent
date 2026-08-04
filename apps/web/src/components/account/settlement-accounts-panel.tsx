@@ -7,7 +7,7 @@ import {
   saveSettlementAccount,
   type SettlementActionState,
 } from "@/lib/actions/settlement-accounts";
-import type { SettlementAccountItem } from "@/lib/data/settlement-accounts";
+import type { SettlementAccountItem } from "@/lib/settlement/format-account";
 import type { PropertySummary } from "@/lib/data/property-types";
 import { LoadingButton } from "@/components/ui/loading-button";
 import { Modal } from "@/components/ui/modal";

@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { FileText, HelpCircle, Home, Receipt, Wallet } from "lucide-react";
+import { TenantProfileMenu } from "@/components/tenant/tenant-profile-menu";
 import { cn } from "@/lib/utils";
 
 export function TenantMobileNav({ orgSlug }: { orgSlug: string }) {
@@ -96,12 +97,7 @@ export function TenantHeader({
           >
             Help
           </Link>
-          <Link
-            href={`/t/${orgSlug}/documents`}
-            className="interactive-lift rounded-lg bg-green-50 px-3 py-1.5 text-xs font-medium text-green-700 hover:bg-green-100"
-          >
-            Letters
-          </Link>
+          <TenantProfileMenu orgSlug={orgSlug} tenantName={tenantName} />
         </div>
       </div>
     </header>
