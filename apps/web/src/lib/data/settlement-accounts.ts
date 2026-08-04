@@ -1,16 +1,8 @@
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
+import type { SettlementAccountItem } from "@/lib/settlement/format-account";
 
-export type SettlementAccountItem = {
-  id: string;
-  siteId: string;
-  propertyName: string;
-  bankName: string;
-  accountNumber: string;
-  accountName: string;
-  label: string;
-  isDefault: boolean;
-};
+export type { SettlementAccountItem } from "@/lib/settlement/format-account";
 
 type Row = {
   id: string;
