@@ -52,12 +52,26 @@ export async function createUnit(
     | "vacant"
     | "occupied"
     | "maintenance";
+  const settlementAccountId =
+    String(formData.get("settlement_account_id") ?? "").trim() || null;
 
   if (!siteId) return { error: "Property is required." };
   if (!unitCode) return { error: "Unit code is required." };
 
   const property = await getPropertyForOrg(ctx.org.id, siteId);
   if (!property) return { error: "Property not found. Refresh and try again." };
+
+  if (settlementAccountId) {
+    const adminCheck = createAdminClient();
+    const { data: account } = await adminCheck
+      .from("site_settlement_accounts")
+      .select("id, site_id")
+      .eq("id", settlementAccountId)
+      .maybeSingle();
+    if (!account || account.site_id !== siteId) {
+      return { error: "Bank account must belong to this property." };
+    }
+  }
 
   const payload = {
     organization_id: ctx.org.id,
@@ -68,6 +82,7 @@ export async function createUnit(
     composite_note: compositeNote,
     property_type: propertyType,
     status,
+    settlement_account_id: settlementAccountId,
     created_by: ctx.user.id,
   };
 
@@ -133,6 +148,11 @@ export async function setupUnitDetails(
     formData.get("billing_cadence") ?? "annual"
   ) as BillingCadence;
   const billingProfile = parseBillingProfileFromForm(formData);
+  const settlementAccountIdRaw = String(
+    formData.get("settlement_account_id") ?? ""
+  ).trim();
+  const settlementAccountId =
+    settlementAccountIdRaw === "" ? null : settlementAccountIdRaw;
 
   if (!unitCode) return { error: "Unit code is required." };
   if (!Number.isFinite(arrears) || arrears < 0) {
@@ -151,6 +171,17 @@ export async function setupUnitDetails(
     .maybeSingle();
 
   if (!unit) return { error: "Unit not found." };
+
+  if (settlementAccountId) {
+    const { data: account } = await admin
+      .from("site_settlement_accounts")
+      .select("id, site_id")
+      .eq("id", settlementAccountId)
+      .maybeSingle();
+    if (!account || account.site_id !== unit.site_id) {
+      return { error: "Bank account must belong to this property." };
+    }
+  }
 
   const { data: activeLease } = await admin
     .from("leases")
@@ -181,6 +212,7 @@ export async function setupUnitDetails(
       property_type: propertyType,
       status: resolvedStatus,
       arrears_balance_ngn: arrears,
+      settlement_account_id: settlementAccountId,
     })
     .eq("id", unitId);
 
@@ -222,12 +254,21 @@ export async function setupUnitDetails(
         .eq("id", activeLease.id);
       if (leaseError) return { error: leaseError.message };
     } else {
+      const { data: unitAccount } = await admin
+        .from("units")
+        .select("settlement_account_id")
+        .eq("id", unitId)
+        .maybeSingle();
+
       const { data: defaultAccount } = await admin
         .from("site_settlement_accounts")
         .select("id")
         .eq("site_id", unit.site_id)
         .eq("is_default", true)
         .maybeSingle();
+
+      const leaseSettlementId =
+        unitAccount?.settlement_account_id ?? defaultAccount?.id ?? null;
 
       const { data: newLease, error: leaseError } = await admin
         .from("leases")
@@ -237,7 +278,7 @@ export async function setupUnitDetails(
           tenant_phone: tenantPhone,
           tenant_email: tenantEmail,
           tenant_user_id: tenantUserId,
-          settlement_account_id: defaultAccount?.id ?? null,
+          settlement_account_id: leaseSettlementId,
           start_date: start,
           end_date: end,
           billing_cadence: "annual",
