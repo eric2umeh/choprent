@@ -48,7 +48,9 @@ export default async function TenantHomePage({
       {payTo ? (
         <Card className="rounded-none border-x-0 border-t-0 shadow-none">
           <p className="text-stat-label">
-            {payTo.isDva ? "Pay to your shop account (DVA)" : "BEFS account number"}
+            {payTo.isDva
+              ? "Pay to your shop account"
+              : "Rent collection account"}
           </p>
           <p className="mt-1 font-mono text-lg font-bold tracking-wide text-foreground">
             {payTo.accountNumber}
