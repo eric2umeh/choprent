@@ -3,6 +3,7 @@ import { requireStaffContext } from "@/lib/auth/session";
 import { canAddUnits, canManageLeases } from "@/lib/auth/roles";
 import { listPropertiesForOrg } from "@/lib/data/sites";
 import { listUnitsForOrg } from "@/lib/data/units";
+import { listSettlementAccounts } from "@/lib/data/settlement-accounts";
 import { isPaystackDvaEnabled } from "@/lib/paystack/client";
 
 export default async function PropertiesPage({
@@ -14,8 +15,14 @@ export default async function PropertiesPage({
   const ctx = await requireStaffContext(orgSlug);
   const properties = await listPropertiesForOrg(ctx.org.id);
   const singleProperty = properties.length === 1 ? properties[0] : null;
-  const units = singleProperty
-    ? await listUnitsForOrg(ctx.org.id, singleProperty.id)
+  const [units, settlementAccounts] = await Promise.all([
+    singleProperty
+      ? listUnitsForOrg(ctx.org.id, singleProperty.id)
+      : Promise.resolve([]),
+    listSettlementAccounts(ctx.org.id),
+  ]);
+  const propertyAccounts = singleProperty
+    ? settlementAccounts.filter((a) => a.siteId === singleProperty.id)
     : [];
 
   return (
@@ -26,6 +33,7 @@ export default async function PropertiesPage({
       canManageDocuments={canManageLeases(ctx.role)}
       singleProperty={singleProperty}
       units={units}
+      settlementAccounts={propertyAccounts}
       paystackDvaEnabled={isPaystackDvaEnabled()}
     />
   );
