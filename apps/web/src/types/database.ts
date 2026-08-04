@@ -58,6 +58,7 @@ export interface Unit {
   property_type: PropertyType;
   status: UnitStatus;
   arrears_balance_ngn: number;
+  settlement_account_id?: string | null;
 }
 
 export interface Lease {
