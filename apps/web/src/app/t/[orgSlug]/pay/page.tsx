@@ -9,7 +9,7 @@ export default async function TenantPayPage({
   params: Promise<{ orgSlug: string }>;
 }) {
   const { orgSlug } = await params;
-  await requireTenantContext(orgSlug);
+  const ctx = await requireTenantContext(orgSlug);
 
   return (
     <div>
@@ -19,7 +19,11 @@ export default async function TenantPayPage({
       />
 
       <Card className="rounded-none border-x-0 border-t-0 p-4 shadow-none">
-        <TenantPayForm orgSlug={orgSlug} />
+        <TenantPayForm
+          orgSlug={orgSlug}
+          unitCode={ctx.unitCode}
+          tenantName={ctx.tenantDisplayName}
+        />
       </Card>
 
       <p className="px-3 py-3 text-center text-[11px] text-muted">

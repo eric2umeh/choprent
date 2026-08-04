@@ -245,6 +245,8 @@ export async function renewLease(
   }
 
   revalidatePath(`/d/${orgSlug}/tenants`);
+  revalidatePath(`/t/${orgSlug}`);
+  revalidatePath(`/t/${orgSlug}/pay`);
   return { success: true };
 }
 
@@ -348,6 +350,14 @@ export async function updateActiveLease(
 
   if (updateError) return { error: updateError.message };
 
+  // Mirror lease collection account onto the unit so both admin views stay aligned.
+  if (settlementAccountProvided) {
+    await admin
+      .from("units")
+      .update({ settlement_account_id: settlementAccountId })
+      .eq("id", current.unit_id);
+  }
+
   await regenerateLedgerForUnit(admin, ctx.org.id, current.unit_id);
 
   const docResult = await uploadDocumentsFromFormData(
@@ -368,6 +378,8 @@ export async function updateActiveLease(
   revalidatePath(`/d/${orgSlug}/tenants`);
   revalidatePath(`/d/${orgSlug}/tenants/${leaseId}`);
   revalidatePath(`/d/${orgSlug}/properties`);
+  revalidatePath(`/t/${orgSlug}`);
+  revalidatePath(`/t/${orgSlug}/pay`);
   return { success: true };
 }
 

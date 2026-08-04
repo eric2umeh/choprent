@@ -9,7 +9,15 @@ import { toast } from "@/components/ui/toast";
 import { Spinner } from "@/components/ui/spinner";
 import { Upload } from "lucide-react";
 
-export function TenantPayForm({ orgSlug }: { orgSlug: string }) {
+export function TenantPayForm({
+  orgSlug,
+  unitCode,
+  tenantName,
+}: {
+  orgSlug: string;
+  unitCode?: string;
+  tenantName?: string;
+}) {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [scanning, setScanning] = useState(false);
@@ -175,7 +183,13 @@ export function TenantPayForm({ orgSlug }: { orgSlug: string }) {
           rows={2}
           disabled={loading || scanning}
           className="input-field mt-1 resize-none"
-          placeholder="e.g. Paid via GTB transfer for 2025 rent"
+          placeholder={
+            unitCode
+              ? `e.g. Shop ${unitCode} Rent`
+              : tenantName
+                ? `e.g. ${tenantName} Rent`
+                : "e.g. Shop 30 Rent"
+          }
         />
       </div>
 

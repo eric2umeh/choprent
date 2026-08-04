@@ -245,6 +245,8 @@ export async function setupUnitDetails(
         tenant_display_name: tenantName,
         tenant_phone: tenantPhone,
         tenant_email: tenantEmail,
+        // Keep lease pay-to account in sync with the unit so the tenant portal updates.
+        settlement_account_id: settlementAccountId,
       };
       if (tenantUserId) updatePayload.tenant_user_id = tenantUserId;
 
@@ -254,12 +256,6 @@ export async function setupUnitDetails(
         .eq("id", activeLease.id);
       if (leaseError) return { error: leaseError.message };
     } else {
-      const { data: unitAccount } = await admin
-        .from("units")
-        .select("settlement_account_id")
-        .eq("id", unitId)
-        .maybeSingle();
-
       const { data: defaultAccount } = await admin
         .from("site_settlement_accounts")
         .select("id")
@@ -267,8 +263,7 @@ export async function setupUnitDetails(
         .eq("is_default", true)
         .maybeSingle();
 
-      const leaseSettlementId =
-        unitAccount?.settlement_account_id ?? defaultAccount?.id ?? null;
+      const leaseSettlementId = settlementAccountId ?? defaultAccount?.id ?? null;
 
       const { data: newLease, error: leaseError } = await admin
         .from("leases")
@@ -301,6 +296,13 @@ export async function setupUnitDetails(
         await regenerateLedgerForUnit(admin, ctx.org.id, unitId, billingProfile);
       }
     }
+  } else if (activeLease && !shouldEndTenancy) {
+    // Vacant unit with no tenant name still syncs collection account if lease exists.
+    const { error: settlementSyncError } = await admin
+      .from("leases")
+      .update({ settlement_account_id: settlementAccountId })
+      .eq("id", activeLease.id);
+    if (settlementSyncError) return { error: settlementSyncError.message };
   }
 
   if (activeLease && !shouldEndTenancy) {
@@ -321,6 +323,8 @@ export async function setupUnitDetails(
     unitCode
   );
   revalidatePath(`/d/${orgSlug}/tenants`);
+  revalidatePath(`/t/${orgSlug}`);
+  revalidatePath(`/t/${orgSlug}/pay`);
   return { success: true };
 }
 
