@@ -21,7 +21,7 @@ export type TenantHomeSummary = {
   /** Dedicated shop VA when enabled and no settlement account is assigned. */
   dva: SettlementAccount | null;
   /** Resolved rent-collection account (lease → unit → property default). */
-  befsAccount: SettlementAccount | null;
+  collectionAccount: SettlementAccount | null;
   /** Single pay-to account shown on the tenant dashboard. */
   settlement: SettlementAccount | null;
   pendingPayments: number;
@@ -46,8 +46,13 @@ export async function getTenantHomeSummary(
   };
 
   const dvaEnabled = isPaystackDvaEnabled();
-  const [{ count: pendingCount }, befsAccount, dva, periodInfo, leaseFinancials] =
-    await Promise.all([
+  const [
+    { count: pendingCount },
+    collectionAccount,
+    dva,
+    periodInfo,
+    leaseFinancials,
+  ] = await Promise.all([
       supabase
         .from("payments")
         .select("id", { count: "exact", head: true })
@@ -72,11 +77,15 @@ export async function getTenantHomeSummary(
         .maybeSingle(),
     ]);
 
-  let resolvedBefs = befsAccount;
-  if (!resolvedBefs) {
+  let resolvedCollection = collectionAccount;
+  if (!resolvedCollection) {
     try {
       const admin = await adminFallback();
-      resolvedBefs = await resolveSettlementAccountAdmin(admin, leaseId, unitId);
+      resolvedCollection = await resolveSettlementAccountAdmin(
+        admin,
+        leaseId,
+        unitId
+      );
     } catch {
       /* keep null */
     }
@@ -94,14 +103,14 @@ export async function getTenantHomeSummary(
   const rentStatus = deriveTenantPaymentStatus(expected, paid, arrears);
 
   // Prefer staff-assigned settlement; only fall back to DVA when none is set.
-  const payAccount = resolvedBefs ?? dva;
+  const payAccount = resolvedCollection ?? dva;
 
   return {
     balance,
     periodLabel,
     rentStatus,
-    dva: resolvedBefs ? null : dva,
-    befsAccount: resolvedBefs,
+    dva: resolvedCollection ? null : dva,
+    collectionAccount: resolvedCollection,
     settlement: payAccount,
     pendingPayments: pendingCount ?? 0,
     recentLines: lines.slice(0, 3).map((l) => ({
