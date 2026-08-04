@@ -29,6 +29,7 @@ export type LeaseListItem = {
   paidAmount: number;
   arrears: number;
   paymentStatus: TenantPaymentStatus;
+  settlementAccountId: string | null;
 };
 
 export type LeaseDetail = LeaseListItem & {
@@ -63,6 +64,7 @@ type LeaseRow = {
   end_date: string;
   billing_cadence: BillingCadence;
   auto_renew?: boolean | null;
+  settlement_account_id?: string | null;
   status: LeaseListItem["status"];
   created_at?: string;
   created_by?: string | null;
@@ -223,16 +225,17 @@ async function mapLeaseRows(
         paidAmount: paid,
         arrears,
         paymentStatus: deriveTenantPaymentStatus(expected, paid, arrears),
+        settlementAccountId: row.settlement_account_id ?? null,
       };
     })
   );
 }
 
 const leaseSelect =
-  "id, unit_id, tenant_display_name, tenant_phone, tenant_email, tenant_user_id, start_date, end_date, billing_cadence, auto_renew, status, created_at, created_by, units!inner(unit_code, site_id, organization_id, arrears_balance_ngn, sites(name, slug))";
+  "id, unit_id, tenant_display_name, tenant_phone, tenant_email, tenant_user_id, start_date, end_date, billing_cadence, auto_renew, settlement_account_id, status, created_at, created_by, units!inner(unit_code, site_id, organization_id, arrears_balance_ngn, sites(name, slug))";
 
 const leaseSelectFallback =
-  "id, unit_id, tenant_display_name, tenant_phone, tenant_email, tenant_user_id, start_date, end_date, billing_cadence, status, created_at, created_by, units!inner(unit_code, site_id, organization_id, arrears_balance_ngn, sites(name, slug))";
+  "id, unit_id, tenant_display_name, tenant_phone, tenant_email, tenant_user_id, start_date, end_date, billing_cadence, settlement_account_id, status, created_at, created_by, units!inner(unit_code, site_id, organization_id, arrears_balance_ngn, sites(name, slug))";
 
 export async function listLeasesForOrg(
   orgId: string,
@@ -391,13 +394,20 @@ export async function getLeaseDetail(
 
 export async function listVacantUnitsForLease(
   orgId: string
-): Promise<{ id: string; unitCode: string; siteId: string }[]> {
+): Promise<
+  {
+    id: string;
+    unitCode: string;
+    siteId: string;
+    settlementAccountId: string | null;
+  }[]
+> {
   try {
     const admin = createAdminClient();
     const [{ data: units }, { data: activeLeases }] = await Promise.all([
       admin
         .from("units")
-        .select("id, unit_code, site_id")
+        .select("id, unit_code, site_id, settlement_account_id")
         .eq("organization_id", orgId)
         .order("unit_code"),
       admin
@@ -414,6 +424,7 @@ export async function listVacantUnitsForLease(
         id: u.id,
         unitCode: u.unit_code,
         siteId: u.site_id,
+        settlementAccountId: u.settlement_account_id ?? null,
       }));
   } catch {
     return [];
