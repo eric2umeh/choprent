@@ -9,6 +9,8 @@ import { resolveUnit } from "@/lib/data/units";
 import { getUnitHistory } from "@/lib/data/leases";
 import { listExpensesForUnit } from "@/lib/data/expenses";
 import { listDocumentsForUnit } from "@/lib/data/documents";
+import { listSettlementAccounts } from "@/lib/data/settlement-accounts";
+import { formatSettlementAccountLabel } from "@/lib/settlement/format-account";
 import { propertyPath, unitPath, unitCodeFromUrlRef } from "@/lib/routes/dashboard-paths";
 import { formatNaira } from "@/lib/auth/roles";
 import { formatDisplayDate } from "@/lib/utils/format-date";
@@ -60,11 +62,16 @@ export default async function PropertyUnitDetailPage({
 
   const canManageDocs = canManageLeases(ctx.role);
 
-  const [history, expenses, documents] = await Promise.all([
+  const [history, expenses, documents, settlementAccounts] = await Promise.all([
     getUnitHistory(ctx.org.id, unit.id),
     listExpensesForUnit(ctx.org.id, unit.id),
     listDocumentsForUnit(ctx.org.id, unit.id),
+    listSettlementAccounts(ctx.org.id),
   ]);
+
+  const propertyAccounts = settlementAccounts.filter(
+    (a) => a.siteId === property.id
+  );
 
   return (
     <div>
@@ -85,6 +92,7 @@ export default async function PropertyUnitDetailPage({
         orgSlug={orgSlug}
         propertyId={property.id}
         unit={unit}
+        settlementAccounts={propertyAccounts}
         canEdit={canEdit}
         canDelete={canAddUnits(ctx.role)}
       >
@@ -109,6 +117,23 @@ export default async function PropertyUnitDetailPage({
                   }
                 >
                   {formatNaira(unit.arrears)}
+                </dd>
+              </div>
+              <div>
+                <dt className="text-label normal-case">Collection account</dt>
+                <dd className="text-detail-value">
+                  {(() => {
+                    const assigned = propertyAccounts.find(
+                      (a) => a.id === unit.settlementAccountId
+                    );
+                    const fallback =
+                      propertyAccounts.find((a) => a.isDefault) ??
+                      propertyAccounts[0] ??
+                      null;
+                    const account = assigned ?? fallback;
+                    if (!account) return "—";
+                    return formatSettlementAccountLabel(account);
+                  })()}
                 </dd>
               </div>
               {(unit.createdAt || unit.createdByName) && (
