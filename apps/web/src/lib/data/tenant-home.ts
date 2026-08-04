@@ -46,19 +46,13 @@ export async function getTenantHomeSummary(
   };
 
   const dvaEnabled = isPaystackDvaEnabled();
-  const [
-    { count: pendingCount },
-    collectionAccount,
-    dva,
-    periodInfo,
-    leaseFinancials,
-  ] = await Promise.all([
+  const [{ count: pendingCount }, dva, periodInfo, leaseFinancials] =
+    await Promise.all([
       supabase
         .from("payments")
         .select("id", { count: "exact", head: true })
         .eq("unit_id", unitId)
         .eq("status", "pending"),
-      resolveSettlementAccount(supabase, leaseId, unitId),
       dvaEnabled ? resolveDvaAccount(supabase, unitId) : Promise.resolve(null),
       supabase
         .from("ledger_periods")
@@ -77,18 +71,22 @@ export async function getTenantHomeSummary(
         .maybeSingle(),
     ]);
 
-  let resolvedCollection = collectionAccount;
-  if (!resolvedCollection) {
-    try {
-      const admin = await adminFallback();
-      resolvedCollection = await resolveSettlementAccountAdmin(
-        admin,
-        leaseId,
-        unitId
-      );
-    } catch {
-      /* keep null */
-    }
+  // Always resolve via admin so staff account changes are visible immediately
+  // (tenant RLS can hide or lag settlement_account_id updates).
+  let resolvedCollection: SettlementAccount | null = null;
+  try {
+    const admin = await adminFallback();
+    resolvedCollection = await resolveSettlementAccountAdmin(
+      admin,
+      leaseId,
+      unitId
+    );
+  } catch {
+    resolvedCollection = await resolveSettlementAccount(
+      supabase,
+      leaseId,
+      unitId
+    );
   }
 
   const openPeriod = periodInfo.data;
@@ -145,6 +143,18 @@ async function resolveSettlementAccount(
   leaseId: string,
   unitId: string
 ): Promise<SettlementAccount | null> {
+  const { data: unit } = await supabase
+    .from("units")
+    .select("site_id, settlement_account_id")
+    .eq("id", unitId)
+    .maybeSingle();
+
+  // Unit assignment wins (matches the staff unit page). Lease is fallback for legacy rows.
+  if (unit?.settlement_account_id) {
+    const account = await fetchAccountById(supabase, unit.settlement_account_id);
+    if (account) return account;
+  }
+
   const { data: lease } = await supabase
     .from("leases")
     .select("settlement_account_id")
@@ -153,17 +163,6 @@ async function resolveSettlementAccount(
 
   if (lease?.settlement_account_id) {
     const account = await fetchAccountById(supabase, lease.settlement_account_id);
-    if (account) return account;
-  }
-
-  const { data: unit } = await supabase
-    .from("units")
-    .select("site_id, settlement_account_id")
-    .eq("id", unitId)
-    .maybeSingle();
-
-  if (unit?.settlement_account_id) {
-    const account = await fetchAccountById(supabase, unit.settlement_account_id);
     if (account) return account;
   }
 
@@ -178,17 +177,6 @@ async function resolveSettlementAccountAdmin(
   leaseId: string,
   unitId: string
 ): Promise<SettlementAccount | null> {
-  const { data: lease } = await admin
-    .from("leases")
-    .select("settlement_account_id")
-    .eq("id", leaseId)
-    .maybeSingle();
-
-  if (lease?.settlement_account_id) {
-    const account = await fetchAccountById(admin, lease.settlement_account_id);
-    if (account) return account;
-  }
-
   const { data: unit } = await admin
     .from("units")
     .select("site_id, settlement_account_id")
@@ -197,6 +185,17 @@ async function resolveSettlementAccountAdmin(
 
   if (unit?.settlement_account_id) {
     const account = await fetchAccountById(admin, unit.settlement_account_id);
+    if (account) return account;
+  }
+
+  const { data: lease } = await admin
+    .from("leases")
+    .select("settlement_account_id")
+    .eq("id", leaseId)
+    .maybeSingle();
+
+  if (lease?.settlement_account_id) {
+    const account = await fetchAccountById(admin, lease.settlement_account_id);
     if (account) return account;
   }
 
