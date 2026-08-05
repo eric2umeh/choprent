@@ -12,6 +12,7 @@ import { SearchableSelect } from "@/components/ui/searchable-select";
 import { toast } from "@/components/ui/toast";
 import { formatNaira } from "@/lib/auth/roles";
 import type { BalanceBreakdownRow } from "@/lib/data/unit-balance-breakdown";
+import { STAFF_RECORD_METHOD_OPTIONS } from "@/lib/payments/methods";
 import { Spinner } from "@/components/ui/spinner";
 
 type UnitOption = { id: string; unitCode: string; tenantName?: string | null };
@@ -66,7 +67,7 @@ export function RecordCashForm({
       return;
     }
 
-    toast.success("Cash payment recorded and allocated.");
+    toast.success("Payment recorded and allocated.");
     setUnitId("");
     router.refresh();
     onClose();
@@ -76,8 +77,8 @@ export function RecordCashForm({
     <Modal
       open={open}
       onClose={onClose}
-      title="Record cash payment"
-      description="Verified immediately — allocates to oldest arrears first."
+      title="Record payment"
+      description="Verified immediately — allocates to oldest arrears first. Choose Transfer, Cheque, or Cash."
       preventClose={loading}
     >
       <form onSubmit={handleSubmit} className="space-y-4">
@@ -133,6 +134,21 @@ export function RecordCashForm({
           </div>
         )}
 
+        <div>
+          <label className="text-label normal-case">Payment method</label>
+          <select
+            name="payment_method"
+            className="input-field mt-1"
+            defaultValue="bank_transfer"
+            disabled={loading}
+          >
+            {STAFF_RECORD_METHOD_OPTIONS.map((o) => (
+              <option key={o.value} value={o.value}>
+                {o.label}
+              </option>
+            ))}
+          </select>
+        </div>
         <div>
           <label className="text-label normal-case">Amount (₦)</label>
           <input
