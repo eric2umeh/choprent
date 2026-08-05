@@ -4,7 +4,6 @@ import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { KeyRound, LogOut, UserRound } from "lucide-react";
-import { signOutAction } from "@/lib/actions/auth";
 import { cn } from "@/lib/utils";
 
 export function TenantProfileMenu({
@@ -94,7 +93,7 @@ export function TenantProfileMenu({
             <KeyRound className="h-4 w-4 text-muted" />
             Change password
           </Link>
-          <form action={signOutAction}>
+          <form action="/auth/signout" method="post">
             <button
               type="submit"
               role="menuitem"

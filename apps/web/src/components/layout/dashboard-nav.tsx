@@ -23,7 +23,6 @@ import { Logo } from "@/components/logo";
 import { cn } from "@/lib/utils";
 import type { MembershipRole } from "@/types/database";
 import { canAddUnits, canManageTeam } from "@/lib/auth/roles";
-import { signOutAction } from "@/lib/actions/auth";
 
 const navItems: {
   href: string;
@@ -267,7 +266,7 @@ export function DashboardSidebar({
             </p>
           )}
           {!collapsed && (
-            <form action={signOutAction} className="mb-2">
+            <form action="/auth/signout" method="post" className="mb-2">
               <button type="submit" className="btn-ghost w-full py-1.5 text-xs">
                 Sign out
               </button>
@@ -321,7 +320,11 @@ export function DashboardTopBar({
           {notificationCount > 9 ? "9+" : notificationCount}
         </span>
       )}
-      <form action={signOutAction} className={notificationCount > 0 ? "" : "ml-auto"}>
+      <form
+        action="/auth/signout"
+        method="post"
+        className={notificationCount > 0 ? "" : "ml-auto"}
+      >
         <button type="submit" className="text-xs font-medium text-muted">
           Sign out
         </button>

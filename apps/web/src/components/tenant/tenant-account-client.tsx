@@ -5,7 +5,6 @@ import {
   changeTenantPassword,
   type TenantAccountActionState,
 } from "@/lib/actions/tenant-account";
-import { signOutAction } from "@/lib/actions/auth";
 import { PasswordInput } from "@/components/ui/password-input";
 import { FormPanel } from "@/components/ui/form-panel";
 import { LoadingButton } from "@/components/ui/loading-button";
@@ -77,7 +76,7 @@ export function TenantPasswordForm({
 
 export function TenantSignOutButton() {
   return (
-    <form action={signOutAction}>
+    <form action="/auth/signout" method="post">
       <button
         type="submit"
         className="btn-ghost inline-flex w-full items-center justify-center gap-2 py-2.5 text-red-600 hover:bg-red-50"
