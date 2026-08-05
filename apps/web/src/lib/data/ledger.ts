@@ -107,10 +107,6 @@ async function fetchTenantLedger(
     kind: "payment" as const,
   }));
 
-  const combined = [...paymentLines, ...ledgerLines].sort((a, b) =>
-    b.date.localeCompare(a.date)
-  );
-
   const { data: unit } = await client
     .from("units")
     .select("arrears_balance_ngn")
@@ -126,6 +122,33 @@ async function fetchTenantLedger(
       0
     );
   }
+
+  // Unit-linked expenses (e.g. AEPB / government) are billed to the shop —
+  // include them in outstanding so tenant dashboards match staff breakdown.
+  const { data: expenses } = await admin
+    .from("property_expenses")
+    .select("id, description, amount_ngn, expense_date, category")
+    .eq("unit_id", unitId)
+    .eq("organization_id", orgId)
+    .order("expense_date", { ascending: false });
+
+  const expenseLines: LedgerLineItem[] = (expenses ?? []).map((exp) => {
+    const amount = Number(exp.amount_ngn);
+    balance += Math.max(amount, 0);
+    const category =
+      exp.category === "government" ? "Government bill" : "Expense";
+    return {
+      id: `expense:${exp.id}`,
+      date: String(exp.expense_date).slice(0, 10),
+      description: `${category} · ${exp.description}`,
+      amount: -amount,
+      kind: "charge" as const,
+    };
+  });
+
+  const combined = [...paymentLines, ...ledgerLines, ...expenseLines].sort(
+    (a, b) => b.date.localeCompare(a.date)
+  );
 
   if (combined.length === 0 && balance === 0 && !useAdmin) {
     return fetchTenantLedger(orgId, unitId, true);
