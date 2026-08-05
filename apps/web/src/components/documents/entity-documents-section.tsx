@@ -30,6 +30,8 @@ export function EntityDocumentsSection({
   defaultSiteId,
   units = [],
   leases = [],
+  /** Hide section title when nested under page tabs. */
+  embedded = false,
 }: {
   orgSlug: string;
   documents: DocumentListItem[];
@@ -40,6 +42,7 @@ export function EntityDocumentsSection({
   defaultSiteId?: string;
   units?: UnitOption[];
   leases?: LeaseOption[];
+  embedded?: boolean;
 }) {
   const router = useRouter();
   const [showAdd, setShowAdd] = useState(false);
@@ -178,19 +181,27 @@ export function EntityDocumentsSection({
   return (
     <>
       <ListPanel>
-        <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border px-3 py-3">
-          <h2 className="text-card-title">{sectionTitle}</h2>
-          {canManage && (
-            <button
-              type="button"
-              className="btn-primary inline-flex items-center gap-1.5 px-3 py-1.5 text-sm"
-              onClick={() => setShowAdd(true)}
-            >
-              <Plus className="h-4 w-4" />
-              Add document
-            </button>
-          )}
-        </div>
+        {(canManage || !embedded) && (
+          <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border px-3 py-3">
+            {!embedded ? (
+              <h2 className="text-card-title">{sectionTitle}</h2>
+            ) : (
+              <span className="text-sm text-muted">
+                {documents.length} document{documents.length === 1 ? "" : "s"}
+              </span>
+            )}
+            {canManage && (
+              <button
+                type="button"
+                className="btn-primary inline-flex items-center gap-1.5 px-3 py-1.5 text-sm"
+                onClick={() => setShowAdd(true)}
+              >
+                <Plus className="h-4 w-4" />
+                Add document
+              </button>
+            )}
+          </div>
+        )}
         <ResponsiveDataTable
           rows={documents}
           columns={columns}
