@@ -8,6 +8,7 @@ import { parseUnitsImportText, type ParsedImportUnit } from "@/lib/import/units-
 import { revalidatePropertyDashboardPaths } from "@/lib/routes/revalidate-dashboard";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { regenerateLedgerForUnit } from "@/lib/charges/generate-ledger";
+import { defaultAnnualLeaseRange } from "@/lib/charges/period-ranges";
 
 export type UnitImportActionState = {
   error?: string;
@@ -19,14 +20,6 @@ export type UnitImportActionState = {
 
 function isCompositeCode(code: string): boolean {
   return /[/&]/.test(code);
-}
-
-function currentYearRange() {
-  const year = new Date().getFullYear();
-  return {
-    start: `${year}-01-01`,
-    end: `${year}-12-31`,
-  };
 }
 
 export async function previewUnitsImport(
@@ -73,7 +66,7 @@ export async function importUnitsFromCsv(
     .eq("site_id", siteId);
 
   const existing = new Set((existingRows ?? []).map((row) => row.unit_code));
-  const { start, end } = currentYearRange();
+  const { start, end } = defaultAnnualLeaseRange();
 
   let created = 0;
   let skipped = 0;

@@ -23,6 +23,7 @@ export type PaymentListItem = {
   createdAt: string;
   submittedByName: string | null;
   verifiedByName: string | null;
+  verifiedAt: string | null;
 };
 
 type PaymentRow = {
@@ -40,6 +41,7 @@ type PaymentRow = {
   created_at: string;
   recorded_by?: string | null;
   verified_by?: string | null;
+  verified_at?: string | null;
   tenant_id?: string | null;
   units: { unit_code: string } | { unit_code: string }[] | null;
   leases?: never;
@@ -112,11 +114,12 @@ function mapPaymentRow(
       row.recorded_by ?? row.tenant_id ?? row.verified_by
     ),
     verifiedByName: actorLabel(actors, row.verified_by),
+    verifiedAt: row.verified_at ? String(row.verified_at).slice(0, 10) : null,
   };
 }
 
 const paymentSelect =
-  "id, unit_id, amount_ngn, period_label, payment_method, status, bank_reference, receipt_file_url, payment_date, payment_note, metadata, created_at, recorded_by, verified_by, tenant_id, units!inner(unit_code)";
+  "id, unit_id, amount_ngn, period_label, payment_method, status, bank_reference, receipt_file_url, payment_date, payment_note, metadata, created_at, recorded_by, verified_by, verified_at, tenant_id, units!inner(unit_code)";
 
 async function mapPaymentRows(
   orgId: string,

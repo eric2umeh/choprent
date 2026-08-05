@@ -1,7 +1,6 @@
 import { AcceptTenantInviteForm } from "@/components/auth/accept-tenant-invite-form";
 import { getTenantInvitePreview } from "@/lib/actions/tenant-invite";
 import { Logo } from "@/components/logo";
-import Link from "next/link";
 
 export default async function TenantInvitePage({
   params,
@@ -15,9 +14,9 @@ export default async function TenantInvitePage({
     <main className="flex min-h-screen flex-col items-center justify-center bg-surface-subtle px-4 py-10">
       <div className="w-full max-w-md space-y-6">
         <div className="text-center">
-          <Link href="/" className="inline-flex justify-center">
+          <div className="inline-flex justify-center">
             <Logo />
-          </Link>
+          </div>
           <h1 className="mt-4 text-page-title">Tenant portal invite</h1>
           <p className="mt-1 text-page-desc">
             {preview.alreadyAccepted

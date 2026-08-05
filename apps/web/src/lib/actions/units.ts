@@ -14,6 +14,7 @@ import {
 } from "@/lib/charges/billing-profile";
 import { regenerateLedgerForUnit } from "@/lib/charges/generate-ledger";
 import { uploadDocumentsFromFormData } from "@/lib/documents/upload";
+import { defaultAnnualLeaseRange } from "@/lib/charges/period-ranges";
 import type { BillingCadence, PropertyType } from "@/types/database";
 
 export type UnitActionState = {
@@ -24,14 +25,6 @@ export type UnitActionState = {
 
 function isCompositeCode(code: string): boolean {
   return /[/&]/.test(code);
-}
-
-function currentYearRange() {
-  const year = new Date().getFullYear();
-  return {
-    start: `${year}-01-01`,
-    end: `${year}-12-31`,
-  };
 }
 
 export async function createUnit(
@@ -230,7 +223,7 @@ export async function setupUnitDetails(
       .eq("id", activeLease.id);
     if (endError) return { error: endError.message };
   } else if (tenantName) {
-    const { start, end } = currentYearRange();
+    const { start, end } = defaultAnnualLeaseRange();
     let tenantUserId: string | null = null;
     if (tenantEmail) {
       const { data: usersPage } = await admin.auth.admin.listUsers();

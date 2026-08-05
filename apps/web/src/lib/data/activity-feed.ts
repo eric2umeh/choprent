@@ -14,6 +14,8 @@ export type ActivityItem = {
 function methodLabel(method: string): string {
   const map: Record<string, string> = {
     bank_transfer: "Transfer",
+    cheque: "Cheque",
+    cash: "Cash",
     cash_recorded: "Cash",
     dedicated_account: "DVA",
   };
@@ -29,7 +31,7 @@ export async function getActivityFeed(orgId: string, limit = 10): Promise<Activi
 
     if (p.status === "pending") {
       kind = "pending";
-      title = `${p.unitCode} transfer awaiting verification`;
+      title = `${p.unitCode} ${methodLabel(p.paymentMethod).toLowerCase()} awaiting verification`;
     } else if (p.status === "rejected") {
       kind = "rejected";
       title = `${p.unitCode} payment rejected`;
@@ -38,7 +40,7 @@ export async function getActivityFeed(orgId: string, limit = 10): Promise<Activi
       title = `Cash recorded · ${p.unitCode}`;
     } else if (p.status === "verified" || p.status === "auto_matched") {
       kind = "verified";
-      title = `${p.unitCode} payment verified`;
+      title = `${p.unitCode} ${methodLabel(p.paymentMethod).toLowerCase()} verified`;
     }
 
     return {

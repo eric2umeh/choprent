@@ -3,6 +3,10 @@
 import { revalidatePath } from "next/cache";
 import { canManageLeases } from "@/lib/auth/roles";
 import { requireStaffContext } from "@/lib/auth/session";
+import {
+  MIN_PASSWORD_LENGTH,
+  MIN_PASSWORD_MESSAGE,
+} from "@/lib/auth/password-validation";
 import { appUrl } from "@/lib/env";
 import { sendEmail } from "@/lib/email/send";
 import { createAdminClient } from "@/lib/supabase/admin";
@@ -243,8 +247,8 @@ export async function acceptTenantInvite(
   fullName?: string
 ): Promise<TenantInviteActionState> {
   if (!rawToken) return { error: "Invalid invite link." };
-  if (!password || password.length < 8) {
-    return { error: "Password must be at least 8 characters." };
+  if (!password || password.length < MIN_PASSWORD_LENGTH) {
+    return { error: MIN_PASSWORD_MESSAGE };
   }
 
   const admin = createAdminClient();

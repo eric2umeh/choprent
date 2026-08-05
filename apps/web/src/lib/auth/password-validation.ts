@@ -1,5 +1,10 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 
+/** App-wide minimum password length (signup, reset, invite, settings). */
+export const MIN_PASSWORD_LENGTH = 8;
+
+export const MIN_PASSWORD_MESSAGE = `Password must be at least ${MIN_PASSWORD_LENGTH} characters.`;
+
 /** True when candidate matches the user's current password (via sign-in probe). */
 export async function isSameAsCurrentPassword(
   supabase: SupabaseClient,

@@ -43,8 +43,8 @@ export function SettingsPageClient({
         <>
         <PilotSetupSettingsCard orgSlug={orgSlug} />
         <SettingsSectionCard
-          title="Profile"
-          description="Company name, logo, and your display name — visible to tenants and staff."
+          title="Workspace & profile"
+          description="Plaza name and URL slug (used by owner, managers, agents, and tenants), plus your display name and logo."
           action={
             <button
               type="button"
@@ -52,11 +52,23 @@ export function SettingsPageClient({
               onClick={() => setProfileOpen(true)}
             >
               <UserRound className="h-4 w-4" />
-              Edit profile
+              Edit workspace
             </button>
           }
         >
           <dl className="grid gap-3 sm:grid-cols-2">
+            <div>
+              <dt className="text-label normal-case">Workspace / plaza</dt>
+              <dd className="mt-0.5 text-list-primary">
+                {profile.orgName || "—"}
+              </dd>
+            </div>
+            <div>
+              <dt className="text-label normal-case">URL slug</dt>
+              <dd className="mt-0.5 text-list-primary font-mono text-sm">
+                {profile.slug || orgSlug}
+              </dd>
+            </div>
             <div>
               <dt className="text-label normal-case">Your name</dt>
               <dd className="mt-0.5 text-list-primary">
@@ -67,6 +79,14 @@ export function SettingsPageClient({
               <dt className="text-label normal-case">Company</dt>
               <dd className="mt-0.5 text-list-primary">
                 {profile.companyName || "—"}
+              </dd>
+            </div>
+            <div className="sm:col-span-2">
+              <dt className="text-label normal-case">Staff / tenant URLs</dt>
+              <dd className="mt-0.5 text-list-secondary text-sm">
+                <code className="text-xs">/d/{profile.slug || orgSlug}</code>
+                {" · "}
+                <code className="text-xs">/t/{profile.slug || orgSlug}</code>
               </dd>
             </div>
             <div className="sm:col-span-2">
@@ -144,8 +164,8 @@ export function SettingsPageClient({
       <Modal
         open={profileOpen}
         onClose={() => setProfileOpen(false)}
-        title="Edit profile"
-        description="Tenants and staff see your company name and logo."
+        title="Edit workspace & profile"
+        description="Change plaza name and URL slug, plus company branding tenants and staff see."
       >
         <ProfileSettingsForm
           orgSlug={orgSlug}

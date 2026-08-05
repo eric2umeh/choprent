@@ -27,11 +27,11 @@ export async function getTenantLedger(
     // Continue with whatever periods exist if repair fails.
   }
 
-  try {
-    return await fetchTenantLedger(orgId, unitId, false);
-  } catch {
-    return fetchTenantLedger(orgId, unitId, true);
-  }
+  // Always use the service role for balance math. Tenant RLS can hide
+  // ledger_periods while still allowing expenses — that made rent vanish from
+  // outstanding (e.g. ₦26k expense-only vs ₦1.026M rent+expense on admin).
+  // Callers already gate access to the tenant's own unit.
+  return fetchTenantLedger(orgId, unitId, true);
 }
 
 async function fetchTenantLedger(
@@ -150,10 +150,6 @@ async function fetchTenantLedger(
   const combined = [...paymentLines, ...ledgerLines, ...expenseLines].sort(
     (a, b) => b.date.localeCompare(a.date)
   );
-
-  if (combined.length === 0 && balance === 0 && !useAdmin) {
-    return fetchTenantLedger(orgId, unitId, true);
-  }
 
   return { lines: combined, balance };
 }

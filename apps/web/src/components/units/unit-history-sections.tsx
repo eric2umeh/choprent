@@ -2,11 +2,13 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { ListPanel } from "@/components/ui/page-header";
 import { ResponsiveDataTable, type Column } from "@/components/ui/responsive-table";
 import { ExpenseHistoryTable } from "@/components/expenses/expense-history-table";
 import { EntityDocumentsSection } from "@/components/documents/entity-documents-section";
+import { Tabs } from "@/components/ui/tabs";
 import type { ExpenseListItem } from "@/lib/data/expenses";
 import type { DocumentListItem } from "@/lib/data/documents";
 import { formatNaira } from "@/lib/auth/roles";
@@ -30,6 +32,15 @@ type UnitLease = {
   status: string;
 };
 
+const UNIT_TABS = [
+  { id: "payments", label: "Payment history" },
+  { id: "tenants", label: "Tenant history" },
+  { id: "expenses", label: "Expenses & repairs" },
+  { id: "documents", label: "Documents" },
+] as const;
+
+type UnitTabId = (typeof UNIT_TABS)[number]["id"];
+
 export function UnitHistorySections({
   orgSlug,
   payments,
@@ -48,6 +59,7 @@ export function UnitHistorySections({
   unitId: string;
 }) {
   const router = useRouter();
+  const [tab, setTab] = useState<UnitTabId>("payments");
 
   const paymentColumns: Column<UnitPayment>[] = [
     {
@@ -85,8 +97,9 @@ export function UnitHistorySections({
     {
       key: "submittedBy",
       header: "Submitted by",
+      mobilePrimary: true,
       render: (p) => (
-        <span className="text-table-cell-muted">{p.submittedByName ?? "—"}</span>
+        <span className="text-table-cell">{p.submittedByName ?? "—"}</span>
       ),
     },
     {
@@ -151,47 +164,53 @@ export function UnitHistorySections({
 
   return (
     <>
-      <ListPanel>
-        <h2 className="border-b border-border px-3 py-3 text-card-title">
-          Payment history
-        </h2>
-        <ResponsiveDataTable
-          rows={payments}
-          columns={paymentColumns}
-          emptyMessage="No payments recorded for this unit yet."
-        />
-      </ListPanel>
-
-      <ListPanel>
-        <h2 className="border-b border-border px-3 py-3 text-card-title">
-          Tenant history
-        </h2>
-        <ResponsiveDataTable
-          rows={leases}
-          columns={leaseColumns}
-          onRowClick={(l) => router.push(`/d/${orgSlug}/tenants/${l.id}`)}
-          emptyMessage="No lease history for this unit yet."
-        />
-      </ListPanel>
-
-      <ListPanel>
-        <h2 className="border-b border-border px-3 py-3 text-card-title">
-          Expenses &amp; repairs
-        </h2>
-        <ExpenseHistoryTable
-          expenses={expenses}
-          showProperty={false}
-          showUnit={false}
-          emptyMessage="No expenses recorded for this unit yet."
-        />
-      </ListPanel>
-
-      <EntityDocumentsSection
-        orgSlug={orgSlug}
-        documents={documents}
-        canManage={canManageDocuments}
-        defaultUnitId={unitId}
+      <Tabs
+        tabs={[...UNIT_TABS]}
+        active={tab}
+        onChange={(id) => setTab(id as UnitTabId)}
       />
+
+      {tab === "payments" && (
+        <ListPanel>
+          <ResponsiveDataTable
+            rows={payments}
+            columns={paymentColumns}
+            emptyMessage="No payments recorded for this unit yet."
+          />
+        </ListPanel>
+      )}
+
+      {tab === "tenants" && (
+        <ListPanel>
+          <ResponsiveDataTable
+            rows={leases}
+            columns={leaseColumns}
+            onRowClick={(l) => router.push(`/d/${orgSlug}/tenants/${l.id}`)}
+            emptyMessage="No lease history for this unit yet."
+          />
+        </ListPanel>
+      )}
+
+      {tab === "expenses" && (
+        <ListPanel>
+          <ExpenseHistoryTable
+            expenses={expenses}
+            showProperty={false}
+            showUnit={false}
+            emptyMessage="No expenses recorded for this unit yet."
+          />
+        </ListPanel>
+      )}
+
+      {tab === "documents" && (
+        <EntityDocumentsSection
+          orgSlug={orgSlug}
+          documents={documents}
+          canManage={canManageDocuments}
+          defaultUnitId={unitId}
+          embedded
+        />
+      )}
     </>
   );
 }

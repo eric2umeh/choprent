@@ -10,6 +10,8 @@ import { createClient } from "@/lib/supabase/client";
 import { formatAuthError } from "@/lib/auth/messages";
 import {
   isSameAsCurrentPassword,
+  MIN_PASSWORD_LENGTH,
+  MIN_PASSWORD_MESSAGE,
   SAME_PASSWORD_MESSAGE,
 } from "@/lib/auth/password-validation";
 import { AUTOCOMPLETE_NEW_PASSWORD } from "@/lib/auth/autocomplete";
@@ -100,8 +102,8 @@ export function ResetPasswordForm() {
       return;
     }
 
-    if (password.length < 6) {
-      toast.error("Password must be at least 6 characters.");
+    if (password.length < MIN_PASSWORD_LENGTH) {
+      toast.error(MIN_PASSWORD_MESSAGE);
       return;
     }
     if (password !== confirm) {
@@ -166,11 +168,11 @@ export function ResetPasswordForm() {
         <label className="text-label normal-case">New password</label>
         <PasswordInput
           required
-          minLength={6}
+          minLength={MIN_PASSWORD_LENGTH}
           value={password}
           onChange={(e) => setPassword(e.target.value)}
           autoComplete={AUTOCOMPLETE_NEW_PASSWORD}
-          placeholder="At least 6 characters — different from your old password"
+          placeholder={`At least ${MIN_PASSWORD_LENGTH} characters — different from your old password`}
         />
       </div>
       <p className="text-[11px] text-muted">
@@ -180,7 +182,7 @@ export function ResetPasswordForm() {
         <label className="text-label normal-case">Confirm password</label>
         <PasswordInput
           required
-          minLength={6}
+          minLength={MIN_PASSWORD_LENGTH}
           value={confirm}
           onChange={(e) => setConfirm(e.target.value)}
           autoComplete={AUTOCOMPLETE_NEW_PASSWORD}

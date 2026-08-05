@@ -9,6 +9,7 @@ import { createClient } from "@/lib/supabase/client";
 import { LoadingButton } from "@/components/ui/loading-button";
 import { toast } from "@/components/ui/toast";
 import { AUTOCOMPLETE_NEW_PASSWORD } from "@/lib/auth/autocomplete";
+import { MIN_PASSWORD_LENGTH } from "@/lib/auth/password-validation";
 import Link from "next/link";
 
 export function AcceptTenantInviteForm({
@@ -133,9 +134,10 @@ export function AcceptTenantInviteForm({
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             required
-            minLength={8}
+            minLength={MIN_PASSWORD_LENGTH}
             disabled={loading}
             autoComplete={AUTOCOMPLETE_NEW_PASSWORD}
+            placeholder={`At least ${MIN_PASSWORD_LENGTH} characters`}
           />
           <button
             type="button"
@@ -155,7 +157,7 @@ export function AcceptTenantInviteForm({
           value={confirm}
           onChange={(e) => setConfirm(e.target.value)}
           required
-          minLength={8}
+          minLength={MIN_PASSWORD_LENGTH}
           disabled={loading}
           autoComplete={AUTOCOMPLETE_NEW_PASSWORD}
         />

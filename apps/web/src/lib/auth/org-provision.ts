@@ -42,8 +42,11 @@ export async function provisionLandlordOrganization(
   workspaceName?: string
 ) {
   const admin = createAdminClient();
-  const slug = await uniqueOrgSlug(admin, orgSlugCandidate(user));
   const name = workspaceName?.trim() || orgDisplayName(user);
+  const slugBase = workspaceName?.trim()
+    ? slugify(workspaceName.trim())
+    : orgSlugCandidate(user);
+  const slug = await uniqueOrgSlug(admin, slugBase || orgSlugCandidate(user));
 
   const { data: org, error: orgError } = await admin
     .from("organizations")

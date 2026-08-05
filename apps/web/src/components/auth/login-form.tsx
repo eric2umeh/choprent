@@ -17,6 +17,10 @@ import { PasswordInput } from "@/components/ui/password-input";
 import { LoadingButton } from "@/components/ui/loading-button";
 import { toast } from "@/components/ui/toast";
 import type { MembershipRole } from "@/types/database";
+import {
+  MIN_PASSWORD_LENGTH,
+  MIN_PASSWORD_MESSAGE,
+} from "@/lib/auth/password-validation";
 import { passwordFieldAutocomplete } from "@/lib/auth/autocomplete";
 
 type LoginMethod = "password" | "magic_link";
@@ -98,6 +102,11 @@ export function LoginForm() {
       }
 
       if (mode === "sign_up") {
+        if (submittedPassword.length < MIN_PASSWORD_LENGTH) {
+          toast.error(MIN_PASSWORD_MESSAGE);
+          setLoading(false);
+          return;
+        }
         const { error: signUpError } = await supabase.auth.signUp({
           email: trimmedEmail,
           password: submittedPassword,
@@ -249,11 +258,15 @@ export function LoginForm() {
               <label className="text-label normal-case">Password</label>
               <PasswordInput
                 required
-                minLength={6}
+                minLength={mode === "sign_up" ? MIN_PASSWORD_LENGTH : undefined}
                 name="password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                placeholder="At least 6 characters"
+                placeholder={
+                  mode === "sign_up"
+                    ? `At least ${MIN_PASSWORD_LENGTH} characters`
+                    : "Your password"
+                }
                 autoComplete={passwordFieldAutocomplete(
                   mode === "sign_up" ? "sign_up" : "sign_in"
                 )}

@@ -7,6 +7,7 @@ import { extractReceiptFields } from "@/lib/ocr/extract-receipt-fields";
 import { LoadingButton } from "@/components/ui/loading-button";
 import { toast } from "@/components/ui/toast";
 import { Spinner } from "@/components/ui/spinner";
+import { TENANT_PAYMENT_METHOD_OPTIONS } from "@/lib/payments/methods";
 import { Upload } from "lucide-react";
 
 export function TenantPayForm({
@@ -138,6 +139,22 @@ export function TenantPayForm({
       )}
 
       <input type="hidden" name="ocr_payload" value={ocrPayload} />
+
+      <div>
+        <label className="text-label normal-case">Payment method</label>
+        <select
+          name="payment_method"
+          className="input-field mt-1"
+          defaultValue="bank_transfer"
+          disabled={loading || scanning}
+        >
+          {TENANT_PAYMENT_METHOD_OPTIONS.map((o) => (
+            <option key={o.value} value={o.value}>
+              {o.label}
+            </option>
+          ))}
+        </select>
+      </div>
 
       <div>
         <label className="text-label normal-case">Amount paid (₦)</label>
