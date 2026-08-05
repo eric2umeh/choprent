@@ -9,11 +9,23 @@ function nameFromAuthUser(user: {
     const value = meta[key];
     if (typeof value === "string" && value.trim()) return value.trim();
   }
-  if (user.email?.trim()) return user.email.trim();
+  // Prefer a human name over raw email — use the local-part only as last resort.
+  const local = user.email?.split("@")[0]?.trim();
+  if (local) {
+    return local
+      .replace(/[._+-]+/g, " ")
+      .replace(/\b\w/g, (c) => c.toUpperCase());
+  }
   return null;
 }
 
-/** Resolve user ids to display labels (membership name, then auth profile/email). */
+type MembershipRow = {
+  user_id: string;
+  display_name: string | null;
+  role: string | null;
+};
+
+/** Resolve user ids to display labels (membership name, then auth profile — never raw email). */
 export async function resolveActorLabels(
   orgId: string,
   userIds: (string | null | undefined)[]
@@ -26,13 +38,36 @@ export async function resolveActorLabels(
 
   const { data: memberships } = await admin
     .from("memberships")
-    .select("user_id, display_name")
+    .select("user_id, display_name, role")
     .eq("organization_id", orgId)
     .in("user_id", ids);
 
-  for (const row of memberships ?? []) {
+  const rows = (memberships ?? []) as MembershipRow[];
+  const ownerIdsNeedingName: string[] = [];
+
+  for (const row of rows) {
     if (row.display_name?.trim()) {
       labels.set(row.user_id, row.display_name.trim());
+    } else if (row.role === "owner") {
+      ownerIdsNeedingName.push(row.user_id);
+    }
+  }
+
+  if (ownerIdsNeedingName.length > 0) {
+    const { data: org } = await admin
+      .from("organizations")
+      .select("settings")
+      .eq("id", orgId)
+      .maybeSingle();
+    const settings = (org?.settings ?? {}) as Record<string, unknown>;
+    const ownerName =
+      typeof settings.owner_display_name === "string"
+        ? settings.owner_display_name.trim()
+        : "";
+    if (ownerName) {
+      for (const id of ownerIdsNeedingName) {
+        labels.set(id, ownerName);
+      }
     }
   }
 
