@@ -46,13 +46,21 @@ export async function updateSession(request: NextRequest) {
 
   const { pathname } = request.nextUrl;
 
+  // Never HTML-redirect Server Action POSTs — the client expects an RSC action
+  // response. Auth redirects here cause "unexpected response from the server".
+  const isServerAction =
+    request.method === "POST" &&
+    Boolean(
+      request.headers.get("next-action") ?? request.headers.get("Next-Action")
+    );
+
   if (pathname.startsWith("/d/pilot-plaza") || pathname.startsWith("/t/pilot-plaza")) {
     const url = request.nextUrl.clone();
     url.pathname = pathname.replace("/pilot-plaza", "/eri-plaza");
     return NextResponse.redirect(url);
   }
 
-  if (isProtectedPath(pathname) && !user) {
+  if (isProtectedPath(pathname) && !user && !isServerAction) {
     const url = request.nextUrl.clone();
     url.pathname = "/login";
     url.searchParams.set("next", pathname);

@@ -1,6 +1,19 @@
 import { createAdminClient } from "@/lib/supabase/admin";
 
-/** Resolve user ids to display labels (membership name, then email). */
+function nameFromAuthUser(user: {
+  email?: string | null;
+  user_metadata?: Record<string, unknown> | null;
+}): string | null {
+  const meta = user.user_metadata ?? {};
+  for (const key of ["full_name", "name", "display_name"]) {
+    const value = meta[key];
+    if (typeof value === "string" && value.trim()) return value.trim();
+  }
+  if (user.email?.trim()) return user.email.trim();
+  return null;
+}
+
+/** Resolve user ids to display labels (membership name, then auth profile/email). */
 export async function resolveActorLabels(
   orgId: string,
   userIds: (string | null | undefined)[]
@@ -24,21 +37,20 @@ export async function resolveActorLabels(
   }
 
   const missing = ids.filter((id) => !labels.has(id));
-  if (missing.length > 0) {
-    const { data: usersPage } = await admin.auth.admin.listUsers();
-    for (const user of usersPage.users) {
-      if (!missing.includes(user.id)) continue;
-      if (user.email) {
-        labels.set(user.id, user.email);
+  await Promise.all(
+    missing.map(async (id) => {
+      try {
+        const { data, error } = await admin.auth.admin.getUserById(id);
+        if (error || !data.user) {
+          labels.set(id, "Unknown user");
+          return;
+        }
+        labels.set(id, nameFromAuthUser(data.user) ?? "Unknown user");
+      } catch {
+        labels.set(id, "Unknown user");
       }
-    }
-  }
-
-  for (const id of ids) {
-    if (!labels.has(id)) {
-      labels.set(id, "Unknown user");
-    }
-  }
+    })
+  );
 
   return labels;
 }

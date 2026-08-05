@@ -402,7 +402,7 @@ export async function getLeaseDetail(
       admin
         .from("payments")
         .select(
-          "id, amount_ngn, status, payment_method, created_at, period_label, recorded_by, tenant_id"
+          "id, amount_ngn, status, payment_method, created_at, period_label, recorded_by, tenant_id, verified_by"
         )
         .eq("unit_id", mapped.unitId)
         .order("created_at", { ascending: false })
@@ -418,25 +418,31 @@ export async function getLeaseDetail(
 
     const paymentActors = await resolveActorLabels(
       orgId,
-      (payments ?? []).map((p) => p.recorded_by ?? p.tenant_id)
+      (payments ?? []).flatMap((p) => [
+        p.recorded_by,
+        p.tenant_id,
+        p.verified_by,
+      ])
     );
 
     return {
       ...mapped,
       createdAt: row.created_at?.slice(0, 10) ?? null,
       createdByName: actorLabel(actorLabels, row.created_by),
-      payments: (payments ?? []).map((p) => ({
-        id: p.id,
-        amount: Number(p.amount_ngn),
-        status: p.status,
-        method: p.payment_method,
-        date: p.created_at.slice(0, 10),
-        periodLabel: p.period_label,
-        submittedByName: actorLabel(
-          paymentActors,
-          p.recorded_by ?? p.tenant_id
-        ),
-      })),
+      payments: (payments ?? []).map((p) => {
+        const submitterId = p.recorded_by ?? p.tenant_id ?? p.verified_by;
+        return {
+          id: p.id,
+          amount: Number(p.amount_ngn),
+          status: p.status,
+          method: p.payment_method,
+          date: p.created_at.slice(0, 10),
+          periodLabel: p.period_label,
+          submittedByName:
+            actorLabel(paymentActors, submitterId) ??
+            (p.payment_method === "cash_recorded" ? "Staff" : null),
+        };
+      }),
       priorLeases: (priorLeases ?? []).map((l) => ({
         id: l.id,
         tenantName: l.tenant_display_name,
@@ -515,7 +521,7 @@ export async function getUnitHistory(
       admin
         .from("payments")
         .select(
-          "id, amount_ngn, status, payment_method, created_at, period_label, recorded_by, tenant_id"
+          "id, amount_ngn, status, payment_method, created_at, period_label, recorded_by, tenant_id, verified_by"
         )
         .eq("organization_id", orgId)
         .eq("unit_id", unitId)
@@ -531,22 +537,28 @@ export async function getUnitHistory(
 
     const paymentActors = await resolveActorLabels(
       orgId,
-      (payments ?? []).map((p) => p.recorded_by ?? p.tenant_id)
+      (payments ?? []).flatMap((p) => [
+        p.recorded_by,
+        p.tenant_id,
+        p.verified_by,
+      ])
     );
 
     return {
-      payments: (payments ?? []).map((p) => ({
-        id: p.id,
-        amount: Number(p.amount_ngn),
-        status: p.status,
-        method: p.payment_method,
-        date: p.created_at.slice(0, 10),
-        periodLabel: p.period_label,
-        submittedByName: actorLabel(
-          paymentActors,
-          p.recorded_by ?? p.tenant_id
-        ),
-      })),
+      payments: (payments ?? []).map((p) => {
+        const submitterId = p.recorded_by ?? p.tenant_id ?? p.verified_by;
+        return {
+          id: p.id,
+          amount: Number(p.amount_ngn),
+          status: p.status,
+          method: p.payment_method,
+          date: p.created_at.slice(0, 10),
+          periodLabel: p.period_label,
+          submittedByName:
+            actorLabel(paymentActors, submitterId) ??
+            (p.payment_method === "cash_recorded" ? "Staff" : null),
+        };
+      }),
       leases: (leases ?? []).map((l) => ({
         id: l.id,
         tenantName: l.tenant_display_name,

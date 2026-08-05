@@ -157,8 +157,11 @@ export function TenantDetailClient({
     {
       key: "submittedBy",
       header: "Submitted by",
+      mobilePrimary: true,
       render: (p) => (
-        <span className="text-table-cell-muted">{p.submittedByName ?? "—"}</span>
+        <span className="text-table-cell">
+          {p.submittedByName ?? "—"}
+        </span>
       ),
     },
     {

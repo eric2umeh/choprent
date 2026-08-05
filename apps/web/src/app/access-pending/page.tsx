@@ -1,6 +1,5 @@
 import { CompleteSetupForm } from "@/components/auth/complete-setup-form";
 import { SignOutButton } from "@/components/auth/sign-out-button";
-import { signOutAction } from "@/lib/actions/auth";
 import { getSessionUser, resolvePostLoginPath } from "@/lib/auth/session";
 import { redirect } from "next/navigation";
 
@@ -32,7 +31,7 @@ export default async function AccessPendingPage() {
           <CompleteSetupForm email={user.email ?? user.displayName} />
         </div>
 
-        <form action={signOutAction} className="mt-4">
+        <form action="/auth/signout" method="post" className="mt-4">
           <SignOutButton />
         </form>
       </div>

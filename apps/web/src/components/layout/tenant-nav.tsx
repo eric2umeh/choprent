@@ -14,8 +14,8 @@ export function TenantMobileNav({ orgSlug }: { orgSlug: string }) {
     { href: "", label: "Home", icon: Home },
     { href: "/pay", label: "Pay", icon: Wallet },
     { href: "/ledger", label: "Transactions", icon: Receipt },
-    { href: "/help", label: "Help", icon: HelpCircle },
     { href: "/documents", label: "Docs", icon: FileText },
+    { href: "/help", label: "Help", icon: HelpCircle },
   ];
 
   return (

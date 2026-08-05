@@ -7,7 +7,6 @@ import { getSessionUser } from "@/lib/auth/session";
 import {
   createAdminClient,
 } from "@/lib/supabase/admin";
-import { createClient } from "@/lib/supabase/server";
 import type { MembershipRole } from "@/types/database";
 
 export type AuthActionState = {
@@ -86,8 +85,7 @@ export async function linkPlazaAccount(
   }
 }
 
+/** Prefer posting to `/auth/signout` from forms; this redirects there for callers. */
 export async function signOutAction() {
-  const supabase = await createClient();
-  await supabase.auth.signOut();
-  redirect("/login");
+  redirect("/auth/signout");
 }
