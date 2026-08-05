@@ -1,6 +1,10 @@
 import { createAdminClient } from "@/lib/supabase/admin";
 import { listBillingPeriods } from "@/lib/charges/period-ranges";
 import { repairStaleLedgerPeriodsForUnit } from "@/lib/charges/generate-ledger";
+import {
+  computeUnitOutstanding,
+  sumUnallocatedCredits,
+} from "@/lib/data/unit-outstanding";
 
 export type BalanceBreakdownRow = {
   periodLabel: string;
@@ -77,15 +81,13 @@ export async function getUnitBalanceBreakdown(
     .eq("status", "open")
     .order("period_start", { ascending: true });
 
-  for (const period of periods ?? []) {
-    // Skip calendar leftovers that are not on the lease anniversary schedule.
-    if (
-      periodLabelsByStart.size > 0 &&
-      !periodLabelsByStart.has(period.period_start)
-    ) {
-      continue;
-    }
+  const schedulePeriods = (periods ?? []).filter(
+    (period) =>
+      periodLabelsByStart.size === 0 ||
+      periodLabelsByStart.has(period.period_start)
+  );
 
+  for (const period of schedulePeriods) {
     const owed = Math.max(
       Number(period.expected_total_ngn) +
         Number(period.arrears_opening_ngn) -
@@ -131,16 +133,42 @@ export async function getUnitBalanceBreakdown(
     }
   }
 
-  const { data: expenses } = await admin
-    .from("property_expenses")
-    .select("amount_ngn, expense_date")
-    .eq("unit_id", unitId)
-    .eq("organization_id", orgId);
+  const [{ data: expenses }, { data: payments }] = await Promise.all([
+    admin
+      .from("property_expenses")
+      .select("amount_ngn, expense_date")
+      .eq("unit_id", unitId)
+      .eq("organization_id", orgId),
+    admin
+      .from("payments")
+      .select("status, metadata")
+      .eq("unit_id", unitId)
+      .in("status", ["verified", "auto_matched"]),
+  ]);
 
-  for (const exp of expenses ?? []) {
-    const year = String(exp.expense_date).slice(0, 4);
-    const key = `${year}|expense`;
-    buckets.set(key, (buckets.get(key) ?? 0) + Number(exp.amount_ngn));
+  const { expenseOutstanding } = computeUnitOutstanding({
+    arrearsBalance: 0,
+    periods: schedulePeriods,
+    expenseAmounts: (expenses ?? []).map((e) => Number(e.amount_ngn)),
+    unallocatedCredits: sumUnallocatedCredits(payments ?? []),
+  });
+
+  // Spread remaining expense outstanding across expense years (net of credits).
+  if (expenseOutstanding > 0 && (expenses ?? []).length > 0) {
+    const expenseGross = (expenses ?? []).reduce(
+      (sum, e) => sum + Math.max(0, Number(e.amount_ngn)),
+      0
+    );
+    const coverRatio =
+      expenseGross > 0 ? expenseOutstanding / expenseGross : 0;
+    for (const exp of expenses ?? []) {
+      const year = String(exp.expense_date).slice(0, 4);
+      const key = `${year}|expense`;
+      const share = Math.max(0, Number(exp.amount_ngn)) * coverRatio;
+      if (share > 0) {
+        buckets.set(key, (buckets.get(key) ?? 0) + share);
+      }
+    }
   }
 
   const rows: BalanceBreakdownRow[] = [...buckets.entries()]
