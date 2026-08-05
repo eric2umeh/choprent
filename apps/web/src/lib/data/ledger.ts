@@ -2,6 +2,10 @@ import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { repairStaleLedgerPeriodsForUnit } from "@/lib/charges/generate-ledger";
 import { listBillingPeriods } from "@/lib/charges/period-ranges";
+import {
+  computeUnitOutstanding,
+  sumUnallocatedCredits,
+} from "@/lib/data/unit-outstanding";
 
 export type LedgerLineItem = {
   id: string;
@@ -91,7 +95,7 @@ async function fetchTenantLedger(
 
   const { data: payments } = await client
     .from("payments")
-    .select("id, amount_ngn, payment_date, status, created_at, period_label")
+    .select("id, amount_ngn, payment_date, status, created_at, period_label, metadata")
     .eq("unit_id", unitId)
     .in("status", ["verified", "auto_matched", "pending"])
     .order("created_at", { ascending: false });
@@ -107,25 +111,45 @@ async function fetchTenantLedger(
     kind: "payment" as const,
   }));
 
-  const combined = [...paymentLines, ...ledgerLines].sort((a, b) =>
-    b.date.localeCompare(a.date)
-  );
-
   const { data: unit } = await client
     .from("units")
     .select("arrears_balance_ngn")
     .eq("id", unitId)
     .maybeSingle();
 
-  let balance = Number(unit?.arrears_balance_ngn ?? 0);
-  for (const p of periods) {
-    balance += Math.max(
-      Number(p.expected_total_ngn) +
-        Number(p.arrears_opening_ngn) -
-        Number(p.paid_total_ngn),
-      0
-    );
-  }
+  // Unit-linked expenses (e.g. AEPB / government) are billed to the shop.
+  // Net against ledger surplus + unallocated payment credits so a paid AEPB
+  // does not keep the tenant dashboard in debt.
+  const { data: expenses } = await admin
+    .from("property_expenses")
+    .select("id, description, amount_ngn, expense_date, category")
+    .eq("unit_id", unitId)
+    .eq("organization_id", orgId)
+    .order("expense_date", { ascending: false });
+
+  const { balance } = computeUnitOutstanding({
+    arrearsBalance: Number(unit?.arrears_balance_ngn ?? 0),
+    periods,
+    expenseAmounts: (expenses ?? []).map((e) => Number(e.amount_ngn)),
+    unallocatedCredits: sumUnallocatedCredits(payments ?? []),
+  });
+
+  const expenseLines: LedgerLineItem[] = (expenses ?? []).map((exp) => {
+    const amount = Number(exp.amount_ngn);
+    const category =
+      exp.category === "government" ? "Government bill" : "Expense";
+    return {
+      id: `expense:${exp.id}`,
+      date: String(exp.expense_date).slice(0, 10),
+      description: `${category} · ${exp.description}`,
+      amount: -amount,
+      kind: "charge" as const,
+    };
+  });
+
+  const combined = [...paymentLines, ...ledgerLines, ...expenseLines].sort(
+    (a, b) => b.date.localeCompare(a.date)
+  );
 
   if (combined.length === 0 && balance === 0 && !useAdmin) {
     return fetchTenantLedger(orgId, unitId, true);

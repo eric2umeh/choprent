@@ -13,6 +13,7 @@ import { TenantPaymentStatusBadge } from "@/components/tenants/tenant-payment-st
 import { LeaseForm } from "@/components/leases/lease-form";
 import { confirmDialog } from "@/components/ui/confirm-dialog";
 import { toast } from "@/components/ui/toast";
+import { Tabs } from "@/components/ui/tabs";
 import { endActiveLease } from "@/lib/actions/leases";
 import { inviteTenant } from "@/lib/actions/tenant-invite";
 import type { LeaseDetail } from "@/lib/data/leases";
@@ -22,6 +23,14 @@ import type { SettlementAccountItem } from "@/lib/settlement/format-account";
 import { formatNaira } from "@/lib/auth/roles";
 import { formatDisplayDate, formatDateRange } from "@/lib/utils/format-date";
 import { Mail } from "lucide-react";
+
+const DETAIL_TABS = [
+  { id: "payments", label: "Payment history" },
+  { id: "expenses", label: "Unit expenses & repairs" },
+  { id: "documents", label: "Documents" },
+] as const;
+
+type DetailTabId = (typeof DETAIL_TABS)[number]["id"];
 
 export function TenantDetailClient({
   orgSlug,
@@ -40,6 +49,7 @@ export function TenantDetailClient({
 }) {
   const router = useRouter();
   const [editOpen, setEditOpen] = useState(false);
+  const [detailTab, setDetailTab] = useState<DetailTabId>("payments");
   const [ending, startEnd] = useTransition();
   const [inviting, startInvite] = useTransition();
 
@@ -250,7 +260,8 @@ export function TenantDetailClient({
               <span className="text-detail-value tabular-nums">
                 {formatNaira(
                   Math.max(0, lease.annualTotal - lease.paidAmount) +
-                    Math.max(0, lease.arrears)
+                    Math.max(0, lease.arrears) +
+                    Math.max(0, lease.expenseOutstanding)
                 )}
               </span>
               <TenantPaymentStatusBadge
@@ -342,35 +353,42 @@ export function TenantDetailClient({
         </div>
       </div>
 
-      <ListPanel>
-        <h2 className="border-b border-border px-3 py-3 text-card-title">
-          Payment history
-        </h2>
-        <ResponsiveDataTable
-          rows={lease.payments}
-          columns={paymentColumns}
-          emptyMessage="No payments recorded yet."
-        />
-      </ListPanel>
-
-      <ListPanel>
-        <h2 className="border-b border-border px-3 py-3 text-card-title">
-          Unit expenses &amp; repairs
-        </h2>
-        <ExpenseHistoryTable
-          expenses={unitExpenses}
-          showProperty={false}
-          showUnit={false}
-        />
-      </ListPanel>
-
-      <EntityDocumentsSection
-        orgSlug={orgSlug}
-        documents={documents}
-        canManage={canManage}
-        defaultLeaseId={lease.id}
-        defaultUnitId={lease.unitId}
+      <Tabs
+        tabs={[...DETAIL_TABS]}
+        active={detailTab}
+        onChange={(id) => setDetailTab(id as DetailTabId)}
       />
+
+      {detailTab === "payments" && (
+        <ListPanel>
+          <ResponsiveDataTable
+            rows={lease.payments}
+            columns={paymentColumns}
+            emptyMessage="No payments recorded yet."
+          />
+        </ListPanel>
+      )}
+
+      {detailTab === "expenses" && (
+        <ListPanel>
+          <ExpenseHistoryTable
+            expenses={unitExpenses}
+            showProperty={false}
+            showUnit={false}
+          />
+        </ListPanel>
+      )}
+
+      {detailTab === "documents" && (
+        <EntityDocumentsSection
+          orgSlug={orgSlug}
+          documents={documents}
+          canManage={canManage}
+          defaultLeaseId={lease.id}
+          defaultUnitId={lease.unitId}
+          embedded
+        />
+      )}
 
       {lease.priorLeases.length > 0 && (
         <ListPanel>

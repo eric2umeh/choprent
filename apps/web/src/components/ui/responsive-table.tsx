@@ -18,11 +18,14 @@ export function ResponsiveDataTable<T extends { id: string }>({
   columns,
   onRowClick,
   emptyMessage = "No results",
+  /** Always use stacked rows (for narrow containers like tenant portal). */
+  forceStacked = false,
 }: {
   rows: T[];
   columns: Column<T>[];
   onRowClick?: (row: T) => void;
   emptyMessage?: string;
+  forceStacked?: boolean;
 }) {
   const primaryCols = columns.filter((c) => c.mobilePrimary);
   const detailCols = columns.filter((c) => !c.mobilePrimary);
@@ -36,7 +39,7 @@ export function ResponsiveDataTable<T extends { id: string }>({
   return (
     <>
       {/* Desktop table */}
-      <div className="hidden md:block">
+      <div className={cn(forceStacked ? "hidden" : "hidden md:block")}>
         <table className="w-full table-fixed text-left">
           <thead>
             <tr className="border-b border-border bg-surface-subtle/80">
@@ -75,7 +78,12 @@ export function ResponsiveDataTable<T extends { id: string }>({
       </div>
 
       {/* Mobile stacked rows — no horizontal scroll */}
-      <div className="divide-y divide-border md:hidden">
+      <div
+        className={cn(
+          "divide-y divide-border",
+          !forceStacked && "md:hidden"
+        )}
+      >
         {rows.map((row) => (
           <MobileRow
             key={row.id}

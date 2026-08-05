@@ -2,10 +2,7 @@ import { createClient } from "@/lib/supabase/server";
 import { getTenantLedger } from "@/lib/data/ledger";
 import { formatBillingPeriodLabel } from "@/lib/charges/period-ranges";
 import { isPaystackDvaEnabled } from "@/lib/paystack/client";
-import {
-  deriveTenantPaymentStatus,
-  type TenantPaymentStatus,
-} from "@/lib/data/tenant-payment-status";
+import type { TenantPaymentStatus } from "@/lib/data/tenant-payment-status";
 
 export type SettlementAccount = {
   bankName: string;
@@ -46,8 +43,7 @@ export async function getTenantHomeSummary(
   };
 
   const dvaEnabled = isPaystackDvaEnabled();
-  const [{ count: pendingCount }, dva, periodInfo, leaseFinancials] =
-    await Promise.all([
+  const [{ count: pendingCount }, dva, periodInfo] = await Promise.all([
       supabase
         .from("payments")
         .select("id", { count: "exact", head: true })
@@ -63,11 +59,6 @@ export async function getTenantHomeSummary(
         .eq("status", "open")
         .order("period_start", { ascending: false })
         .limit(1)
-        .maybeSingle(),
-      supabase
-        .from("units")
-        .select("arrears_balance_ngn")
-        .eq("id", unitId)
         .maybeSingle(),
     ]);
 
@@ -97,8 +88,17 @@ export async function getTenantHomeSummary(
 
   const expected = Number(openPeriod?.expected_total_ngn ?? 0);
   const paid = Number(openPeriod?.paid_total_ngn ?? 0);
-  const arrears = Number(leaseFinancials.data?.arrears_balance_ngn ?? 0);
-  const rentStatus = deriveTenantPaymentStatus(expected, paid, arrears);
+
+  // Status follows true outstanding (rent + arrears + unit expenses like AEPB).
+  // "Paid" only when nothing is owed; remaining bills after rent show as in debt.
+  let rentStatus: TenantPaymentStatus;
+  if (balance <= 0) {
+    rentStatus = "paid";
+  } else if (paid > 0 && paid < expected) {
+    rentStatus = "partial";
+  } else {
+    rentStatus = "debt";
+  }
 
   // Prefer staff-assigned settlement; only fall back to DVA when none is set.
   const payAccount = resolvedCollection ?? dva;

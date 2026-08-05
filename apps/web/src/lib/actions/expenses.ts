@@ -161,6 +161,8 @@ export async function saveExpense(
   revalidatePath(`/d/${orgSlug}/analytics`);
   revalidatePath(`/d/${orgSlug}/reports`);
   if (unitId) {
+    revalidatePath(`/t/${orgSlug}`);
+    revalidatePath(`/t/${orgSlug}/ledger`);
     const { data: unitRow } = await admin
       .from("units")
       .select("unit_code")
@@ -190,7 +192,7 @@ export async function deleteExpense(
   const admin = createAdminClient();
   const { data: existing } = await admin
     .from("property_expenses")
-    .select("id")
+    .select("id, unit_id")
     .eq("id", expenseId)
     .eq("organization_id", ctx.org.id)
     .maybeSingle();
@@ -203,5 +205,9 @@ export async function deleteExpense(
   revalidatePath(`/d/${orgSlug}/expenses`);
   revalidatePath(`/d/${orgSlug}/analytics`);
   revalidatePath(`/d/${orgSlug}/reports`);
+  if (existing.unit_id) {
+    revalidatePath(`/t/${orgSlug}`);
+    revalidatePath(`/t/${orgSlug}/ledger`);
+  }
   return { success: true };
 }

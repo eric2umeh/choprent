@@ -131,7 +131,9 @@ export function LeasesList({
       header: "Rent status",
       render: (l) => {
         const outstanding =
-          Math.max(0, l.annualTotal - l.paidAmount) + Math.max(0, l.arrears);
+          Math.max(0, l.annualTotal - l.paidAmount) +
+          Math.max(0, l.arrears) +
+          Math.max(0, l.expenseOutstanding);
         return (
           <div className="flex flex-col items-start gap-1">
             <span className="text-table-cell-strong tabular-nums">
@@ -304,7 +306,8 @@ export function LeasesList({
                     <span className="text-sm font-semibold tabular-nums">
                       {formatNaira(
                         Math.max(0, l.annualTotal - l.paidAmount) +
-                          Math.max(0, l.arrears)
+                          Math.max(0, l.arrears) +
+                          Math.max(0, l.expenseOutstanding)
                       )}
                     </span>
                     <TenantPaymentStatusBadge

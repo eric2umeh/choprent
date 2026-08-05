@@ -8,6 +8,10 @@ import {
 } from "@/lib/data/tenant-payment-status";
 import { actorLabel, resolveActorLabels } from "@/lib/data/audit-actors";
 import { listBillingPeriods } from "@/lib/charges/period-ranges";
+import {
+  computeUnitOutstanding,
+  sumUnallocatedCredits,
+} from "@/lib/data/unit-outstanding";
 
 export type LeaseListItem = {
   id: string;
@@ -28,6 +32,8 @@ export type LeaseListItem = {
   annualTotal: number;
   paidAmount: number;
   arrears: number;
+  /** Unpaid unit-linked expenses (AEPB, etc.) after payment credits. */
+  expenseOutstanding: number;
   paymentStatus: TenantPaymentStatus;
   settlementAccountId: string | null;
 };
@@ -72,12 +78,14 @@ type LeaseRow = {
     | {
         unit_code: string;
         site_id: string;
+        organization_id: string;
         arrears_balance_ngn: number;
         sites: { name: string; slug?: string } | { name: string; slug?: string }[] | null;
       }
     | {
         unit_code: string;
         site_id: string;
+        organization_id: string;
         arrears_balance_ngn: number;
         sites: { name: string; slug?: string } | { name: string; slug?: string }[] | null;
       }[]
@@ -116,12 +124,18 @@ async function getLeaseFinancials(
   leaseId: string,
   unitId: string,
   arrearsBalance: number,
+  orgId: string,
   leaseMeta?: {
     startDate: string;
     endDate: string;
     billingCadence: BillingCadence;
   }
-): Promise<{ expected: number; paid: number; arrears: number }> {
+): Promise<{
+  expected: number;
+  paid: number;
+  arrears: number;
+  expenseOutstanding: number;
+}> {
   const arrears = Number(arrearsBalance ?? 0);
 
   let startDate = leaseMeta?.startDate;
@@ -149,11 +163,19 @@ async function getLeaseFinancials(
   const { data: periods } = await admin
     .from("ledger_periods")
     .select(
-      "expected_total_ngn, paid_total_ngn, status, lease_id, period_start, period_end"
+      "expected_total_ngn, paid_total_ngn, arrears_opening_ngn, status, lease_id, period_start, period_end"
     )
     .eq("unit_id", unitId)
     .eq("status", "open")
     .order("period_start", { ascending: false });
+
+  let expected = 0;
+  let paid = 0;
+  let relevantPeriods: Array<{
+    expected_total_ngn: number;
+    paid_total_ngn: number;
+    arrears_opening_ngn: number;
+  }> = [];
 
   if (periods?.length) {
     const forLease = periods.filter((p) => p.lease_id === leaseId);
@@ -162,28 +184,56 @@ async function getLeaseFinancials(
       expectedStarts.size > 0
         ? pool.filter((p) => expectedStarts.has(p.period_start))
         : pool;
-    const expected = relevant.reduce(
+    expected = relevant.reduce(
       (sum, p) => sum + Number(p.expected_total_ngn),
       0
     );
-    const paid = relevant.reduce((sum, p) => sum + Number(p.paid_total_ngn), 0);
-    if (expected > 0) {
-      return { expected, paid, arrears };
-    }
+    paid = relevant.reduce((sum, p) => sum + Number(p.paid_total_ngn), 0);
+    relevantPeriods = relevant.map((p) => ({
+      expected_total_ngn: Number(p.expected_total_ngn),
+      paid_total_ngn: Number(p.paid_total_ngn),
+      arrears_opening_ngn: Number(p.arrears_opening_ngn ?? 0),
+    }));
   }
 
-  const { data: template } = await admin
-    .from("charge_templates")
-    .select("amount")
-    .eq("scope", "unit")
-    .eq("scope_id", unitId)
-    .eq("charge_kind", "rent")
-    .order("effective_from", { ascending: false })
-    .limit(1)
-    .maybeSingle();
+  if (expected <= 0) {
+    const { data: template } = await admin
+      .from("charge_templates")
+      .select("amount")
+      .eq("scope", "unit")
+      .eq("scope_id", unitId)
+      .eq("charge_kind", "rent")
+      .order("effective_from", { ascending: false })
+      .limit(1)
+      .maybeSingle();
 
-  const expected = Number(template?.amount ?? 0);
-  return { expected, paid: 0, arrears };
+    expected = Number(template?.amount ?? 0);
+    // Keep relevantPeriods for expense credit netting; display paid stays 0
+    // when there is no open schedule amount.
+    if (!relevantPeriods.length) paid = 0;
+  }
+
+  const [{ data: expenses }, { data: payments }] = await Promise.all([
+    admin
+      .from("property_expenses")
+      .select("amount_ngn")
+      .eq("unit_id", unitId)
+      .eq("organization_id", orgId),
+    admin
+      .from("payments")
+      .select("status, metadata")
+      .eq("unit_id", unitId)
+      .in("status", ["verified", "auto_matched"]),
+  ]);
+
+  const { expenseOutstanding } = computeUnitOutstanding({
+    arrearsBalance: 0,
+    periods: relevantPeriods,
+    expenseAmounts: (expenses ?? []).map((e) => Number(e.amount_ngn)),
+    unallocatedCredits: sumUnallocatedCredits(payments ?? []),
+  });
+
+  return { expected, paid, arrears, expenseOutstanding };
 }
 
 async function mapLeaseRows(
@@ -193,17 +243,20 @@ async function mapLeaseRows(
   return Promise.all(
     rows.map(async (row) => {
       const unit = unitFromRow(row.units);
-      const { expected, paid, arrears } = await getLeaseFinancials(
-        admin,
-        row.id,
-        row.unit_id,
-        unit?.arrears_balance_ngn ?? 0,
-        {
-          startDate: row.start_date,
-          endDate: row.end_date,
-          billingCadence: row.billing_cadence,
-        }
-      );
+      const orgId = unit?.organization_id ?? "";
+      const { expected, paid, arrears, expenseOutstanding } =
+        await getLeaseFinancials(
+          admin,
+          row.id,
+          row.unit_id,
+          unit?.arrears_balance_ngn ?? 0,
+          orgId,
+          {
+            startDate: row.start_date,
+            endDate: row.end_date,
+            billingCadence: row.billing_cadence,
+          }
+        );
 
       return {
         id: row.id,
@@ -224,7 +277,12 @@ async function mapLeaseRows(
         annualTotal: expected,
         paidAmount: paid,
         arrears,
-        paymentStatus: deriveTenantPaymentStatus(expected, paid, arrears),
+        expenseOutstanding,
+        paymentStatus: deriveTenantPaymentStatus(
+          expected,
+          paid,
+          arrears + expenseOutstanding
+        ),
         settlementAccountId: row.settlement_account_id ?? null,
       };
     })
