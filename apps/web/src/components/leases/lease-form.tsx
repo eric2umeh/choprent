@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
   createLease,
@@ -14,9 +14,21 @@ import { SearchableSelect } from "@/components/ui/searchable-select";
 import { toast } from "@/components/ui/toast";
 import type { LeaseListItem } from "@/lib/data/leases";
 import {
+  anniversaryEndDate,
+  defaultAnnualLeaseRange,
+  parseDate,
+  toIsoDate,
+} from "@/lib/charges/period-ranges";
+import {
   formatSettlementAccountLabel,
   type SettlementAccountItem,
 } from "@/lib/settlement/format-account";
+
+function dayAfter(iso: string): string {
+  const d = parseDate(iso);
+  d.setDate(d.getDate() + 1);
+  return toIsoDate(d);
+}
 
 export function LeaseForm({
   orgSlug,
@@ -43,6 +55,26 @@ export function LeaseForm({
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [selectedUnitId, setSelectedUnitId] = useState("");
+
+  const initialDates = useMemo(() => {
+    if (mode === "edit" && lease) {
+      return { start: lease.startDate, end: lease.endDate };
+    }
+    if (mode === "renew" && lease) {
+      const start = dayAfter(lease.endDate);
+      return { start, end: anniversaryEndDate(start, 1) };
+    }
+    return defaultAnnualLeaseRange();
+  }, [mode, lease]);
+
+  const [startDate, setStartDate] = useState(initialDates.start);
+  const [endDate, setEndDate] = useState(initialDates.end);
+
+  useEffect(() => {
+    if (!open) return;
+    setStartDate(initialDates.start);
+    setEndDate(initialDates.end);
+  }, [open, initialDates.start, initialDates.end]);
 
   const selectedSiteId = useMemo(() => {
     if (mode !== "create" && lease) return lease.propertyId;
@@ -102,8 +134,6 @@ export function LeaseForm({
     router.refresh();
     onClose();
   }
-
-  const nextYear = new Date().getFullYear() + 1;
 
   const title =
     mode === "create"
@@ -285,13 +315,14 @@ export function LeaseForm({
               type="date"
               required
               disabled={loading}
-              defaultValue={
-                mode === "edit" && lease
-                  ? lease.startDate
-                  : mode === "renew"
-                    ? `${nextYear}-01-01`
-                    : new Date().toISOString().slice(0, 10)
-              }
+              value={startDate}
+              onChange={(e) => {
+                const nextStart = e.target.value;
+                setStartDate(nextStart);
+                if (nextStart) {
+                  setEndDate(anniversaryEndDate(nextStart, 1));
+                }
+              }}
               className="input-field mt-1"
             />
           </div>
@@ -302,13 +333,13 @@ export function LeaseForm({
               type="date"
               required
               disabled={loading}
-              defaultValue={
-                mode === "edit" && lease
-                  ? lease.endDate
-                  : `${nextYear}-12-31`
-              }
+              value={endDate}
+              onChange={(e) => setEndDate(e.target.value)}
               className="input-field mt-1"
             />
+            <p className="mt-0.5 text-[11px] text-muted">
+              Defaults to one year from start (e.g. 05-08-2026 → 04-08-2027).
+            </p>
           </div>
         </div>
 

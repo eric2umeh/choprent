@@ -33,6 +33,20 @@ function addYearsMinusOneDay(date: Date, years: number): Date {
   return result;
 }
 
+/** End of an annual lease term: start + N years − 1 day (e.g. 2026-08-05 → 2027-08-04). */
+export function anniversaryEndDate(startIso: string, years = 1): string {
+  return toIsoDate(addYearsMinusOneDay(parseDate(startIso), years));
+}
+
+/** Default annual lease window starting today (or a given start date). */
+export function defaultAnnualLeaseRange(fromIso?: string): {
+  start: string;
+  end: string;
+} {
+  const start = fromIso ?? toIsoDate(new Date());
+  return { start, end: anniversaryEndDate(start, 1) };
+}
+
 const MONTHS = [
   "Jan",
   "Feb",
