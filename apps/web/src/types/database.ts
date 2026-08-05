@@ -15,6 +15,8 @@ export type BillingCadence = "monthly" | "quarterly" | "annual";
 export type PaymentStatus = "pending" | "auto_matched" | "verified" | "rejected";
 export type PaymentMethod =
   | "bank_transfer"
+  | "cheque"
+  | "cash"
   | "dedicated_account"
   | "cash_recorded"
   | "gateway_checkout";
