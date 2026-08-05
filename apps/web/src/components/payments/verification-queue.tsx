@@ -15,6 +15,8 @@ import { Check, X, FileImage, Clock } from "lucide-react";
 function methodLabel(m: string) {
   const map: Record<string, string> = {
     bank_transfer: "Transfer",
+    cheque: "Cheque",
+    cash: "Cash",
     cash_recorded: "Cash",
     dedicated_account: "DVA",
   };
