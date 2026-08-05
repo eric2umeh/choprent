@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { requireTenantContext } from "@/lib/auth/session";
 import { notifyPaymentSubmitted } from "@/lib/notifications/staff-notify";
 import { metadataWithPaymentNote } from "@/lib/payments/payment-metadata";
+import { parseTenantPaymentMethod } from "@/lib/payments/methods";
 import { uploadPaymentAttachments } from "@/lib/storage/payment-attachments";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
@@ -78,6 +79,8 @@ export async function submitTransferPayment(
 
   metadata = metadataWithPaymentNote(metadata, paymentNote);
 
+  const paymentMethod = parseTenantPaymentMethod(formData.get("payment_method"));
+
   const paymentInsert = {
     organization_id: ctx.org.id,
     tenant_id: ctx.user.id,
@@ -85,7 +88,7 @@ export async function submitTransferPayment(
     amount_ngn: amount,
     period_label: periodLabel,
     bank_reference: bankReference,
-    payment_method: "bank_transfer" as const,
+    payment_method: paymentMethod,
     status: "pending" as const,
     payment_date: new Date().toISOString().slice(0, 10),
     recorded_by: ctx.user.id,
