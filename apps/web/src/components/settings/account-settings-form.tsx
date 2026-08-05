@@ -43,11 +43,19 @@ export function ProfileSettingsForm({
     }
     if (state.success && !lastSuccess.current) {
       lastSuccess.current = true;
-      toast.success("Profile updated.");
-      router.refresh();
+      toast.success(
+        state.newSlug
+          ? `Workspace updated. Your URL is now /d/${state.newSlug}`
+          : "Profile updated."
+      );
+      if (state.newSlug) {
+        router.push(`/d/${state.newSlug}/settings`);
+      } else {
+        router.refresh();
+      }
       onSaved?.();
     }
-  }, [state.error, state.success, onSaved, router]);
+  }, [state.error, state.success, state.newSlug, onSaved, router]);
 
   return (
     <FormPanel>
@@ -63,6 +71,39 @@ export function ProfileSettingsForm({
             defaultValue={profile.ownerDisplayName ?? ""}
             disabled={!canEdit || pending}
           />
+        </div>
+        <div>
+          <label className="text-label normal-case">Workspace / plaza name</label>
+          <input
+            name="workspace_name"
+            className="input-field mt-1.5"
+            defaultValue={profile.orgName ?? ""}
+            placeholder="Befs Plaza"
+            disabled={!canEdit || pending}
+            required
+          />
+          <p className="mt-1 text-form-hint">
+            Shown in the dashboard. Shared by owner, managers, agents, and tenants.
+          </p>
+        </div>
+        <div>
+          <label className="text-label normal-case">Workspace URL slug</label>
+          <input
+            name="workspace_slug"
+            className="input-field mt-1.5 font-mono text-sm"
+            defaultValue={profile.slug ?? orgSlug}
+            placeholder="befs-plaza"
+            disabled={!canEdit || pending}
+            required
+            pattern="[a-z0-9]+(-[a-z0-9]+)*"
+            title="Lowercase letters, numbers, and hyphens"
+          />
+          <p className="mt-1 text-form-hint">
+            Staff: <code className="text-xs">/d/{profile.slug || orgSlug}</code>
+            {" · "}
+            Tenants: <code className="text-xs">/t/{profile.slug || orgSlug}</code>
+            . Same slug for everyone in this plaza — not one per role.
+          </p>
         </div>
         <div>
           <label className="text-label normal-case">Company name (optional)</label>
