@@ -1,6 +1,10 @@
 "use server";
 
 import { requireTenantContext } from "@/lib/auth/session";
+import {
+  MIN_PASSWORD_LENGTH,
+  MIN_PASSWORD_MESSAGE,
+} from "@/lib/auth/password-validation";
 import { createClient } from "@/lib/supabase/server";
 
 export type TenantAccountActionState = {
@@ -18,8 +22,8 @@ export async function changeTenantPassword(
   const password = String(formData.get("password") ?? "");
   const confirm = String(formData.get("confirm_password") ?? "");
 
-  if (password.length < 8) {
-    return { error: "Password must be at least 8 characters." };
+  if (password.length < MIN_PASSWORD_LENGTH) {
+    return { error: MIN_PASSWORD_MESSAGE };
   }
   if (password !== confirm) {
     return { error: "Passwords do not match." };
