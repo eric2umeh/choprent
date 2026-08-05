@@ -2,6 +2,10 @@ import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { repairStaleLedgerPeriodsForUnit } from "@/lib/charges/generate-ledger";
 import { listBillingPeriods } from "@/lib/charges/period-ranges";
+import {
+  computeUnitOutstanding,
+  sumUnallocatedCredits,
+} from "@/lib/data/unit-outstanding";
 
 export type LedgerLineItem = {
   id: string;
@@ -91,7 +95,7 @@ async function fetchTenantLedger(
 
   const { data: payments } = await client
     .from("payments")
-    .select("id, amount_ngn, payment_date, status, created_at, period_label")
+    .select("id, amount_ngn, payment_date, status, created_at, period_label, metadata")
     .eq("unit_id", unitId)
     .in("status", ["verified", "auto_matched", "pending"])
     .order("created_at", { ascending: false });
@@ -113,18 +117,9 @@ async function fetchTenantLedger(
     .eq("id", unitId)
     .maybeSingle();
 
-  let balance = Number(unit?.arrears_balance_ngn ?? 0);
-  for (const p of periods) {
-    balance += Math.max(
-      Number(p.expected_total_ngn) +
-        Number(p.arrears_opening_ngn) -
-        Number(p.paid_total_ngn),
-      0
-    );
-  }
-
-  // Unit-linked expenses (e.g. AEPB / government) are billed to the shop —
-  // include them in outstanding so tenant dashboards match staff breakdown.
+  // Unit-linked expenses (e.g. AEPB / government) are billed to the shop.
+  // Net against ledger surplus + unallocated payment credits so a paid AEPB
+  // does not keep the tenant dashboard in debt.
   const { data: expenses } = await admin
     .from("property_expenses")
     .select("id, description, amount_ngn, expense_date, category")
@@ -132,9 +127,15 @@ async function fetchTenantLedger(
     .eq("organization_id", orgId)
     .order("expense_date", { ascending: false });
 
+  const { balance } = computeUnitOutstanding({
+    arrearsBalance: Number(unit?.arrears_balance_ngn ?? 0),
+    periods,
+    expenseAmounts: (expenses ?? []).map((e) => Number(e.amount_ngn)),
+    unallocatedCredits: sumUnallocatedCredits(payments ?? []),
+  });
+
   const expenseLines: LedgerLineItem[] = (expenses ?? []).map((exp) => {
     const amount = Number(exp.amount_ngn);
-    balance += Math.max(amount, 0);
     const category =
       exp.category === "government" ? "Government bill" : "Expense";
     return {
