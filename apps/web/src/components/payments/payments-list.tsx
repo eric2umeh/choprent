@@ -33,6 +33,8 @@ import { Check, X, FileImage, Pencil, Undo2, Trash2 } from "lucide-react";
 function methodLabel(m: string) {
   const map: Record<string, string> = {
     bank_transfer: "Transfer",
+    cheque: "Cheque",
+    cash: "Cash",
     cash_recorded: "Cash",
     dedicated_account: "DVA",
   };
@@ -240,6 +242,23 @@ export function PaymentsList({
           )}
         </div>
       ),
+    },
+    {
+      key: "verified",
+      header: "Verified",
+      render: (p) =>
+        p.status === "verified" || p.status === "auto_matched" ? (
+          <div>
+            <span className="text-table-cell-muted tabular-nums">
+              {p.verifiedAt ? formatDisplayDate(p.verifiedAt) : "—"}
+            </span>
+            {p.verifiedByName && (
+              <p className="mt-0.5 text-[11px] text-muted">{p.verifiedByName}</p>
+            )}
+          </div>
+        ) : (
+          <span className="text-table-cell-muted">—</span>
+        ),
     },
     {
       key: "status",
@@ -456,7 +475,9 @@ export function PaymentsList({
             options={[
               { value: "all", label: "All methods" },
               { value: "bank_transfer", label: "Transfer" },
-              { value: "cash_recorded", label: "Cash" },
+              { value: "cheque", label: "Cheque" },
+              { value: "cash", label: "Cash (tenant)" },
+              { value: "cash_recorded", label: "Cash (office)" },
               { value: "dedicated_account", label: "DVA" },
             ]}
           />
@@ -469,7 +490,7 @@ export function PaymentsList({
               className="btn-primary px-3 py-1.5"
               onClick={() => setShowCashForm(true)}
             >
-              Record cash
+              Record payment
             </button>
           )}
         </div>
