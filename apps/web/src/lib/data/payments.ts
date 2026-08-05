@@ -107,7 +107,10 @@ function mapPaymentRow(
     paymentDate: row.payment_date,
     paymentNote: paymentNoteFromRow(row),
     createdAt: row.created_at,
-    submittedByName: actorLabel(actors, row.recorded_by ?? row.tenant_id),
+    submittedByName: actorLabel(
+      actors,
+      row.recorded_by ?? row.tenant_id ?? row.verified_by
+    ),
     verifiedByName: actorLabel(actors, row.verified_by),
   };
 }
@@ -122,7 +125,7 @@ async function mapPaymentRows(
 ): Promise<PaymentListItem[]> {
   const actors = await resolveActorLabels(
     orgId,
-    rows.flatMap((r) => [r.recorded_by ?? r.tenant_id, r.verified_by])
+    rows.flatMap((r) => [r.recorded_by, r.tenant_id, r.verified_by])
   );
 
   return Promise.all(
