@@ -103,14 +103,20 @@ export function DocumentsList({
       key: "title",
       header: "Document",
       mobilePrimary: true,
-      render: (d) => <span className="text-table-cell-strong">{d.title}</span>,
+      className: "w-[36%]",
+      render: (d) => (
+        <p className="break-words text-table-cell-strong leading-snug">
+          {d.title}
+        </p>
+      ),
     },
     {
       key: "unit",
       header: "Unit",
       mobilePrimary: true,
+      className: "w-[14%]",
       render: (d) => (
-        <span className="text-table-cell-muted">
+        <span className="text-table-cell">
           {d.unitCode ? `Unit ${d.unitCode}` : "Plaza-wide"}
         </span>
       ),
@@ -119,6 +125,7 @@ export function DocumentsList({
       key: "type",
       header: "Type",
       mobilePrimary: true,
+      className: "w-[12%]",
       render: (d) => (
         <Badge variant={docTypeVariant(d.docType)} className="capitalize">
           {d.docType}
@@ -128,9 +135,10 @@ export function DocumentsList({
     {
       key: "issued",
       header: "Issued",
+      className: "w-[18%]",
       render: (d) => (
         <div>
-          <span className="text-table-cell-muted tabular-nums">
+          <span className="text-table-cell tabular-nums">
             {formatDisplayDate(d.issuedAt)}
           </span>
           {d.issuedByName && (
@@ -142,10 +150,12 @@ export function DocumentsList({
     {
       key: "action",
       header: "",
+      mobilePrimary: true,
+      className: "w-[7.5rem]",
       render: (d) => (
         <button
           type="button"
-          className="btn-ghost inline-flex gap-1 px-2 py-1"
+          className="btn-ghost inline-flex shrink-0 items-center gap-1.5 whitespace-nowrap px-2.5 py-1.5"
           disabled={!d.filePath || downloadingId === d.id}
           onClick={(e) => {
             e.stopPropagation();
@@ -153,11 +163,11 @@ export function DocumentsList({
           }}
         >
           {downloadingId === d.id ? (
-            <Spinner className="h-3.5 w-3.5" />
+            <Spinner className="h-3.5 w-3.5 shrink-0" />
           ) : (
-            <Download className="h-3.5 w-3.5" />
+            <Download className="h-3.5 w-3.5 shrink-0" />
           )}
-          <span className="hidden sm:inline">Download</span>
+          Download
         </button>
       ),
     },
@@ -186,6 +196,7 @@ export function DocumentsList({
               { value: "attachment", label: "Attachment" },
               { value: "letter", label: "Letter" },
               { value: "notice", label: "Notice" },
+              { value: "government", label: "Government" },
               { value: "statement", label: "Statement" },
               { value: "receipt", label: "Receipt" },
             ]}
@@ -259,49 +270,123 @@ export function DocumentsList({
 
       <ListPanel>
         {view === "table" ? (
-          <ResponsiveDataTable
-            rows={slice}
-            columns={columns}
-            emptyMessage="No documents match your filters"
-          />
-        ) : (
-          <div className="grid gap-2 p-3 sm:grid-cols-2 xl:grid-cols-3">
-            {slice.map((doc) => (
-              <CompactCard key={doc.id}>
-                <div className="flex items-start gap-2">
-                  <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-green-100 text-green-700">
-                    <FileText className="h-4 w-4" />
-                  </div>
-                  <div className="min-w-0 flex-1">
-                    <p className="truncate text-list-primary">{doc.title}</p>
-                    <p className="text-list-meta">
-                      {doc.unitCode ? `Unit ${doc.unitCode}` : "Plaza-wide"} ·{" "}
-                      {formatDisplayDate(doc.issuedAt)}
-                      {doc.issuedByName ? ` · ${doc.issuedByName}` : ""}
-                    </p>
-                  </div>
-                  <Badge
-                    variant={docTypeVariant(doc.docType)}
-                    className="capitalize shrink-0"
+          tenantOnly ? (
+            slice.length === 0 ? (
+              <div className="px-3 py-10 text-center text-empty-state">
+                No documents match your filters
+              </div>
+            ) : (
+              <div className="divide-y divide-border">
+                {slice.map((doc) => (
+                  <div
+                    key={doc.id}
+                    className="flex items-start gap-3 bg-white px-3 py-3.5"
                   >
-                    {doc.docType}
-                  </Badge>
-                </div>
-                <button
-                  type="button"
-                  className="btn-ghost mt-2 w-full py-1.5 text-xs"
-                  disabled={!doc.filePath || downloadingId === doc.id}
-                  onClick={() => handleDownload(doc.id)}
+                    <div className="min-w-0 flex-1 space-y-1.5">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <p className="min-w-0 break-words text-table-cell-strong leading-snug">
+                          {doc.title}
+                        </p>
+                        <Badge
+                          variant={docTypeVariant(doc.docType)}
+                          className="shrink-0 capitalize"
+                        >
+                          {doc.docType}
+                        </Badge>
+                      </div>
+                      <p className="text-sm font-medium text-foreground/80">
+                        {doc.unitCode ? `Unit ${doc.unitCode}` : "Plaza-wide"}
+                      </p>
+                      <p className="text-list-meta leading-normal">
+                        {formatDisplayDate(doc.issuedAt)}
+                        {doc.issuedByName ? ` · ${doc.issuedByName}` : ""}
+                      </p>
+                    </div>
+                    <button
+                      type="button"
+                      className="btn-ghost inline-flex shrink-0 items-center gap-1.5 whitespace-nowrap px-2.5 py-1.5"
+                      disabled={!doc.filePath || downloadingId === doc.id}
+                      onClick={() => handleDownload(doc.id)}
+                    >
+                      {downloadingId === doc.id ? (
+                        <Spinner className="h-3.5 w-3.5 shrink-0" />
+                      ) : (
+                        <Download className="h-3.5 w-3.5 shrink-0" />
+                      )}
+                      Download
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )
+          ) : (
+            <ResponsiveDataTable
+              rows={slice}
+              columns={columns}
+              emptyMessage="No documents match your filters"
+            />
+          )
+        ) : (
+          <div
+            className={
+              tenantOnly
+                ? "grid grid-cols-1 gap-3 p-3"
+                : "grid grid-cols-1 gap-3 p-3 sm:grid-cols-2 xl:grid-cols-3"
+            }
+          >
+            {slice.length === 0 ? (
+              <p className="col-span-full px-1 py-8 text-center text-empty-state">
+                No documents match your filters
+              </p>
+            ) : (
+              slice.map((doc) => (
+                <CompactCard
+                  key={doc.id}
+                  className="flex flex-col gap-3 p-3.5"
                 >
-                  {downloadingId === doc.id ? (
-                    <Spinner className="mr-1 inline h-3.5 w-3.5" />
-                  ) : (
-                    <Download className="mr-1 inline h-3.5 w-3.5" />
-                  )}
-                  Download
-                </button>
-              </CompactCard>
-            ))}
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="flex min-w-0 flex-1 items-start gap-2.5">
+                      <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-green-100 text-green-700">
+                        <FileText className="h-4 w-4" />
+                      </div>
+                      <div className="min-w-0 flex-1 space-y-1">
+                        <p className="line-clamp-2 text-list-primary leading-snug">
+                          {doc.title}
+                        </p>
+                        <p className="text-sm font-medium text-foreground/80">
+                          {doc.unitCode
+                            ? `Unit ${doc.unitCode}`
+                            : "Plaza-wide"}
+                        </p>
+                        <p className="text-list-meta leading-normal">
+                          {formatDisplayDate(doc.issuedAt)}
+                          {doc.issuedByName ? ` · ${doc.issuedByName}` : ""}
+                        </p>
+                      </div>
+                    </div>
+                    <Badge
+                      variant={docTypeVariant(doc.docType)}
+                      className="shrink-0 capitalize"
+                    >
+                      {doc.docType}
+                    </Badge>
+                  </div>
+                  <button
+                    type="button"
+                    className="btn-ghost inline-flex w-full items-center justify-center gap-1.5 py-2 text-xs"
+                    disabled={!doc.filePath || downloadingId === doc.id}
+                    onClick={() => handleDownload(doc.id)}
+                  >
+                    {downloadingId === doc.id ? (
+                      <Spinner className="h-3.5 w-3.5 shrink-0" />
+                    ) : (
+                      <Download className="h-3.5 w-3.5 shrink-0" />
+                    )}
+                    Download
+                  </button>
+                </CompactCard>
+              ))
+            )}
           </div>
         )}
         <Pagination
