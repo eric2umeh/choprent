@@ -11,6 +11,7 @@ import {
   notifyPaymentVerified,
 } from "@/lib/notifications/staff-notify";
 import { metadataWithPaymentNote } from "@/lib/payments/payment-metadata";
+import { parseStaffRecordPaymentMethod } from "@/lib/payments/methods";
 import { uploadPaymentAttachments } from "@/lib/storage/payment-attachments";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
@@ -155,7 +156,7 @@ export async function recordCashPayment(
 ): Promise<PaymentActionState> {
   const ctx = await requireStaffContext(orgSlug);
   if (!canVerifyPayments(ctx.role)) {
-    return { error: "You don't have permission to record cash." };
+    return { error: "You don't have permission to record payments." };
   }
 
   const unitId = String(formData.get("unit_id") ?? "");
@@ -163,6 +164,9 @@ export async function recordCashPayment(
   const periodLabel = String(formData.get("period_label") ?? "").trim() || null;
   const paymentDate = String(formData.get("payment_date") ?? "").trim() || null;
   const paymentNote = String(formData.get("payment_note") ?? "").trim() || null;
+  const paymentMethod = parseStaffRecordPaymentMethod(
+    formData.get("payment_method")
+  );
   const attachmentFiles = formData
     .getAll("attachments")
     .filter((f): f is File => f instanceof File && f.size > 0);
@@ -189,7 +193,7 @@ export async function recordCashPayment(
       amount_ngn: amount,
       period_label: periodLabel,
       payment_date: paymentDate,
-      payment_method: "cash_recorded",
+      payment_method: paymentMethod,
       status: "verified",
       verified_by: ctx.user.id,
       verified_at: new Date().toISOString(),
