@@ -23,6 +23,7 @@ export type DocumentListItem = {
   unitId: string | null;
   leaseId: string | null;
   siteId: string | null;
+  folderId: string | null;
   filePath: string;
   issuedAt: string;
   issuedByName: string | null;
@@ -35,6 +36,7 @@ type DocumentRow = {
   unit_id: string | null;
   lease_id: string | null;
   site_id: string | null;
+  folder_id?: string | null;
   file_url: string;
   issued_at: string;
   issued_by: string | null;
@@ -48,6 +50,9 @@ function unitCodeFromRow(units: DocumentRow["units"]): string | null {
 }
 
 const documentSelect =
+  "id, title, doc_type, unit_id, lease_id, site_id, folder_id, file_url, issued_at, issued_by, units(unit_code)";
+
+const documentSelectLegacy =
   "id, title, doc_type, unit_id, lease_id, site_id, file_url, issued_at, issued_by, units(unit_code)";
 
 async function mapDocumentRows(
@@ -67,6 +72,7 @@ async function mapDocumentRows(
     unitId: row.unit_id,
     leaseId: row.lease_id,
     siteId: row.site_id,
+    folderId: row.folder_id ?? null,
     filePath: row.file_url,
     issuedAt: row.issued_at,
     issuedByName: actorLabel(actors, row.issued_by),
@@ -83,6 +89,13 @@ async function fetchAllDocumentRows(orgId: string): Promise<DocumentRow[]> {
       .order("issued_at", { ascending: false });
 
     if (!error && data) return data as DocumentRow[];
+
+    const legacy = await admin
+      .from("management_documents")
+      .select(documentSelectLegacy)
+      .eq("organization_id", orgId)
+      .order("issued_at", { ascending: false });
+    if (!legacy.error && legacy.data) return legacy.data as DocumentRow[];
   } catch {
     /* fall through */
   }
@@ -90,7 +103,7 @@ async function fetchAllDocumentRows(orgId: string): Promise<DocumentRow[]> {
   const supabase = await createClient();
   const { data } = await supabase
     .from("management_documents")
-    .select(documentSelect)
+    .select(documentSelectLegacy)
     .eq("organization_id", orgId)
     .order("issued_at", { ascending: false });
 
@@ -112,6 +125,14 @@ async function fetchScopedDocumentRows(
       .order("issued_at", { ascending: false });
 
     if (!error && data) return data as DocumentRow[];
+
+    const legacy = await admin
+      .from("management_documents")
+      .select(documentSelectLegacy)
+      .eq("organization_id", orgId)
+      .eq(column, value)
+      .order("issued_at", { ascending: false });
+    if (!legacy.error && legacy.data) return legacy.data as DocumentRow[];
   } catch {
     /* fall through */
   }
@@ -119,7 +140,7 @@ async function fetchScopedDocumentRows(
   const supabase = await createClient();
   const { data } = await supabase
     .from("management_documents")
-    .select(documentSelect)
+    .select(documentSelectLegacy)
     .eq("organization_id", orgId)
     .eq(column, value)
     .order("issued_at", { ascending: false });
@@ -285,6 +306,7 @@ async function listPaymentAttachmentsForUnit(
             unitId,
             leaseId: null,
             siteId: null,
+            folderId: null,
             filePath: att.file_url,
             issuedAt: String(att.created_at).slice(0, 10) || date,
             issuedByName: null,
@@ -302,6 +324,7 @@ async function listPaymentAttachmentsForUnit(
           unitId,
           leaseId: null,
           siteId: null,
+          folderId: null,
           filePath: payment.receipt_file_url as string,
           issuedAt: date,
           issuedByName: null,
@@ -358,6 +381,7 @@ async function listExpenseAttachmentsForUnit(
           unitId: (row.unit_id as string) ?? unitId,
           leaseId: null,
           siteId: (row.site_id as string) ?? null,
+          folderId: null,
           filePath: row.attachment_url as string,
           issuedAt: String(row.expense_date),
           issuedByName: actorLabel(actors, row.created_by as string | null),
