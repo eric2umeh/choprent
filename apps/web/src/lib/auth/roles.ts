@@ -28,6 +28,13 @@ export function canVerifyPayments(role: MembershipRole | null | undefined): bool
   return isPrivilegedRole(role) || role === "manager" || role === "agent";
 }
 
+/** Landlords, admins, managers, and agents can organize tenant document folders. */
+export function canManageDocumentFolders(
+  role: MembershipRole | null | undefined
+): boolean {
+  return isPrivilegedRole(role) || role === "manager" || role === "agent";
+}
+
 export function formatNaira(amount: number): string {
   return new Intl.NumberFormat("en-NG", {
     style: "currency",
