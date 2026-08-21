@@ -9,6 +9,7 @@ import { ListPanel } from "@/components/ui/page-header";
 import { ResponsiveDataTable, type Column } from "@/components/ui/responsive-table";
 import { ExpenseHistoryTable } from "@/components/expenses/expense-history-table";
 import { EntityDocumentsSection } from "@/components/documents/entity-documents-section";
+import { TenantFoldersSection } from "@/components/documents/tenant-folders-section";
 import { TenantPaymentStatusBadge } from "@/components/tenants/tenant-payment-status-badge";
 import { LeaseForm } from "@/components/leases/lease-form";
 import { confirmDialog } from "@/components/ui/confirm-dialog";
@@ -19,6 +20,7 @@ import { inviteTenant } from "@/lib/actions/tenant-invite";
 import type { LeaseDetail } from "@/lib/data/leases";
 import type { ExpenseListItem } from "@/lib/data/expenses";
 import type { DocumentListItem } from "@/lib/data/documents";
+import type { DocumentFolderItem } from "@/lib/data/document-folders";
 import type { SettlementAccountItem } from "@/lib/settlement/format-account";
 import { formatNaira } from "@/lib/auth/roles";
 import { formatDisplayDate, formatDateRange } from "@/lib/utils/format-date";
@@ -28,6 +30,7 @@ const DETAIL_TABS = [
   { id: "payments", label: "Payment history" },
   { id: "expenses", label: "Unit expenses & repairs" },
   { id: "documents", label: "Documents" },
+  { id: "folders", label: "Folders" },
 ] as const;
 
 type DetailTabId = (typeof DETAIL_TABS)[number]["id"];
@@ -37,14 +40,18 @@ export function TenantDetailClient({
   lease,
   unitExpenses,
   documents,
+  folders = [],
   canManage = false,
+  canManageFolders = false,
   settlementAccounts = [],
 }: {
   orgSlug: string;
   lease: LeaseDetail;
   unitExpenses: ExpenseListItem[];
   documents: DocumentListItem[];
+  folders?: DocumentFolderItem[];
   canManage?: boolean;
+  canManageFolders?: boolean;
   settlementAccounts?: SettlementAccountItem[];
 }) {
   const router = useRouter();
@@ -390,6 +397,18 @@ export function TenantDetailClient({
           defaultLeaseId={lease.id}
           defaultUnitId={lease.unitId}
           embedded
+          enableFilters
+        />
+      )}
+
+      {detailTab === "folders" && (
+        <TenantFoldersSection
+          orgSlug={orgSlug}
+          leaseId={lease.id}
+          unitId={lease.unitId}
+          folders={folders}
+          documents={documents}
+          canManage={canManageFolders}
         />
       )}
 

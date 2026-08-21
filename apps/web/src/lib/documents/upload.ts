@@ -57,6 +57,7 @@ type InsertDocumentsInput = {
   unitId?: string | null;
   leaseId?: string | null;
   siteId?: string | null;
+  folderId?: string | null;
 };
 
 export async function insertManagementDocuments({
@@ -69,6 +70,7 @@ export async function insertManagementDocuments({
   unitId = null,
   leaseId = null,
   siteId = null,
+  folderId = null,
 }: InsertDocumentsInput): Promise<{ error?: string; count: number }> {
   if (files.length === 0) return { count: 0 };
 
@@ -96,6 +98,7 @@ export async function insertManagementDocuments({
       site_id: siteId,
       unit_id: unitId,
       lease_id: leaseId,
+      folder_id: folderId,
       doc_type: docType,
       title: files.length > 1 && title ? `${docTitle} (${file.name})` : docTitle,
       file_url: path,

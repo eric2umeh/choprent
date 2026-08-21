@@ -1,7 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { canManageLeases } from "@/lib/auth/roles";
+import { canManageDocumentFolders, canManageLeases } from "@/lib/auth/roles";
 import { requireStaffContext, requireTenantContext } from "@/lib/auth/session";
 import {
   listDocumentsForOrg,
@@ -212,7 +212,11 @@ export async function issueDocument(
   formData: FormData
 ): Promise<DocumentActionState> {
   const ctx = await requireStaffContext(orgSlug);
-  if (!canManageLeases(ctx.role)) {
+  const folderId = String(formData.get("folder_id") ?? "").trim() || null;
+  const canUpload =
+    canManageLeases(ctx.role) ||
+    (folderId !== null && canManageDocumentFolders(ctx.role));
+  if (!canUpload) {
     return { error: "You don't have permission to upload documents." };
   }
 
@@ -228,8 +232,22 @@ export async function issueDocument(
   let resolvedLeaseId = leaseId;
   let resolvedSiteId = siteId;
   let resolvedUnitId = unitId;
+  let resolvedFolderId = folderId;
 
-  if (unitId && !leaseId) {
+  if (folderId) {
+    const { data: folder } = await admin
+      .from("document_folders")
+      .select("id, lease_id, unit_id, organization_id")
+      .eq("id", folderId)
+      .eq("organization_id", ctx.org.id)
+      .maybeSingle();
+    if (!folder) return { error: "Folder not found." };
+    resolvedLeaseId = resolvedLeaseId || folder.lease_id;
+    resolvedUnitId = resolvedUnitId || folder.unit_id;
+    resolvedFolderId = folder.id;
+  }
+
+  if (unitId && !leaseId && !resolvedLeaseId) {
     const { data: lease } = await admin
       .from("leases")
       .select("id")
@@ -239,11 +257,11 @@ export async function issueDocument(
     resolvedLeaseId = lease?.id ?? null;
   }
 
-  if (leaseId && !unitId) {
+  if ((leaseId || resolvedLeaseId) && !unitId && !resolvedUnitId) {
     const { data: lease } = await admin
       .from("leases")
       .select("unit_id, units!inner(site_id)")
-      .eq("id", leaseId)
+      .eq("id", leaseId || resolvedLeaseId)
       .maybeSingle();
     if (lease) {
       resolvedUnitId = lease.unit_id;
@@ -252,11 +270,11 @@ export async function issueDocument(
     }
   }
 
-  if (unitId && !siteId) {
+  if ((unitId || resolvedUnitId) && !siteId && !resolvedSiteId) {
     const { data: unit } = await admin
       .from("units")
       .select("site_id")
-      .eq("id", unitId)
+      .eq("id", unitId || resolvedUnitId)
       .eq("organization_id", ctx.org.id)
       .maybeSingle();
     resolvedSiteId = unit?.site_id ?? null;
@@ -272,12 +290,13 @@ export async function issueDocument(
     unitId: resolvedUnitId,
     leaseId: resolvedLeaseId,
     siteId: resolvedSiteId,
+    folderId: resolvedFolderId,
   });
 
   if (result.error) return { error: result.error };
 
   revalidateDocumentPaths(orgSlug);
-  if (leaseId) revalidatePath(`/d/${orgSlug}/tenants/${leaseId}`);
+  if (resolvedLeaseId) revalidatePath(`/d/${orgSlug}/tenants/${resolvedLeaseId}`);
   return { success: true };
 }
 
@@ -429,7 +448,7 @@ export async function updateDocument(
   formData: FormData
 ): Promise<DocumentActionState> {
   const ctx = await requireStaffContext(orgSlug);
-  if (!canManageLeases(ctx.role)) {
+  if (!canManageLeases(ctx.role) && !canManageDocumentFolders(ctx.role)) {
     return { error: "You don't have permission to edit documents." };
   }
 

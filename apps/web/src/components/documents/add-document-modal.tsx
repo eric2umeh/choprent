@@ -23,7 +23,9 @@ export function AddDocumentModal({
   defaultUnitId,
   defaultLeaseId,
   defaultSiteId,
+  defaultFolderId,
   title = "Add document",
+  description = "Upload files and choose a category.",
 }: {
   orgSlug: string;
   open: boolean;
@@ -34,7 +36,9 @@ export function AddDocumentModal({
   defaultUnitId?: string;
   defaultLeaseId?: string;
   defaultSiteId?: string;
+  defaultFolderId?: string;
   title?: string;
+  description?: string;
 }) {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
@@ -50,6 +54,7 @@ export function AddDocumentModal({
     if (defaultLeaseId) formData.set("lease_id", defaultLeaseId);
     if (defaultUnitId) formData.set("unit_id", defaultUnitId);
     if (defaultSiteId) formData.set("site_id", defaultSiteId);
+    if (defaultFolderId) formData.set("folder_id", defaultFolderId);
 
     const result = await issueDocument(orgSlug, {}, formData);
     setLoading(false);
@@ -59,7 +64,9 @@ export function AddDocumentModal({
       return;
     }
 
-    toast.success("Document uploaded.");
+    toast.success(
+      defaultFolderId ? "Document uploaded into this folder." : "Document uploaded."
+    );
     router.refresh();
     onClose();
   }
@@ -69,7 +76,7 @@ export function AddDocumentModal({
       open={open}
       onClose={onClose}
       title={title}
-      description="Upload files and choose a category."
+      description={description}
       preventClose={loading}
     >
       <form onSubmit={handleSubmit} className="space-y-3">
