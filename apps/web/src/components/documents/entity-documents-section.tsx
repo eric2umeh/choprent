@@ -1,14 +1,18 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import {
   deleteDocument,
   getDocumentDownloadUrl,
 } from "@/lib/actions/documents";
-import { formatDocumentCategory } from "@/lib/documents/categories";
+import {
+  DOCUMENT_CATEGORY_OPTIONS,
+  formatDocumentCategory,
+} from "@/lib/documents/categories";
 import type { DocumentListItem } from "@/lib/data/documents";
 import { formatDisplayDate } from "@/lib/utils/format-date";
+import { FilterBar, FilterSelect } from "@/components/ui/filter-bar";
 import { ListPanel } from "@/components/ui/page-header";
 import { ResponsiveDataTable, type Column } from "@/components/ui/responsive-table";
 import { confirmDialog } from "@/components/ui/confirm-dialog";
@@ -19,6 +23,10 @@ import { Download, Pencil, Plus, Trash2 } from "lucide-react";
 
 type UnitOption = { id: string; unitCode: string };
 type LeaseOption = { id: string; tenantName: string; unitCode: string; unitId: string };
+
+function issuedDateKey(issuedAt: string): string {
+  return issuedAt.slice(0, 10);
+}
 
 export function EntityDocumentsSection({
   orgSlug,
@@ -32,6 +40,8 @@ export function EntityDocumentsSection({
   leases = [],
   /** Hide section title when nested under page tabs. */
   embedded = false,
+  /** Search / category / date filters (tenant Documents tab). */
+  enableFilters = false,
 }: {
   orgSlug: string;
   documents: DocumentListItem[];
@@ -43,14 +53,37 @@ export function EntityDocumentsSection({
   units?: UnitOption[];
   leases?: LeaseOption[];
   embedded?: boolean;
+  enableFilters?: boolean;
 }) {
   const router = useRouter();
   const [showAdd, setShowAdd] = useState(false);
   const [editingDoc, setEditingDoc] = useState<DocumentListItem | null>(null);
   const [downloadingId, setDownloadingId] = useState<string | null>(null);
   const [busyId, setBusyId] = useState<string | null>(null);
+  const [search, setSearch] = useState("");
+  const [categoryFilter, setCategoryFilter] = useState("all");
+  const [dateFrom, setDateFrom] = useState("");
+  const [dateTo, setDateTo] = useState("");
   const [, startDownload] = useTransition();
   const [, startDelete] = useTransition();
+
+  const filtered = useMemo(() => {
+    if (!enableFilters) return documents;
+    return documents.filter((d) => {
+      const q = search.trim().toLowerCase();
+      const matchSearch =
+        !q ||
+        d.title.toLowerCase().includes(q) ||
+        formatDocumentCategory(d.docType).toLowerCase().includes(q) ||
+        (d.issuedByName?.toLowerCase().includes(q) ?? false);
+      const matchCategory =
+        categoryFilter === "all" || d.docType === categoryFilter;
+      const key = issuedDateKey(d.issuedAt);
+      const matchFrom = !dateFrom || key >= dateFrom;
+      const matchTo = !dateTo || key <= dateTo;
+      return matchSearch && matchCategory && matchFrom && matchTo;
+    });
+  }, [documents, enableFilters, search, categoryFilter, dateFrom, dateTo]);
 
   function handleDownload(docId: string) {
     setDownloadingId(docId);
@@ -68,7 +101,7 @@ export function EntityDocumentsSection({
   async function handleDelete(doc: DocumentListItem) {
     const { confirmed } = await confirmDialog({
       title: "Delete document?",
-      message: `Delete “${doc.title}”? This cannot be undone.`,
+      message: `Delete "${doc.title}"? This cannot be undone.`,
       confirmLabel: "Delete",
       destructive: true,
     });
@@ -181,13 +214,20 @@ export function EntityDocumentsSection({
   return (
     <>
       <ListPanel>
-        {(canManage || !embedded) && (
+        {(canManage || !embedded || enableFilters) && (
           <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border px-3 py-3">
             {!embedded ? (
               <h2 className="text-card-title">{sectionTitle}</h2>
             ) : (
               <span className="text-sm text-muted">
-                {documents.length} document{documents.length === 1 ? "" : "s"}
+                {filtered.length}
+                {enableFilters && filtered.length !== documents.length
+                  ? ` of ${documents.length}`
+                  : ""}{" "}
+                document
+                {(enableFilters ? filtered.length : documents.length) === 1
+                  ? ""
+                  : "s"}
               </span>
             )}
             {canManage && (
@@ -202,10 +242,54 @@ export function EntityDocumentsSection({
             )}
           </div>
         )}
+        {enableFilters && (
+          <FilterBar
+            search={search}
+            onSearchChange={setSearch}
+            searchPlaceholder="Search documents…"
+          >
+            <FilterSelect
+              label="Category"
+              value={categoryFilter}
+              onChange={setCategoryFilter}
+              options={[
+                { value: "all", label: "All categories" },
+                ...DOCUMENT_CATEGORY_OPTIONS.map((o) => ({
+                  value: o.value,
+                  label: o.label,
+                })),
+                { value: "statement", label: "Statement" },
+                { value: "attachment", label: "Attachment" },
+              ]}
+            />
+            <label className="flex items-center gap-1.5">
+              <span className="text-label hidden sm:inline">From</span>
+              <input
+                type="date"
+                value={dateFrom}
+                onChange={(e) => setDateFrom(e.target.value)}
+                className="select-field min-w-[8.5rem] font-medium text-foreground"
+              />
+            </label>
+            <label className="flex items-center gap-1.5">
+              <span className="text-label hidden sm:inline">To</span>
+              <input
+                type="date"
+                value={dateTo}
+                onChange={(e) => setDateTo(e.target.value)}
+                className="select-field min-w-[8.5rem] font-medium text-foreground"
+              />
+            </label>
+          </FilterBar>
+        )}
         <ResponsiveDataTable
-          rows={documents}
+          rows={filtered}
           columns={columns}
-          emptyMessage="No documents yet."
+          emptyMessage={
+            enableFilters && documents.length > 0
+              ? "No documents match these filters."
+              : "No documents yet."
+          }
         />
       </ListPanel>
 
