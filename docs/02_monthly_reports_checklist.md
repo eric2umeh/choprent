@@ -2,6 +2,8 @@
 
 Export and store these **every month** in your `reports/YYYY-MM/` folder.
 
+Workspace owners can also use **Insights** (`/d/[orgSlug]/insights`) for a consolidated export pack and snapshots.
+
 ---
 
 ## A. Product usage
