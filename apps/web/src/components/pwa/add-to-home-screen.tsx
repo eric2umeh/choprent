@@ -2,49 +2,37 @@
 
 import { useEffect, useState } from "react";
 import { X, Smartphone } from "lucide-react";
+import {
+  dismissInstallPrompt,
+  isInstallPromptDismissed,
+  isIos,
+  isMobileViewport,
+  isStandaloneDisplayMode,
+  resetInstallPromptDismiss,
+} from "@/lib/pwa/install-state";
+import {
+  logInstallPromptDismissed,
+  logInstallPromptShown,
+} from "@/components/pwa/app-usage-recorder";
 
-function isIos(): boolean {
-  if (typeof navigator === "undefined") return false;
-  return /iphone|ipad|ipod/i.test(navigator.userAgent);
-}
-
-function isMobile(): boolean {
-  if (typeof window === "undefined") return false;
-  return window.matchMedia("(max-width: 768px)").matches || isIos();
-}
-
-function isStandalone(): boolean {
-  if (typeof window === "undefined") return false;
-  return (
-    window.matchMedia("(display-mode: standalone)").matches ||
-    ("standalone" in navigator &&
-      (navigator as Navigator & { standalone?: boolean }).standalone === true)
-  );
-}
-
-function dismissKey(orgSlug: string) {
-  return `choprent-a2hs-dismiss-${orgSlug}`;
-}
-
-export function isInstallPromptDismissed(orgSlug: string): boolean {
-  if (typeof window === "undefined") return false;
-  return !!localStorage.getItem(dismissKey(orgSlug));
-}
-
-export function resetInstallPromptDismiss(orgSlug: string) {
-  localStorage.removeItem(dismissKey(orgSlug));
-}
+export { isInstallPromptDismissed, resetInstallPromptDismiss };
 
 /** Floating banner above tenant bottom nav (mobile). */
-export function AddToHomeScreenPrompt({ orgSlug }: { orgSlug: string }) {
+export function AddToHomeScreenPrompt({
+  orgSlug,
+  userId,
+}: {
+  orgSlug: string;
+  userId?: string;
+}) {
   const [visible, setVisible] = useState(false);
   const [deferredPrompt, setDeferredPrompt] = useState<{
     prompt: () => Promise<void>;
   } | null>(null);
 
   useEffect(() => {
-    if (isStandalone() || isInstallPromptDismissed(orgSlug)) return;
-    if (!isMobile()) return;
+    if (isStandaloneDisplayMode() || isInstallPromptDismissed(orgSlug)) return;
+    if (!isMobileViewport()) return;
 
     const onBeforeInstall = (e: Event) => {
       e.preventDefault();
@@ -55,23 +43,28 @@ export function AddToHomeScreenPrompt({ orgSlug }: { orgSlug: string }) {
         },
       });
       setVisible(true);
+      logInstallPromptShown(orgSlug, userId ?? null, "tenant");
     };
 
     window.addEventListener("beforeinstallprompt", onBeforeInstall as EventListener);
 
-    const timer = window.setTimeout(() => setVisible(true), 2000);
+    const timer = window.setTimeout(() => {
+      setVisible(true);
+      logInstallPromptShown(orgSlug, userId ?? null, "tenant");
+    }, 2000);
 
     return () => {
       window.clearTimeout(timer);
       window.removeEventListener("beforeinstallprompt", onBeforeInstall as EventListener);
     };
-  }, [orgSlug]);
+  }, [orgSlug, userId]);
 
-  if (!visible || isStandalone() || isInstallPromptDismissed(orgSlug)) return null;
+  if (!visible || isStandaloneDisplayMode() || isInstallPromptDismissed(orgSlug)) return null;
 
   return (
     <InstallPromptContent
       orgSlug={orgSlug}
+      userId={userId}
       deferredPrompt={deferredPrompt}
       onDismiss={() => setVisible(false)}
     />
@@ -79,14 +72,20 @@ export function AddToHomeScreenPrompt({ orgSlug }: { orgSlug: string }) {
 }
 
 /** Inline card on tenant home — easier to find than the floating banner alone. */
-export function TenantInstallAppCard({ orgSlug }: { orgSlug: string }) {
+export function TenantInstallAppCard({
+  orgSlug,
+  userId,
+}: {
+  orgSlug: string;
+  userId?: string;
+}) {
   const [visible, setVisible] = useState(false);
   const [deferredPrompt, setDeferredPrompt] = useState<{
     prompt: () => Promise<void>;
   } | null>(null);
 
   useEffect(() => {
-    if (isStandalone() || isInstallPromptDismissed(orgSlug)) return;
+    if (isStandaloneDisplayMode() || isInstallPromptDismissed(orgSlug)) return;
 
     const onBeforeInstall = (e: Event) => {
       e.preventDefault();
@@ -100,18 +99,20 @@ export function TenantInstallAppCard({ orgSlug }: { orgSlug: string }) {
 
     window.addEventListener("beforeinstallprompt", onBeforeInstall as EventListener);
     setVisible(true);
+    logInstallPromptShown(orgSlug, userId ?? null, "tenant");
 
     return () => {
       window.removeEventListener("beforeinstallprompt", onBeforeInstall as EventListener);
     };
-  }, [orgSlug]);
+  }, [orgSlug, userId]);
 
-  if (!visible || isStandalone() || isInstallPromptDismissed(orgSlug)) return null;
+  if (!visible || isStandaloneDisplayMode() || isInstallPromptDismissed(orgSlug)) return null;
 
   return (
     <div className="border-b border-green-200 bg-white px-3 py-3">
       <InstallPromptContent
         orgSlug={orgSlug}
+        userId={userId}
         deferredPrompt={deferredPrompt}
         onDismiss={() => setVisible(false)}
         inline
@@ -122,17 +123,20 @@ export function TenantInstallAppCard({ orgSlug }: { orgSlug: string }) {
 
 function InstallPromptContent({
   orgSlug,
+  userId,
   deferredPrompt,
   onDismiss,
   inline = false,
 }: {
   orgSlug: string;
+  userId?: string;
   deferredPrompt: { prompt: () => Promise<void> } | null;
   onDismiss: () => void;
   inline?: boolean;
 }) {
   function dismiss() {
-    localStorage.setItem(dismissKey(orgSlug), "1");
+    dismissInstallPrompt(orgSlug);
+    logInstallPromptDismissed(orgSlug, userId ?? null, "tenant");
     onDismiss();
   }
 
