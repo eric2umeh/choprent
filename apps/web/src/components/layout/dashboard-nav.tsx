@@ -18,6 +18,7 @@ import {
   Receipt,
   TrendingUp,
   ChevronRight,
+  BarChart2,
 } from "lucide-react";
 import { Logo } from "@/components/logo";
 import { cn } from "@/lib/utils";
@@ -45,6 +46,12 @@ const navItems: {
   { href: "/analytics", label: "Analytics", icon: TrendingUp },
   { href: "/users", label: "Users & Roles", icon: UserCog, hint: "Staff, roles & permissions" },
   { href: "/reports", label: "Reports", icon: BarChart3, hint: "Exports & snapshots" },
+  {
+    href: "/insights",
+    label: "Insights",
+    icon: BarChart2,
+    hint: "Monthly metrics & exports",
+  },
   { href: "/account", label: "Account", icon: Landmark },
   { href: "/settings", label: "Settings", icon: Settings },
 ];
@@ -73,6 +80,7 @@ function NavLinks({
     if (item.href === "/users" && !canManageTeam(role)) return false;
     if (item.href === "/account" && role === "agent") return false;
     if (item.href === "/reports" && role === "agent") return false;
+    if (item.href === "/insights" && role !== "owner") return false;
     if (item.href === "/expenses" && role === "agent") return false;
     if (item.href === "/analytics" && role === "agent") return false;
     return true;

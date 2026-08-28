@@ -7,6 +7,7 @@ import {
   DashboardTopBar,
 } from "@/components/layout/dashboard-nav";
 import { StaffNotificationListener } from "@/components/notifications/staff-notification-listener";
+import { AppUsageRecorder } from "@/components/pwa/app-usage-recorder";
 
 export function DashboardShellClient({
   orgSlug,
@@ -35,6 +36,7 @@ export function DashboardShellClient({
   return (
     <div className="flex min-h-screen bg-surface-subtle">
       <StaffNotificationListener userId={userId} orgId={orgId} />
+      <AppUsageRecorder orgSlug={orgSlug} userId={userId} audience="staff" />
       <DashboardSidebar
         orgSlug={orgSlug}
         role={role}

@@ -33,6 +33,9 @@ supabase/.temp
 # monthly reports archive (sensitive)
 works/
 
+# local business proposals / letterhead (do not push)
+docs/proposals/
+
 # typescript
 *.tsbuildinfo
 next-env.d.ts
