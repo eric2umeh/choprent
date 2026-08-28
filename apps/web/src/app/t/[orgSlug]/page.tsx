@@ -29,7 +29,7 @@ export default async function TenantHomePage({
 
   return (
     <div className="space-y-0">
-      <TenantInstallAppCard orgSlug={orgSlug} />
+      <TenantInstallAppCard orgSlug={orgSlug} userId={ctx.user.id} />
 
       <TenantNotificationsList notifications={notifications} />
 
