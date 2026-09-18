@@ -22,7 +22,7 @@ export default async function TenantLayout({
     : null;
 
   return (
-    <div className="min-h-screen bg-surface-subtle pb-20">
+    <div className="min-h-screen bg-surface-subtle pb-[calc(4.5rem+env(safe-area-inset-bottom))]">
       <TenantHeader
         orgSlug={orgSlug}
         tenantName={ctx.tenantDisplayName}
@@ -31,10 +31,10 @@ export default async function TenantLayout({
         propertyLogoUrl={propertyLogoUrl}
         propertyName={siteBranding?.propertyName}
       />
-      <main className="animate-page-enter mx-auto max-w-lg pb-20">{children}</main>
+      <main className="animate-page-enter mx-auto max-w-lg pb-4">{children}</main>
       <TenantMobileNav orgSlug={orgSlug} />
       <AppUsageRecorder orgSlug={orgSlug} userId={ctx.user.id} audience="tenant" />
-      <AddToHomeScreenPrompt orgSlug={orgSlug} userId={ctx.user.id} />
+      <AddToHomeScreenPrompt orgSlug={orgSlug} userId={ctx.user.id} audience="tenant" />
     </div>
   );
 }
