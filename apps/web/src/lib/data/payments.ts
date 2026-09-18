@@ -53,44 +53,59 @@ function unitCodeFromRow(units: PaymentRow["units"]): string {
   return units.unit_code;
 }
 
-async function tenantInfoForUnit(
-  unitId: string,
+type LeaseInfo = {
+  name: string;
+  leaseId: string | null;
+  rentStatus: TenantPaymentStatus | null;
+};
+
+/** One query for all active lease names — avoids N+1 per payment row. */
+async function leaseInfoByUnitIds(
+  orgId: string,
+  unitIds: string[],
   statusByUnit: Map<string, { status: TenantPaymentStatus; leaseId: string }>
-): Promise<{ name: string; leaseId: string | null; rentStatus: TenantPaymentStatus | null }> {
-  const fromMap = statusByUnit.get(unitId);
-  if (fromMap) {
+): Promise<Map<string, LeaseInfo>> {
+  const map = new Map<string, LeaseInfo>();
+  const unique = [...new Set(unitIds)];
+  if (!unique.length) return map;
+
+  try {
     const admin = createAdminClient();
     const { data } = await admin
       .from("leases")
-      .select("tenant_display_name")
-      .eq("id", fromMap.leaseId)
-      .maybeSingle();
-    return {
-      name: data?.tenant_display_name ?? "—",
-      leaseId: fromMap.leaseId,
-      rentStatus: fromMap.status,
-    };
+      .select("id, unit_id, tenant_display_name, units!inner(organization_id)")
+      .eq("units.organization_id", orgId)
+      .in("unit_id", unique)
+      .eq("status", "active");
+
+    for (const row of data ?? []) {
+      const status = statusByUnit.get(row.unit_id);
+      map.set(row.unit_id, {
+        name: row.tenant_display_name ?? "—",
+        leaseId: row.id,
+        rentStatus: status?.status ?? null,
+      });
+    }
+  } catch {
+    // fall through with empty map
   }
 
-  const admin = createAdminClient();
-  const { data } = await admin
-    .from("leases")
-    .select("id, tenant_display_name")
-    .eq("unit_id", unitId)
-    .eq("status", "active")
-    .limit(1)
-    .maybeSingle();
+  for (const unitId of unique) {
+    if (map.has(unitId)) continue;
+    const status = statusByUnit.get(unitId);
+    map.set(unitId, {
+      name: "—",
+      leaseId: status?.leaseId ?? null,
+      rentStatus: status?.status ?? null,
+    });
+  }
 
-  return {
-    name: data?.tenant_display_name ?? "—",
-    leaseId: data?.id ?? null,
-    rentStatus: null,
-  };
+  return map;
 }
 
 function mapPaymentRow(
   row: PaymentRow,
-  tenant: { name: string; leaseId: string | null; rentStatus: TenantPaymentStatus | null },
+  tenant: LeaseInfo,
   actors: Map<string, string>
 ): PaymentListItem {
   return {
@@ -126,24 +141,44 @@ async function mapPaymentRows(
   rows: PaymentRow[],
   statusByUnit: Map<string, { status: TenantPaymentStatus; leaseId: string }>
 ): Promise<PaymentListItem[]> {
-  const actors = await resolveActorLabels(
-    orgId,
-    rows.flatMap((r) => [r.recorded_by, r.tenant_id, r.verified_by])
-  );
+  const [actors, leaseByUnit] = await Promise.all([
+    resolveActorLabels(
+      orgId,
+      rows.flatMap((r) => [r.recorded_by, r.tenant_id, r.verified_by])
+    ),
+    leaseInfoByUnitIds(
+      orgId,
+      rows.map((r) => r.unit_id),
+      statusByUnit
+    ),
+  ]);
 
-  return Promise.all(
-    rows.map(async (row) => {
-      const tenant = await tenantInfoForUnit(row.unit_id, statusByUnit);
-      return mapPaymentRow(row, tenant, actors);
-    })
-  );
+  return rows.map((row) => {
+    const tenant = leaseByUnit.get(row.unit_id) ?? {
+      name: "—",
+      leaseId: null,
+      rentStatus: null,
+    };
+    return mapPaymentRow(row, tenant, actors);
+  });
+}
+
+/** Status map for rent badges on the payments list. */
+async function lightStatusByUnit(
+  orgId: string
+): Promise<Map<string, { status: TenantPaymentStatus; leaseId: string }>> {
+  try {
+    const { getTenantStatusByUnit } = await import("@/lib/data/leases");
+    return getTenantStatusByUnit(orgId);
+  } catch {
+    return new Map();
+  }
 }
 
 export async function listPaymentsForOrg(
   orgId: string
 ): Promise<PaymentListItem[]> {
-  const { getTenantStatusByUnit } = await import("@/lib/data/leases");
-  const statusByUnit = await getTenantStatusByUnit(orgId);
+  const statusByUnit = await lightStatusByUnit(orgId);
 
   const supabase = await createClient();
   const { data, error } = await supabase
