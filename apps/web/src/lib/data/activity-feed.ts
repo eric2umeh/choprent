@@ -24,7 +24,13 @@ function methodLabel(method: string): string {
 
 export async function getActivityFeed(orgId: string, limit = 10): Promise<ActivityItem[]> {
   const payments = await listPaymentsForOrg(orgId);
+  return activityFromPayments(payments, limit);
+}
 
+export function activityFromPayments(
+  payments: Awaited<ReturnType<typeof listPaymentsForOrg>>,
+  limit = 10
+): ActivityItem[] {
   return payments.slice(0, limit).map((p) => {
     let kind: ActivityItem["kind"] = "verified";
     let title = `${p.unitCode} · ${methodLabel(p.paymentMethod)}`;
