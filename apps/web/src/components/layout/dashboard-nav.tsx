@@ -353,16 +353,17 @@ export function DashboardMobileNav({
   const pathname = usePathname();
   const base = `/d/${orgSlug}`;
 
+  // Pay is second so it stays visible on narrow phones (not clipped on the right).
   const items = [
     { href: "", label: "Home", icon: LayoutDashboard, badge: notificationCount },
-    { href: "/tenants", label: "Tenants", icon: Users },
-    { href: "/properties", label: "Properties", icon: Building2 },
     { href: "/payments", label: "Pay", icon: CreditCard, badge: pendingCount },
+    { href: "/tenants", label: "Tenants", icon: Users },
+    { href: "/properties", label: "Units", icon: Building2 },
   ];
 
   return (
-    <nav className="fixed bottom-0 left-0 right-0 z-30 border-t border-border bg-white/95 backdrop-blur-md lg:hidden">
-      <div className="flex h-14 items-stretch">
+    <nav className="fixed inset-x-0 bottom-0 z-50 border-t border-border bg-white/95 pb-[env(safe-area-inset-bottom)] backdrop-blur-md lg:hidden">
+      <div className="flex h-14 w-full items-stretch">
         {items.map(({ href, label, icon: Icon, badge }) => {
           const path = `${base}${href}`;
           const active =
@@ -370,23 +371,23 @@ export function DashboardMobileNav({
 
           return (
             <Link
-              key={href}
+              key={href || "home"}
               href={path}
               className={cn(
-                "relative flex flex-1 flex-col items-center justify-center gap-0.5 text-[10px] font-medium transition-all duration-200",
+                "relative flex min-w-0 flex-1 flex-col items-center justify-center gap-0.5 px-0.5 text-[10px] font-medium transition-all duration-200",
                 active ? "text-green-700" : "text-muted hover:text-foreground"
               )}
             >
               <Icon
                 className={cn(
-                  "h-4 w-4 transition-transform duration-200",
+                  "h-4 w-4 shrink-0 transition-transform duration-200",
                   active && "scale-110"
                 )}
               />
-              {label}
+              <span className="truncate">{label}</span>
               {badge ? (
-                <span className="absolute right-[18%] top-1 flex h-3.5 min-w-3.5 items-center justify-center rounded-full bg-amber-500 px-0.5 text-[8px] font-bold text-white">
-                  {badge}
+                <span className="absolute right-[12%] top-1 flex h-3.5 min-w-3.5 items-center justify-center rounded-full bg-amber-500 px-0.5 text-[8px] font-bold text-white">
+                  {badge > 9 ? "9+" : badge}
                 </span>
               ) : null}
             </Link>

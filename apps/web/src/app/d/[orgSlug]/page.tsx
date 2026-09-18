@@ -5,7 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { ListRow, SectionHeader } from "@/components/ui/section-header";
 import { requireStaffContext } from "@/lib/auth/session";
 import { getDashboardStats } from "@/lib/data/dashboard-stats";
-import { getActivityFeed } from "@/lib/data/activity-feed";
+import { activityFromPayments } from "@/lib/data/activity-feed";
 import { DashboardLiveSync } from "@/components/dashboard/dashboard-live-sync";
 import { listPaymentsForOrg } from "@/lib/data/payments";
 import { listUnitsForOrg } from "@/lib/data/units";
@@ -27,19 +27,19 @@ export default async function DashboardHomePage({
   const { orgSlug } = await params;
   const ctx = await requireStaffContext(orgSlug);
 
-  const [stats, payments, units, activity, notifications, onboarding] =
+  const [stats, payments, units, notifications, onboarding] =
     await Promise.all([
-    getDashboardStats(ctx.org.id),
-    listPaymentsForOrg(ctx.org.id),
-    listUnitsForOrg(ctx.org.id),
-    getActivityFeed(ctx.org.id, 8),
-    listNotificationsForUser(ctx.user.id, ctx.org.id),
-    ctx.role === "owner" || ctx.role === "admin"
-      ? getPilotOnboardingStatus(ctx.org.id, orgSlug)
-      : Promise.resolve(null),
-  ]);
+      getDashboardStats(ctx.org.id),
+      listPaymentsForOrg(ctx.org.id),
+      listUnitsForOrg(ctx.org.id),
+      listNotificationsForUser(ctx.user.id, ctx.org.id),
+      ctx.role === "owner" || ctx.role === "admin"
+        ? getPilotOnboardingStatus(ctx.org.id, orgSlug)
+        : Promise.resolve(null),
+    ]);
 
   const pending = payments.filter((p) => p.status === "pending");
+  const activity = activityFromPayments(payments, 8);
   const hasUnread = notifications.some((n) => !n.read);
 
   return (

@@ -1,12 +1,11 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { X, Smartphone } from "lucide-react";
+import { X, Smartphone, Download } from "lucide-react";
 import {
   dismissInstallPrompt,
   isInstallPromptDismissed,
   isIos,
-  isMobileViewport,
   isStandaloneDisplayMode,
   resetInstallPromptDismiss,
 } from "@/lib/pwa/install-state";
@@ -17,13 +16,17 @@ import {
 
 export { isInstallPromptDismissed, resetInstallPromptDismiss };
 
-/** Floating banner above tenant bottom nav (mobile). */
+type Audience = "staff" | "tenant";
+
+/** Floating install banner — phone and desktop (Chrome/Edge Install). */
 export function AddToHomeScreenPrompt({
   orgSlug,
   userId,
+  audience = "tenant",
 }: {
   orgSlug: string;
   userId?: string;
+  audience?: Audience;
 }) {
   const [visible, setVisible] = useState(false);
   const [deferredPrompt, setDeferredPrompt] = useState<{
@@ -32,7 +35,6 @@ export function AddToHomeScreenPrompt({
 
   useEffect(() => {
     if (isStandaloneDisplayMode() || isInstallPromptDismissed(orgSlug)) return;
-    if (!isMobileViewport()) return;
 
     const onBeforeInstall = (e: Event) => {
       e.preventDefault();
@@ -43,21 +45,22 @@ export function AddToHomeScreenPrompt({
         },
       });
       setVisible(true);
-      logInstallPromptShown(orgSlug, userId ?? null, "tenant");
+      logInstallPromptShown(orgSlug, userId ?? null, audience);
     };
 
     window.addEventListener("beforeinstallprompt", onBeforeInstall as EventListener);
 
+    // Show guidance even before Chromium fires the event (iOS / Firefox / Safari).
     const timer = window.setTimeout(() => {
       setVisible(true);
-      logInstallPromptShown(orgSlug, userId ?? null, "tenant");
-    }, 2000);
+      logInstallPromptShown(orgSlug, userId ?? null, audience);
+    }, 1500);
 
     return () => {
       window.clearTimeout(timer);
       window.removeEventListener("beforeinstallprompt", onBeforeInstall as EventListener);
     };
-  }, [orgSlug, userId]);
+  }, [orgSlug, userId, audience]);
 
   if (!visible || isStandaloneDisplayMode() || isInstallPromptDismissed(orgSlug)) return null;
 
@@ -65,13 +68,14 @@ export function AddToHomeScreenPrompt({
     <InstallPromptContent
       orgSlug={orgSlug}
       userId={userId}
+      audience={audience}
       deferredPrompt={deferredPrompt}
       onDismiss={() => setVisible(false)}
     />
   );
 }
 
-/** Inline card on tenant home — easier to find than the floating banner alone. */
+/** Inline card on tenant home. */
 export function TenantInstallAppCard({
   orgSlug,
   userId,
@@ -113,6 +117,7 @@ export function TenantInstallAppCard({
       <InstallPromptContent
         orgSlug={orgSlug}
         userId={userId}
+        audience="tenant"
         deferredPrompt={deferredPrompt}
         onDismiss={() => setVisible(false)}
         inline
@@ -124,19 +129,21 @@ export function TenantInstallAppCard({
 function InstallPromptContent({
   orgSlug,
   userId,
+  audience,
   deferredPrompt,
   onDismiss,
   inline = false,
 }: {
   orgSlug: string;
   userId?: string;
+  audience: Audience;
   deferredPrompt: { prompt: () => Promise<void> } | null;
   onDismiss: () => void;
   inline?: boolean;
 }) {
   function dismiss() {
     dismissInstallPrompt(orgSlug);
-    logInstallPromptDismissed(orgSlug, userId ?? null, "tenant");
+    logInstallPromptDismissed(orgSlug, userId ?? null, audience);
     onDismiss();
   }
 
@@ -149,26 +156,32 @@ function InstallPromptContent({
 
   const wrapperClass = inline
     ? "rounded-xl border border-green-200 bg-green-50/50 p-3"
-    : "fixed inset-x-3 bottom-20 z-40 rounded-xl border border-green-200 bg-white p-3 shadow-lg md:bottom-6 md:max-w-sm md:ml-auto md:mr-3";
+    : "fixed inset-x-3 bottom-[calc(4.5rem+env(safe-area-inset-bottom))] z-[60] rounded-xl border border-green-200 bg-white p-3 shadow-lg md:bottom-6 md:left-auto md:right-4 md:max-w-sm";
+
+  const blurb =
+    audience === "staff"
+      ? "Install ChopRent for faster access to payments and units."
+      : "Install for quick access to pay rent and view your ledger.";
 
   return (
     <div className={wrapperClass}>
       <div className="flex items-start gap-2">
-        <Smartphone className="mt-0.5 h-5 w-5 shrink-0 text-green-700" />
+        {deferredPrompt ? (
+          <Download className="mt-0.5 h-5 w-5 shrink-0 text-green-700" />
+        ) : (
+          <Smartphone className="mt-0.5 h-5 w-5 shrink-0 text-green-700" />
+        )}
         <div className="min-w-0 flex-1">
-          <p className="text-sm font-semibold text-foreground">Add ChopRent to home screen</p>
+          <p className="text-sm font-semibold text-foreground">Install ChopRent</p>
           {isIos() ? (
             <p className="mt-1 text-xs text-list-secondary">
-              Tap the <strong>Share</strong> button in Safari, then{" "}
-              <strong>Add to Home Screen</strong>.
+              Tap <strong>Share</strong> in Safari, then <strong>Add to Home Screen</strong>.
             </p>
           ) : deferredPrompt ? (
-            <p className="mt-1 text-xs text-list-secondary">
-              Install for quick access to pay rent and view your ledger.
-            </p>
+            <p className="mt-1 text-xs text-list-secondary">{blurb}</p>
           ) : (
             <p className="mt-1 text-xs text-list-secondary">
-              Open the browser menu (⋮) and choose <strong>Install app</strong> or{" "}
+              Use the browser menu (⋮ or ⋯) and choose <strong>Install app</strong> or{" "}
               <strong>Add to Home screen</strong>.
             </p>
           )}

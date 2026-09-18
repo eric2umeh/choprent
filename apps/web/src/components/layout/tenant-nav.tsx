@@ -19,8 +19,8 @@ export function TenantMobileNav({ orgSlug }: { orgSlug: string }) {
   ];
 
   return (
-    <nav className="fixed bottom-0 left-0 right-0 z-30 border-t border-border bg-white/95 backdrop-blur-md">
-      <div className="flex h-16 items-stretch">
+    <nav className="fixed inset-x-0 bottom-0 z-50 border-t border-border bg-white/95 pb-[env(safe-area-inset-bottom)] backdrop-blur-md">
+      <div className="flex h-14 w-full items-stretch">
         {items.map(({ href, label, icon: Icon }) => {
           const path = `${base}${href}`;
           const active =
@@ -28,20 +28,20 @@ export function TenantMobileNav({ orgSlug }: { orgSlug: string }) {
 
           return (
             <Link
-              key={href}
+              key={href || "home"}
               href={path}
               className={cn(
-                "flex flex-1 flex-col items-center justify-center gap-1 text-[10px] font-medium transition-all duration-200",
+                "flex min-w-0 flex-1 flex-col items-center justify-center gap-0.5 px-0.5 text-[10px] font-medium transition-all duration-200",
                 active ? "text-green-700" : "text-muted hover:text-foreground"
               )}
             >
               <Icon
                 className={cn(
-                  "h-5 w-5 transition-transform duration-200",
+                  "h-5 w-5 shrink-0 transition-transform duration-200",
                   active && "scale-110"
                 )}
               />
-              {label}
+              <span className="truncate">{label}</span>
             </Link>
           );
         })}

@@ -1,3 +1,4 @@
+import { cache } from "react";
 import { createAdminClient } from "@/lib/supabase/admin";
 
 export type DashboardStats = {
@@ -20,13 +21,28 @@ function currentYearBounds() {
   };
 }
 
-export async function getDashboardStats(orgId: string): Promise<DashboardStats> {
+/** Lightweight badge count for the shell — avoids full dashboard stats on every page. */
+export const countPendingPayments = cache(async (orgId: string): Promise<number> => {
+  try {
+    const admin = createAdminClient();
+    const { count } = await admin
+      .from("payments")
+      .select("*", { count: "exact", head: true })
+      .eq("organization_id", orgId)
+      .eq("status", "pending");
+    return count ?? 0;
+  } catch {
+    return 0;
+  }
+});
+
+export const getDashboardStats = cache(async (orgId: string): Promise<DashboardStats> => {
   const { year, start, end } = currentYearBounds();
 
   try {
     const admin = createAdminClient();
 
-    const [{ data: units }, { data: periods }, { count: pendingCount }] =
+    const [{ data: units }, { data: periods }, pendingVerifications] =
       await Promise.all([
         admin
           .from("units")
@@ -38,11 +54,7 @@ export async function getDashboardStats(orgId: string): Promise<DashboardStats> 
           .eq("units.organization_id", orgId)
           .gte("period_start", start)
           .lt("period_start", end),
-        admin
-          .from("payments")
-          .select("*", { count: "exact", head: true })
-          .eq("organization_id", orgId)
-          .eq("status", "pending"),
+        countPendingPayments(orgId),
       ]);
 
     const unitRows = units ?? [];
@@ -62,7 +74,7 @@ export async function getDashboardStats(orgId: string): Promise<DashboardStats> 
         (sum, row) => sum + Number(row.arrears_balance_ngn ?? 0),
         0
       ),
-      pendingVerifications: pendingCount ?? 0,
+      pendingVerifications,
       occupiedUnits: unitRows.filter((u) => u.status === "occupied").length,
       totalUnits: unitRows.length,
       vacantUnits: unitRows.filter((u) => u.status === "vacant").length,
@@ -79,4 +91,4 @@ export async function getDashboardStats(orgId: string): Promise<DashboardStats> 
       vacantUnits: 0,
     };
   }
-}
+});

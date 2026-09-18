@@ -1,3 +1,4 @@
+import { cache } from "react";
 import { redirect, notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient, LEGACY_ORG_SLUG, PILOT_ORG_ID, PILOT_ORG_SLUG } from "@/lib/supabase/admin";
@@ -302,7 +303,9 @@ export async function resolvePostLoginPath(): Promise<string> {
   return "/access-pending";
 }
 
-export async function requireStaffContext(orgSlug: string): Promise<StaffContext> {
+export const requireStaffContext = cache(async function requireStaffContext(
+  orgSlug: string
+): Promise<StaffContext> {
   const user = await getSessionUser();
   if (!user) redirect(`/login?next=/d/${orgSlug}`);
 
@@ -314,7 +317,7 @@ export async function requireStaffContext(orgSlug: string): Promise<StaffContext
   if (!role) redirect("/login?error=no_access");
 
   return { user, org, role, demoMode: false };
-}
+});
 
 export async function requireTenantContext(
   orgSlug: string
