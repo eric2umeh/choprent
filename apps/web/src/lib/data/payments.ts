@@ -124,10 +124,7 @@ function mapPaymentRow(
     paymentDate: row.payment_date,
     paymentNote: paymentNoteFromRow(row),
     createdAt: row.created_at,
-    submittedByName: actorLabel(
-      actors,
-      row.recorded_by ?? row.tenant_id ?? row.verified_by
-    ),
+    submittedByName: actorLabel(actors, row.recorded_by ?? row.tenant_id),
     verifiedByName: actorLabel(actors, row.verified_by),
     verifiedAt: row.verified_at ? String(row.verified_at).slice(0, 10) : null,
   };
