@@ -23,17 +23,19 @@ const LOGO_MIME = new Set(["image/jpeg", "image/png", "image/webp"]);
 async function uniquePropertySlug(
   admin: ReturnType<typeof createAdminClient>,
   orgId: string,
-  name: string
+  name: string,
+  excludeId?: string
 ): Promise<string> {
   let base = slugify(name);
   for (let attempt = 0; attempt < 20; attempt += 1) {
     const candidate = attempt === 0 ? base : `${base}-${attempt + 1}`;
-    const { data } = await admin
+    let query = admin
       .from("sites")
       .select("id")
       .eq("organization_id", orgId)
-      .eq("slug", candidate)
-      .maybeSingle();
+      .eq("slug", candidate);
+    if (excludeId) query = query.neq("id", excludeId);
+    const { data } = await query.maybeSingle();
     if (!data) return candidate;
   }
   return `${base}-${crypto.randomUUID().slice(0, 8)}`;
@@ -88,9 +90,29 @@ export async function saveProperty(
   };
 
   if (propertyId) {
+    const { data: existingSite } = await admin
+      .from("sites")
+      .select("name, slug")
+      .eq("id", propertyId)
+      .eq("organization_id", ctx.org.id)
+      .maybeSingle();
+
+    const nameChanged = existingSite && existingSite.name !== name;
+    const slugFollowedName =
+      existingSite && slugify(existingSite.name) === existingSite.slug;
+    const nextSlug =
+      nameChanged && slugFollowedName
+        ? await uniquePropertySlug(admin, ctx.org.id, name, propertyId)
+        : undefined;
+
     const { error } = await admin
       .from("sites")
-      .update({ name, site_type: siteType, address })
+      .update({
+        name,
+        site_type: siteType,
+        address,
+        ...(nextSlug ? { slug: nextSlug } : {}),
+      })
       .eq("id", propertyId)
       .eq("organization_id", ctx.org.id);
     if (error) return { error: error.message };
