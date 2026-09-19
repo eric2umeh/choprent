@@ -10,6 +10,8 @@ export type TeamActionState = {
   error?: string;
   success?: boolean;
   warning?: string;
+  emailSent?: boolean;
+  inviteUrl?: string;
 };
 
 export type TeamMember = {
@@ -155,115 +157,15 @@ export async function inviteTeamMember(
   _prev: TeamActionState,
   formData: FormData
 ): Promise<TeamActionState> {
-  const ctx = await requireStaffContext(orgSlug);
-  if (!canManageTeam(ctx.role)) {
-    return { error: "Only the landlord or an admin can invite team members." };
-  }
-
-  const email = String(formData.get("email") ?? "").trim().toLowerCase();
-  const role = String(formData.get("role") ?? "manager") as MembershipRole;
-  const assignAll = formData.get("assign_all_sites") === "on";
-  const siteIds = formData
-    .getAll("site_ids")
-    .map((v) => String(v))
-    .filter(Boolean);
-
-  if (!email) return { error: "Email is required." };
-  if (role === "owner") {
-    return { error: "Landlord accounts cannot be invited. They sign up directly." };
-  }
-  if (role === "admin" && ctx.role !== "owner") {
-    return { error: "Only the landlord can invite an admin." };
-  }
-  if (role !== "manager" && role !== "agent" && role !== "admin") {
-    return { error: "Choose admin, manager, or agent." };
-  }
-
-  const admin = createAdminClient();
-  const { data: usersPage } = await admin.auth.admin.listUsers();
-  const user = usersPage.users.find((u) => u.email?.toLowerCase() === email);
-
-  if (!user) {
-    return {
-      error:
-        "No account with that email yet. Ask them to sign up at /login first, then invite again.",
-    };
-  }
-
-  const { data: existing } = await admin
-    .from("memberships")
-    .select("id")
-    .eq("organization_id", ctx.org.id)
-    .eq("user_id", user.id)
-    .maybeSingle();
-
-  if (existing) {
-    return { error: "This person is already on your team." };
-  }
-
-  const otherOrgs = await otherOrgNamesForUser(admin, user.id, ctx.org.id);
-  const warning =
-    otherOrgs.length > 0
-      ? `Note: this person is already managing ${otherOrgs.join(", ")}. They will have access to your properties too.`
-      : undefined;
-
-  const { data: membership, error } = await admin
-    .from("memberships")
-    .insert({
-      organization_id: ctx.org.id,
-      user_id: user.id,
-      role,
-    })
-    .select("id")
-    .single();
-
-  if (error || !membership) return { error: error?.message ?? "Could not add member." };
-
-  if (role === "agent") {
-    const { data: sites } = await admin
-      .from("sites")
-      .select("id")
-      .eq("organization_id", ctx.org.id);
-
-    const targetSiteIds = assignAll
-      ? (sites ?? []).map((s) => s.id)
-      : siteIds;
-
-    if (targetSiteIds.length === 0) {
-      return {
-        error: "Agents need at least one property assigned. Select properties or choose all.",
-      };
-    }
-
-    const rows = targetSiteIds.map((siteId) => ({
-      user_id: user.id,
-      site_id: siteId,
-    }));
-
-    const { error: assignError } = await admin.from("site_assignments").insert(rows);
-    if (assignError) return { error: assignError.message };
-  } else if (assignAll || siteIds.length > 0) {
-    const { data: sites } = await admin
-      .from("sites")
-      .select("id")
-      .eq("organization_id", ctx.org.id);
-
-    const targetSiteIds = assignAll
-      ? (sites ?? []).map((s) => s.id)
-      : siteIds;
-
-    if (targetSiteIds.length > 0) {
-      const rows = targetSiteIds.map((siteId) => ({
-        user_id: user.id,
-        site_id: siteId,
-      }));
-      await admin.from("site_assignments").insert(rows);
-    }
-  }
-
-  revalidatePath(`/d/${orgSlug}/users`);
-  revalidatePath(`/d/${orgSlug}/settings`);
-  return { success: true, warning };
+  const { createStaffInvite } = await import("@/lib/actions/staff-invite");
+  const result = await createStaffInvite(orgSlug, formData);
+  return {
+    error: result.error,
+    success: result.success,
+    warning: result.warning,
+    emailSent: result.emailSent,
+    inviteUrl: result.inviteUrl,
+  };
 }
 
 export async function updateTeamMember(
