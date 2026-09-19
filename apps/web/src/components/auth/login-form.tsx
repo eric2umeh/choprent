@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { linkPlazaAccount } from "@/lib/actions/auth";
 import { requestPasswordReset } from "@/lib/actions/password-reset";
 import { createClient } from "@/lib/supabase/client";
@@ -16,7 +15,6 @@ import { appUrl } from "@/lib/env";
 import { PasswordInput } from "@/components/ui/password-input";
 import { LoadingButton } from "@/components/ui/loading-button";
 import { toast } from "@/components/ui/toast";
-import type { MembershipRole } from "@/types/database";
 import {
   MIN_PASSWORD_LENGTH,
   MIN_PASSWORD_MESSAGE,
@@ -26,20 +24,13 @@ import { passwordFieldAutocomplete } from "@/lib/auth/autocomplete";
 type LoginMethod = "password" | "magic_link";
 type PasswordMode = "sign_in" | "sign_up" | "forgot_password";
 
-const SIGNUP_ROLES: { value: MembershipRole; label: string }[] = [
-  { value: "owner", label: "Landlord — I manage my own properties" },
-  { value: "manager", label: "Manager — I run day-to-day for a landlord" },
-  { value: "agent", label: "Agent — I verify payments on site" },
-];
-
 export function LoginForm() {
-  const router = useRouter();
   const [method, setMethod] = useState<LoginMethod>("password");
   const [mode, setMode] = useState<PasswordMode>("sign_in");
-  const [signupRole, setSignupRole] = useState<MembershipRole>("owner");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
+  const [plazaName, setPlazaName] = useState("");
   const [loading, setLoading] = useState(false);
   const [cooldown, setCooldown] = useState(0);
   const [draftReady, setDraftReady] = useState(false);
@@ -103,6 +94,12 @@ export function LoginForm() {
       }
 
       if (mode === "sign_up") {
+        const trimmedPlaza = plazaName.trim();
+        if (!trimmedPlaza) {
+          toast.error("Enter your plaza or property name.");
+          setLoading(false);
+          return;
+        }
         if (submittedPassword.length < MIN_PASSWORD_LENGTH) {
           toast.error(MIN_PASSWORD_MESSAGE);
           setLoading(false);
@@ -116,46 +113,23 @@ export function LoginForm() {
         const { error: signUpError } = await supabase.auth.signUp({
           email: trimmedEmail,
           password: submittedPassword,
+          options: {
+            data: {
+              workspace_name: trimmedPlaza,
+              intended_role: "owner",
+            },
+          },
         });
         if (signUpError) throw signUpError;
 
-        const { error: signInError } = await supabase.auth.signInWithPassword({
+        await supabase.auth.signOut();
+        setMode("sign_in");
+        setConfirmPassword("");
+        preserveDraft({
           email: trimmedEmail,
           password: submittedPassword,
         });
-        if (signInError) {
-          toast.info(
-            "Your account was created. Sign in with your email and password to finish."
-          );
-          setMode("sign_in");
-          preserveDraft({
-            email: trimmedEmail,
-            password: submittedPassword,
-          });
-          return;
-        }
-
-        const linkResult = await linkPlazaAccount(signupRole);
-        if (linkResult?.error) {
-          toast.error(linkResult.error);
-          preserveDraft({
-            email: trimmedEmail,
-            password: submittedPassword,
-          });
-          return;
-        }
-        clearLoginDraft();
-        if (linkResult.awaitingInvite) {
-          toast.success(
-            "Account created. Ask your landlord to invite you by email, then sign in again."
-          );
-          router.push("/access-pending");
-          router.refresh();
-          return;
-        }
-        toast.success("Account created — opening your dashboard…");
-        router.push("/auth/redirect");
-        router.refresh();
+        toast.success("Account created. Sign in to continue.");
         return;
       }
 
@@ -165,10 +139,24 @@ export function LoginForm() {
       });
       if (signInError) throw signInError;
 
+      const {
+        data: { user: signedInUser },
+      } = await supabase.auth.getUser();
+      const meta = signedInUser?.user_metadata ?? {};
+      const workspaceFromMeta =
+        typeof meta.workspace_name === "string" ? meta.workspace_name.trim() : "";
+      const intendedRole =
+        typeof meta.intended_role === "string" ? meta.intended_role : "";
+      const workspace = plazaName.trim() || workspaceFromMeta || undefined;
+
+      if (intendedRole === "owner") {
+        await linkPlazaAccount("owner", workspace);
+      }
+
       clearLoginDraft();
       toast.success("Signed in — opening your dashboard…");
-      router.push("/auth/redirect");
-      router.refresh();
+      window.location.replace("/auth/redirect");
+      return;
     } catch (err) {
       const raw = err instanceof Error ? err.message : "Sign-in failed.";
       preserveDraft({
@@ -242,7 +230,7 @@ export function LoginForm() {
             {mode === "forgot_password"
               ? "We'll email you a link to reset your password."
               : mode === "sign_up"
-                ? "Create your account — no confirmation email needed."
+                ? "Create a landlord account — managers and tenants join by invite link."
                 : "Sign in with the email and password you registered with."}
           </p>
           <div>
@@ -299,30 +287,24 @@ export function LoginForm() {
 
           {mode === "sign_up" && (
             <div>
-              <label className="text-label normal-case">I am a…</label>
-              <div className="mt-2 space-y-2">
-                {SIGNUP_ROLES.map((r) => (
-                  <label
-                    key={r.value}
-                    className={`flex cursor-pointer items-center gap-2 rounded-md border px-3 py-2 text-xs ${
-                      signupRole === r.value
-                        ? "border-green-300 bg-green-50"
-                        : "border-border"
-                    }`}
-                  >
-                    <input
-                      type="radio"
-                      name="signup_role"
-                      checked={signupRole === r.value}
-                      onChange={() => setSignupRole(r.value)}
-                    />
-                    {r.label}
-                  </label>
-                ))}
-              </div>
+              <label className="text-label normal-case">Plaza / property name</label>
+              <input
+                className="input-field mt-1"
+                type="text"
+                name="plaza_name"
+                required
+                value={plazaName}
+                onChange={(e) => setPlazaName(e.target.value)}
+                placeholder="e.g. KingFem Plaza, Los Angeles Mall"
+                disabled={loading}
+              />
               <p className="mt-1.5 text-[11px] text-muted">
-                Shop tenants do not use this form. Your manager sends a direct invite
-                link to the email on your lease — that opens your tenant dashboard.
+                This becomes your workspace URL (e.g. /d/kingfem-plaza). You can
+                change it later in Settings.
+              </p>
+              <p className="mt-2 text-[11px] text-muted">
+                Managers, agents, and tenants join via an invite link from the
+                landlord — not this form.
               </p>
             </div>
           )}
@@ -389,7 +371,7 @@ export function LoginForm() {
               }}
             >
               {mode === "sign_in"
-                ? "First time here? Create an account"
+                ? "First time here? Create a landlord account"
                 : "Already have an account? Sign in"}
             </button>
           )}
