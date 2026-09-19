@@ -103,6 +103,12 @@ export default async function DashboardHomePage({
                       <span className="text-meta-pill">{p.periodLabel}</span>
                     )}
                   </div>
+                  <p className="mt-1 text-xs text-muted">
+                    Submitted by{" "}
+                    <span className="font-medium text-foreground">
+                      {p.submittedByName ?? "Unknown"}
+                    </span>
+                  </p>
                 </div>
                 <Badge variant="warning">Pending</Badge>
               </ListRow>

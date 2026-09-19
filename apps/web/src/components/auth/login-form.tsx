@@ -39,6 +39,7 @@ export function LoginForm() {
   const [signupRole, setSignupRole] = useState<MembershipRole>("owner");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [cooldown, setCooldown] = useState(0);
   const [draftReady, setDraftReady] = useState(false);
@@ -104,6 +105,11 @@ export function LoginForm() {
       if (mode === "sign_up") {
         if (submittedPassword.length < MIN_PASSWORD_LENGTH) {
           toast.error(MIN_PASSWORD_MESSAGE);
+          setLoading(false);
+          return;
+        }
+        if (submittedPassword !== confirmPassword) {
+          toast.error("Passwords do not match.");
           setLoading(false);
           return;
         }
@@ -277,6 +283,22 @@ export function LoginForm() {
 
           {mode === "sign_up" && (
             <div>
+              <label className="text-label normal-case">Confirm password</label>
+              <PasswordInput
+                required
+                minLength={MIN_PASSWORD_LENGTH}
+                name="confirm_password"
+                value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)}
+                placeholder="Re-enter your password"
+                autoComplete="new-password"
+                disabled={loading}
+              />
+            </div>
+          )}
+
+          {mode === "sign_up" && (
+            <div>
               <label className="text-label normal-case">I am a…</label>
               <div className="mt-2 space-y-2">
                 {SIGNUP_ROLES.map((r) => (
@@ -363,6 +385,7 @@ export function LoginForm() {
               className="w-full text-xs text-muted hover:text-foreground"
               onClick={() => {
                 setMode(mode === "sign_in" ? "sign_up" : "sign_in");
+                setConfirmPassword("");
               }}
             >
               {mode === "sign_in"
