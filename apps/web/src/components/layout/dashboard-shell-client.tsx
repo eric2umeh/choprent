@@ -9,6 +9,7 @@ import {
 import { StaffNotificationListener } from "@/components/notifications/staff-notification-listener";
 import { AppUsageRecorder } from "@/components/pwa/app-usage-recorder";
 import { AddToHomeScreenPrompt } from "@/components/pwa/add-to-home-screen";
+import { PreventAuthHistoryBack } from "@/components/auth/prevent-auth-history-back";
 
 export function DashboardShellClient({
   orgSlug,
@@ -36,6 +37,7 @@ export function DashboardShellClient({
 
   return (
     <>
+      <PreventAuthHistoryBack />
       <div className="flex min-h-screen bg-surface-subtle">
         <StaffNotificationListener userId={userId} orgId={orgId} />
         <AppUsageRecorder orgSlug={orgSlug} userId={userId} audience="staff" />
