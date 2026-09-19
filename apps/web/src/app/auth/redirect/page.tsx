@@ -1,8 +1,8 @@
 import { resolvePostLoginPath } from "@/lib/auth/session";
-import { redirect } from "next/navigation";
+import { AuthRedirectClient } from "@/components/auth/auth-redirect-client";
 
-/** Server Component — reads session cookies reliably (Route Handlers can miss them). */
+/** Resolves destination on the server (cookies), then replaces history on the client. */
 export default async function AuthRedirectPage() {
   const path = await resolvePostLoginPath();
-  redirect(path);
+  return <AuthRedirectClient path={path} />;
 }
