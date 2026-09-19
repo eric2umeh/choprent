@@ -100,7 +100,15 @@ export function TeamInviteForm({
     }
     if (state.success && !lastSuccess.current) {
       lastSuccess.current = true;
-      toast.success("Team member added.");
+      if (state.warning) toast.info(state.warning);
+      if (state.emailSent) {
+        toast.success("Invite email sent. They can sign up from the link.");
+      } else if (state.inviteUrl) {
+        toast.success("Invite created — copy the link to share.");
+        void navigator.clipboard?.writeText(state.inviteUrl);
+      } else {
+        toast.success("Invite sent.");
+      }
       router.refresh();
       onSaved?.();
     }
@@ -137,8 +145,11 @@ export function TeamInviteForm({
           loading={pending}
           className="btn-primary w-full py-2.5 sm:w-auto sm:px-6"
         >
-          Send invite
+          Send invite link
         </LoadingButton>
+        <p className="text-[11px] text-muted">
+          They create their account from the invite link — no public signup needed.
+        </p>
       </form>
     </FormPanel>
   );

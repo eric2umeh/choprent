@@ -125,7 +125,7 @@ export function UsersPageClient({
           className="btn-primary shrink-0 px-3 py-1.5"
           onClick={() => setInviteOpen(true)}
         >
-          Add user
+          Invite user
         </button>
       </div>
 
@@ -139,8 +139,8 @@ export function UsersPageClient({
       <Modal
         open={inviteOpen}
         onClose={() => setInviteOpen(false)}
-        title="Add team member"
-        description="They must sign up at /login first. You'll be warned if they already manage another landlord."
+        title="Invite team member"
+        description="We'll email them a link to create their account and join your plaza. You'll be warned if they already manage another landlord."
       >
         <InviteUserForm
           orgSlug={orgSlug}
@@ -407,7 +407,14 @@ function InviteUserForm({
     if (state.success && !lastSuccess.current) {
       lastSuccess.current = true;
       if (state.warning) toast.info(state.warning);
-      toast.success("Team member added.");
+      if (state.emailSent) {
+        toast.success("Invite email sent. They can sign up from the link.");
+      } else if (state.inviteUrl) {
+        toast.success("Invite created — copy the link to share.");
+        void navigator.clipboard?.writeText(state.inviteUrl);
+      } else {
+        toast.success("Invite sent.");
+      }
       router.refresh();
       onSaved?.();
     }
@@ -455,8 +462,12 @@ function InviteUserForm({
           </div>
         )}
         <LoadingButton type="submit" loading={pending} className="btn-primary w-full">
-          Add user
+          Send invite link
         </LoadingButton>
+        <p className="text-[11px] text-muted">
+          They will receive a link to create their password and join your workspace.
+          No need to sign up on the public login page first.
+        </p>
       </form>
     </FormPanel>
   );

@@ -67,6 +67,13 @@ export async function updateSession(request: NextRequest) {
     return NextResponse.redirect(url);
   }
 
+  if (pathname === "/" && user && !isServerAction) {
+    const url = request.nextUrl.clone();
+    url.pathname = "/auth/redirect";
+    url.search = "";
+    return NextResponse.redirect(url);
+  }
+
   if (pathname === "/login" && user) {
     const error = request.nextUrl.searchParams.get("error");
     const recoveryPending =
