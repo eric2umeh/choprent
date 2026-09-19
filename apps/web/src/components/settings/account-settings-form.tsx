@@ -49,10 +49,11 @@ export function ProfileSettingsForm({
           : "Profile updated."
       );
       if (state.newSlug) {
-        router.push(`/d/${state.newSlug}/settings`);
-      } else {
-        router.refresh();
+        // Hard navigation so we never re-render the old /d/{slug} layout (404).
+        window.location.replace(`/d/${state.newSlug}/settings`);
+        return;
       }
+      router.refresh();
       onSaved?.();
     }
   }, [state.error, state.success, state.newSlug, onSaved, router]);

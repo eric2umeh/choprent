@@ -1,6 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { redirect } from "next/navigation";
 import { requireStaffContext } from "@/lib/auth/session";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
@@ -125,15 +126,19 @@ export async function updateOrgProfile(
   }
 
   const slugChanged = nextSlug !== orgSlug;
+  revalidatePath(`/d/${nextSlug}`, "layout");
+  revalidatePath(`/d/${nextSlug}/settings`);
+  if (slugChanged) {
+    // Leave the old URL immediately — revalidating /d/{oldSlug} would 404
+    // the open settings page before a client router.push can run.
+    redirect(`/d/${nextSlug}/settings`);
+  }
+
   revalidatePath(`/d/${orgSlug}`, "layout");
   revalidatePath(`/t/${orgSlug}`, "layout");
-  revalidatePath(`/d/${nextSlug}`, "layout");
-  revalidatePath(`/t/${nextSlug}`, "layout");
-  revalidatePath(`/d/${nextSlug}/settings`);
 
   return {
     success: true,
-    newSlug: slugChanged ? nextSlug : undefined,
   };
 }
 
