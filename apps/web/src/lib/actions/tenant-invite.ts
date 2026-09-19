@@ -11,7 +11,33 @@ import { appUrl } from "@/lib/env";
 import { sendEmail } from "@/lib/email/send";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { canonicalOrgSlug } from "@/lib/auth/session";
+import { slugify } from "@/lib/utils/slug";
 import { createHash, randomBytes } from "crypto";
+
+async function propertyPortalSlugForLease(
+  admin: ReturnType<typeof createAdminClient>,
+  leaseId: string,
+  orgFallbackSlug: string
+): Promise<string> {
+  const { data: lease } = await admin
+    .from("leases")
+    .select("units!inner(sites!inner(slug, name))")
+    .eq("id", leaseId)
+    .maybeSingle();
+
+  const units = lease?.units as
+    | { sites?: { slug?: string | null; name?: string | null } | { slug?: string | null; name?: string | null }[] }
+    | { sites?: { slug?: string | null; name?: string | null } | { slug?: string | null; name?: string | null }[] }[]
+    | null
+    | undefined;
+  const unit = Array.isArray(units) ? units[0] : units;
+  const siteRaw = unit?.sites;
+  const site = Array.isArray(siteRaw) ? siteRaw[0] : siteRaw;
+  const fromSite =
+    (site?.slug && String(site.slug).trim()) ||
+    (site?.name ? slugify(site.name) : "");
+  return fromSite || orgFallbackSlug;
+}
 
 export type TenantInviteActionState = {
   error?: string;
@@ -305,10 +331,16 @@ export async function acceptTenantInvite(
       email_confirm: true,
     });
 
+    const portalSlug = await propertyPortalSlugForLease(
+      admin,
+      invite.lease_id,
+      canonicalOrgSlug(orgRow)
+    );
+
     return {
       success: true,
       email,
-      orgSlug: canonicalOrgSlug(orgRow),
+      orgSlug: portalSlug,
       alreadyLinked: true,
     };
   }
@@ -371,12 +403,18 @@ export async function acceptTenantInvite(
     .update({ accepted_at: new Date().toISOString() })
     .eq("id", invite.id);
 
+  const portalSlug = await propertyPortalSlugForLease(
+    admin,
+    invite.lease_id,
+    canonicalOrgSlug(orgRow)
+  );
+
   revalidatePath(`/d/${canonicalOrgSlug(orgRow)}/tenants`);
-  revalidatePath(`/t/${canonicalOrgSlug(orgRow)}`);
+  revalidatePath(`/t/${portalSlug}`);
 
   return {
     success: true,
     email,
-    orgSlug: canonicalOrgSlug(orgRow),
+    orgSlug: portalSlug,
   };
 }
