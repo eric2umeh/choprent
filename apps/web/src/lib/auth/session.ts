@@ -32,6 +32,9 @@ export type TenantContext = {
   leaseId: string;
   unitCode: string;
   tenantDisplayName: string;
+  /** Property/plaza slug used in /t/... URLs */
+  portalSlug: string;
+  propertyName: string | null;
   demoMode: boolean;
 };
 
@@ -217,7 +220,7 @@ async function getActiveTenantPortalPath(userId: string): Promise<string | null>
     const { data: lease } = await admin
       .from("leases")
       .select(
-        "id, units!inner(id, unit_code, organization_id, sites!inner(organizations!inner(id, slug)))"
+        "id, units!inner(id, unit_code, organization_id, sites!inner(id, slug, name, organizations!inner(id, slug)))"
       )
       .eq("tenant_user_id", userId)
       .eq("status", "active")
@@ -232,11 +235,33 @@ async function getActiveTenantPortalPath(userId: string): Promise<string | null>
     }
 
     const unit = unitsPayload as {
-      sites?: {
-        organizations?: { id?: string; slug?: string } | { id?: string; slug?: string }[];
-      };
+      sites?:
+        | {
+            id?: string;
+            slug?: string | null;
+            name?: string | null;
+            organizations?: { id?: string; slug?: string } | { id?: string; slug?: string }[];
+          }
+        | {
+            id?: string;
+            slug?: string | null;
+            name?: string | null;
+            organizations?: { id?: string; slug?: string } | { id?: string; slug?: string }[];
+          }[];
     };
-    const orgs = unit.sites?.organizations;
+
+    const site = Array.isArray(unit.sites) ? unit.sites[0] : unit.sites;
+    if (site) {
+      const { slugify } = await import("@/lib/utils/slug");
+      const propertySlug =
+        (site.slug && String(site.slug).trim()) ||
+        (site.name ? slugify(site.name) : "");
+      if (propertySlug) {
+        return `/t/${propertySlug}`;
+      }
+    }
+
+    const orgs = site?.organizations;
     const org = Array.isArray(orgs) ? orgs[0] : orgs;
     if (org?.slug && org.id) {
       return `/t/${canonicalOrgSlug({ id: org.id, slug: org.slug })}`;
@@ -314,68 +339,194 @@ export const requireStaffContext = cache(async function requireStaffContext(
   if (!org) notFound();
 
   const role = await getStaffMembership(org.id, user.id);
-  if (!role) redirect("/login?error=no_access");
+  if (!role) redirect("/access-pending");
 
   return { user, org, role, demoMode: false };
 });
 
-export async function requireTenantContext(
-  orgSlug: string
+export const requireTenantContext = cache(async function requireTenantContext(
+  portalSlug: string
 ): Promise<TenantContext> {
   const user = await getSessionUser();
-  if (!user) redirect(`/login?next=/t/${orgSlug}`);
-
-  let org = await getOrganizationBySlug(orgSlug);
-  if (!org) org = await getOrganizationBySlugAdmin(orgSlug);
-  if (!org) notFound();
+  if (!user) redirect(`/login?next=/t/${portalSlug}`);
 
   const admin = createAdminClient();
-  const { data: lease } = await admin
-    .from("leases")
-    .select(
-      "id, tenant_display_name, start_date, end_date, auto_renew, status, unit_id, units!inner(id, unit_code, organization_id)"
-    )
-    .eq("tenant_user_id", user.id)
-    .eq("status", "active")
-    .eq("units.organization_id", org.id)
-    .limit(1)
-    .maybeSingle();
+  const { slugify } = await import("@/lib/utils/slug");
 
-  if (!lease) redirect("/login?error=no_access");
+  // 1) Prefer property / plaza slug (sites.slug or slugified site name)
+  const { data: siteCandidates } = await admin
+    .from("sites")
+    .select("id, slug, name, organization_id, organizations(id, name, slug)")
+    .eq("slug", portalSlug);
+
+  let matched:
+    | {
+        siteId: string;
+        siteSlug: string;
+        siteName: string;
+        org: OrgContext;
+        leaseId: string;
+        unitId: string;
+        unitCode: string;
+        tenantDisplayName: string;
+        startDate: string;
+        endDate: string;
+        autoRenew: boolean | null;
+        status: string;
+      }
+    | null = null;
+
+  const sitesToTry = [...(siteCandidates ?? [])];
+
+  // Also match by slugified property name when sites.slug differs
+  if (!sitesToTry.length) {
+    const { data: allSites } = await admin
+      .from("sites")
+      .select("id, slug, name, organization_id, organizations(id, name, slug)")
+      .limit(500);
+    for (const site of allSites ?? []) {
+      if (slugify(site.name) === portalSlug || site.slug === portalSlug) {
+        sitesToTry.push(site);
+      }
+    }
+  }
+
+  for (const site of sitesToTry) {
+    const orgJoin = site.organizations as
+      | { id: string; name: string; slug: string }
+      | { id: string; name: string; slug: string }[]
+      | null;
+    const orgRow = Array.isArray(orgJoin) ? orgJoin[0] : orgJoin;
+    if (!orgRow) continue;
+
+    const { data: lease } = await admin
+      .from("leases")
+      .select(
+        "id, tenant_display_name, start_date, end_date, auto_renew, status, unit_id, units!inner(id, unit_code, site_id, organization_id)"
+      )
+      .eq("tenant_user_id", user.id)
+      .eq("status", "active")
+      .eq("units.site_id", site.id)
+      .limit(1)
+      .maybeSingle();
+
+    if (!lease) continue;
+
+    const unitsPayload = lease.units;
+    const unit =
+      unitsPayload && typeof unitsPayload === "object" && !Array.isArray(unitsPayload)
+        ? (unitsPayload as { id: string; unit_code: string })
+        : null;
+
+    matched = {
+      siteId: site.id,
+      siteSlug: site.slug || slugify(site.name) || portalSlug,
+      siteName: site.name,
+      org: {
+        id: orgRow.id,
+        name: orgRow.name,
+        slug: canonicalOrgSlug(orgRow),
+      },
+      leaseId: lease.id,
+      unitId: unit?.id ?? lease.unit_id,
+      unitCode: unit?.unit_code ?? "—",
+      tenantDisplayName: lease.tenant_display_name,
+      startDate: lease.start_date,
+      endDate: lease.end_date,
+      autoRenew: lease.auto_renew,
+      status: lease.status,
+    };
+
+    const canonical = matched.siteSlug;
+    if (canonical && canonical !== portalSlug) {
+      redirect(`/t/${canonical}`);
+    }
+    break;
+  }
+
+  // 2) Legacy: organization slug (older tenant bookmarks)
+  if (!matched) {
+    let org = await getOrganizationBySlug(portalSlug);
+    if (!org) org = await getOrganizationBySlugAdmin(portalSlug);
+    if (org) {
+      const { data: lease } = await admin
+        .from("leases")
+        .select(
+          "id, tenant_display_name, start_date, end_date, auto_renew, status, unit_id, units!inner(id, unit_code, site_id, organization_id, sites(id, slug, name))"
+        )
+        .eq("tenant_user_id", user.id)
+        .eq("status", "active")
+        .eq("units.organization_id", org.id)
+        .limit(1)
+        .maybeSingle();
+
+      if (lease) {
+        const unitsRaw = lease.units as unknown;
+        const unitsPayload = (
+          Array.isArray(unitsRaw) ? unitsRaw[0] : unitsRaw
+        ) as {
+          id: string;
+          unit_code: string;
+          sites?:
+            | { id: string; slug: string | null; name: string }
+            | { id: string; slug: string | null; name: string }[];
+        } | null;
+        const siteRaw = unitsPayload?.sites;
+        const site = Array.isArray(siteRaw) ? siteRaw[0] : siteRaw;
+        const propertySlug =
+          (site?.slug && String(site.slug).trim()) ||
+          (site?.name ? slugify(site.name) : "") ||
+          org.slug;
+
+        // Canonicalize to property URL when possible
+        if (propertySlug && propertySlug !== portalSlug) {
+          redirect(`/t/${propertySlug}`);
+        }
+
+        matched = {
+          siteId: site?.id ?? "",
+          siteSlug: propertySlug,
+          siteName: site?.name ?? org.name,
+          org,
+          leaseId: lease.id,
+          unitId: unitsPayload?.id ?? lease.unit_id,
+          unitCode: unitsPayload?.unit_code ?? "—",
+          tenantDisplayName: lease.tenant_display_name,
+          startDate: lease.start_date,
+          endDate: lease.end_date,
+          autoRenew: lease.auto_renew,
+          status: lease.status,
+        };
+      }
+    }
+  }
+
+  if (!matched) {
+    // Wrong/legacy slug (e.g. old email org slug): send them to their property URL.
+    const fallback = await getActiveTenantPortalPath(user.id);
+    if (fallback) redirect(fallback);
+    redirect("/access-pending");
+  }
 
   const { ensureAutoRenewedLease } = await import("@/lib/leases/auto-renew");
-  await ensureAutoRenewedLease(admin, org.id, {
-    id: lease.id,
-    unit_id: lease.unit_id,
-    start_date: lease.start_date,
-    end_date: lease.end_date,
-    status: lease.status,
-    auto_renew: lease.auto_renew,
+  await ensureAutoRenewedLease(admin, matched.org.id, {
+    id: matched.leaseId,
+    unit_id: matched.unitId,
+    start_date: matched.startDate,
+    end_date: matched.endDate,
+    status: matched.status,
+    auto_renew: matched.autoRenew,
   });
-
-  const unitsPayload = lease.units;
-  const unitCode =
-    unitsPayload &&
-    typeof unitsPayload === "object" &&
-    !Array.isArray(unitsPayload) &&
-    "unit_code" in unitsPayload
-      ? (unitsPayload as { unit_code: string }).unit_code
-      : "—";
-  const unitId =
-    unitsPayload &&
-    typeof unitsPayload === "object" &&
-    !Array.isArray(unitsPayload) &&
-    "id" in unitsPayload
-      ? (unitsPayload as { id: string }).id
-      : "";
 
   return {
     user,
-    org,
-    unitId,
-    leaseId: lease.id,
-    unitCode,
-    tenantDisplayName: lease.tenant_display_name,
+    org: matched.org,
+    unitId: matched.unitId,
+    leaseId: matched.leaseId,
+    unitCode: matched.unitCode,
+    tenantDisplayName: matched.tenantDisplayName,
+    portalSlug: matched.siteSlug,
+    propertyName: matched.siteName,
     demoMode: false,
   };
-}
+});
