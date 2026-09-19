@@ -336,7 +336,12 @@ export const requireStaffContext = cache(async function requireStaffContext(
 
   let org = await getOrganizationBySlug(orgSlug);
   if (!org) org = await getOrganizationBySlugAdmin(orgSlug);
-  if (!org) notFound();
+  if (!org) {
+    // Workspace slug may have just been renamed — avoid a hard 404 on the old URL.
+    const staffPath = await getStaffDashboardPathAdmin(user.id);
+    if (staffPath) redirect(staffPath);
+    notFound();
+  }
 
   const role = await getStaffMembership(org.id, user.id);
   if (!role) redirect("/access-pending");
