@@ -43,10 +43,9 @@ export async function provisionLandlordOrganization(
 ) {
   const admin = createAdminClient();
   const name = workspaceName?.trim() || orgDisplayName(user);
-  const slugBase = workspaceName?.trim()
-    ? slugify(workspaceName.trim())
-    : orgSlugCandidate(user);
-  const slug = await uniqueOrgSlug(admin, slugBase || orgSlugCandidate(user));
+  // Prefer plaza/property name for URL slug — never use email alone when a name is given.
+  const slugBase = slugify(name) || orgSlugCandidate(user);
+  const slug = await uniqueOrgSlug(admin, slugBase);
 
   const { data: org, error: orgError } = await admin
     .from("organizations")
