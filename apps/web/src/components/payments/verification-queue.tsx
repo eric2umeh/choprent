@@ -137,6 +137,12 @@ export function VerificationQueue({
                     {waiting === 0 ? "Submitted today" : `${waiting}d waiting`}
                   </span>
                 </div>
+                <p className="mt-1.5 text-xs text-muted">
+                  Submitted by{" "}
+                  <span className="font-medium text-foreground">
+                    {p.submittedByName ?? "Unknown"}
+                  </span>
+                </p>
                 {p.bankReference && (
                   <p className="mt-1 font-mono text-xs text-muted">
                     Ref: {p.bankReference}

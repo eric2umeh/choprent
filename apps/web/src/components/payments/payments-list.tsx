@@ -238,7 +238,9 @@ export function PaymentsList({
             {formatDisplayDate(p.createdAt)}
           </span>
           {p.submittedByName && (
-            <p className="mt-0.5 text-[11px] text-muted">{p.submittedByName}</p>
+            <p className="mt-0.5 text-[11px] text-muted">
+              by {p.submittedByName}
+            </p>
           )}
         </div>
       ),
@@ -530,6 +532,11 @@ export function PaymentsList({
                       </span>
                     </div>
                     <p className="mt-1.5 text-money">{formatNaira(p.amount)}</p>
+                    {p.submittedByName && (
+                      <p className="mt-1 text-[11px] text-muted">
+                        Submitted by {p.submittedByName}
+                      </p>
+                    )}
                     {p.periodLabel && (
                       <span className="mt-1 inline-flex text-meta-pill">
                         {p.periodLabel}
