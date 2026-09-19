@@ -75,7 +75,6 @@ export async function updateSession(request: NextRequest) {
   }
 
   if (pathname === "/login" && user) {
-    const error = request.nextUrl.searchParams.get("error");
     const recoveryPending =
       request.cookies.get("password_recovery_pending")?.value === "1";
     if (recoveryPending) {
@@ -84,12 +83,12 @@ export async function updateSession(request: NextRequest) {
       url.search = "";
       return NextResponse.redirect(url);
     }
-    if (!error) {
-      const url = request.nextUrl.clone();
-      url.pathname = "/auth/redirect";
-      url.search = "";
-      return NextResponse.redirect(url);
-    }
+    // Always leave /login when signed in — including stale ?error=no_access
+    // history entries from browser Back — so users cannot return to sign-in.
+    const url = request.nextUrl.clone();
+    url.pathname = "/auth/redirect";
+    url.search = "";
+    return NextResponse.redirect(url);
   }
 
   if (pathname === "/auth/redirect" && user) {
