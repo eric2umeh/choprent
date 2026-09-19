@@ -44,7 +44,7 @@ export function SettingsPageClient({
         <PilotSetupSettingsCard orgSlug={orgSlug} />
         <SettingsSectionCard
           title="Workspace & profile"
-          description="Plaza name and URL slug (used by owner, managers, agents, and tenants), plus your display name and logo."
+          description="Staff dashboard URL uses your workspace name. Each property has its own tenant portal URL from the property name."
           action={
             <button
               type="button"
@@ -64,7 +64,7 @@ export function SettingsPageClient({
               </dd>
             </div>
             <div>
-              <dt className="text-label normal-case">URL slug</dt>
+              <dt className="text-label normal-case">Staff URL slug</dt>
               <dd className="mt-0.5 text-list-primary font-mono text-sm">
                 {profile.slug || orgSlug}
               </dd>
@@ -82,11 +82,12 @@ export function SettingsPageClient({
               </dd>
             </div>
             <div className="sm:col-span-2">
-              <dt className="text-label normal-case">Staff / tenant URLs</dt>
+              <dt className="text-label normal-case">Staff dashboard</dt>
               <dd className="mt-0.5 text-list-secondary text-sm">
                 <code className="text-xs">/d/{profile.slug || orgSlug}</code>
-                {" · "}
-                <code className="text-xs">/t/{profile.slug || orgSlug}</code>
+                <span className="mt-1 block text-list-meta">
+                  Tenant portals use each property&apos;s name (e.g. /t/befs-plaza), not this workspace slug.
+                </span>
               </dd>
             </div>
             <div className="sm:col-span-2">

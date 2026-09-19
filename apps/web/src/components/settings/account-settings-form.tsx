@@ -99,10 +99,8 @@ export function ProfileSettingsForm({
             title="Lowercase letters, numbers, and hyphens"
           />
           <p className="mt-1 text-form-hint">
-            Staff: <code className="text-xs">/d/{profile.slug || orgSlug}</code>
-            {" · "}
-            Tenants: <code className="text-xs">/t/{profile.slug || orgSlug}</code>
-            . Same slug for everyone in this plaza — not one per role.
+            Staff dashboard: <code className="text-xs">/d/{profile.slug || orgSlug}</code>.
+            Tenant portals use each property&apos;s name (set under Units &amp; Properties).
           </p>
         </div>
         <div>

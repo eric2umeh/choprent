@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import Link from "next/link";
 import { linkPlazaAccount } from "@/lib/actions/auth";
 import { requestPasswordReset } from "@/lib/actions/password-reset";
 import { createClient } from "@/lib/supabase/client";
@@ -419,9 +418,13 @@ export function LoginForm() {
 
       <p className="mt-4 text-center text-[11px] text-muted">
         Already signed in?{" "}
-        <Link href="/auth/redirect" className="text-green-700 hover:underline">
+        <button
+          type="button"
+          className="text-green-700 hover:underline"
+          onClick={() => window.location.replace("/auth/redirect")}
+        >
           Open my dashboard
-        </Link>
+        </button>
       </p>
     </div>
   );

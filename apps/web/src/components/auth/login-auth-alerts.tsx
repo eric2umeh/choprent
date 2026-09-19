@@ -6,8 +6,6 @@ import { formatAuthError } from "@/lib/auth/messages";
 import { toast } from "@/components/ui/toast";
 
 const ERROR_MESSAGES: Record<string, string> = {
-  no_access:
-    "You're signed in, but your role isn't set up yet. Choose your role on the next screen to continue.",
   otp_expired:
     "Magic link expired or already used. Use the Password tab to sign in instead.",
   auth: "Sign-in failed. Try the Password tab, or request one new magic link.",
@@ -22,6 +20,15 @@ export function LoginAuthAlerts() {
 
     const queryError = searchParams.get("error");
     const detail = searchParams.get("message");
+
+    // Stale back-navigation used to land on /login?error=no_access. Middleware
+    // now redirects signed-in users away; never toast that message.
+    if (queryError === "no_access") {
+      setShown(true);
+      window.history.replaceState(null, "", "/login");
+      return;
+    }
+
     if (queryError && ERROR_MESSAGES[queryError]) {
       toast.error(
         detail ? formatAuthError(detail) : ERROR_MESSAGES[queryError]
