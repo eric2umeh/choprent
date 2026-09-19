@@ -57,8 +57,7 @@ export function AcceptTenantInviteForm({
     }
 
     toast.success("Welcome — opening your tenant dashboard.");
-    // Hard navigation so session cookies are definitely applied.
-    window.location.assign(`/t/${orgSlug}`);
+    window.location.replace(`/t/${orgSlug}`);
   }
 
   async function handleSubmit(e: React.FormEvent) {
