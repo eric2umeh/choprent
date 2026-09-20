@@ -416,16 +416,6 @@ export function LoginForm() {
         </form>
       )}
 
-      <p className="mt-4 text-center text-[11px] text-muted">
-        Already signed in?{" "}
-        <button
-          type="button"
-          className="text-green-700 hover:underline"
-          onClick={() => window.location.replace("/auth/redirect")}
-        >
-          Open my dashboard
-        </button>
-      </p>
     </div>
   );
 }
