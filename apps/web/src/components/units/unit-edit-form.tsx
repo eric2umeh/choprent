@@ -242,6 +242,49 @@ export function UnitEditForm({
               </select>
             </div>
           </div>
+          {(unit.billingProfile.baseRentNgn > 0 || unit.annualRent > 0) &&
+            !!unit.tenantName && (
+              <fieldset className="space-y-2 rounded-lg border border-border bg-surface px-3 py-3">
+                <legend className="px-1 text-label normal-case">
+                  When rent or fees change
+                </legend>
+                <label className="flex cursor-pointer gap-2 text-sm text-foreground">
+                  <input
+                    type="radio"
+                    name="rent_change_mode"
+                    value="forward_only"
+                    defaultChecked
+                    disabled={pending}
+                    className="mt-1"
+                  />
+                  <span>
+                    <span className="font-medium">New rent only (recommended)</span>
+                    <span className="mt-0.5 block text-[11px] text-muted">
+                      Past years keep their old amount. Any unpaid balance stays
+                      as arrears. Only the current and future periods use the new
+                      rent.
+                    </span>
+                  </span>
+                </label>
+                <label className="flex cursor-pointer gap-2 text-sm text-foreground">
+                  <input
+                    type="radio"
+                    name="rent_change_mode"
+                    value="recalculate_all"
+                    disabled={pending}
+                    className="mt-1"
+                  />
+                  <span>
+                    <span className="font-medium">Recalculate all open years</span>
+                    <span className="mt-0.5 block text-[11px] text-muted">
+                      Apply this rent to every open billing period on this
+                      tenancy. Use only if you intend to rewrite past expected
+                      amounts.
+                    </span>
+                  </span>
+                </label>
+              </fieldset>
+            )}
           <div className="grid gap-3 sm:grid-cols-2">
             <div>
               <label className="text-label normal-case">Service charge (%)</label>
