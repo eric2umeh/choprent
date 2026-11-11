@@ -12,7 +12,11 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import {
   parseBillingProfileFromForm,
 } from "@/lib/charges/billing-profile";
-import { regenerateLedgerForUnit } from "@/lib/charges/generate-ledger";
+import {
+  loadUnitBillingProfile,
+  regenerateLedgerForUnit,
+  type RentChangeMode,
+} from "@/lib/charges/generate-ledger";
 import { uploadDocumentsFromFormData } from "@/lib/documents/upload";
 import { defaultAnnualLeaseRange } from "@/lib/charges/period-ranges";
 import type { BillingCadence, PropertyType } from "@/types/database";
@@ -141,6 +145,9 @@ export async function setupUnitDetails(
     formData.get("billing_cadence") ?? "annual"
   ) as BillingCadence;
   const billingProfile = parseBillingProfileFromForm(formData);
+  const rentChangeRaw = String(formData.get("rent_change_mode") ?? "").trim();
+  const rentChangeMode: RentChangeMode =
+    rentChangeRaw === "recalculate_all" ? "recalculate_all" : "forward_only";
   const settlementAccountIdRaw = String(
     formData.get("settlement_account_id") ?? ""
   ).trim();
@@ -286,7 +293,10 @@ export async function setupUnitDetails(
         .eq("id", newLease.id);
 
       if (billingProfile.baseRentNgn > 0) {
-        await regenerateLedgerForUnit(admin, ctx.org.id, unitId, billingProfile);
+        // First lease for this unit — no prior years to protect.
+        await regenerateLedgerForUnit(admin, ctx.org.id, unitId, billingProfile, {
+          rentChangeMode: "recalculate_all",
+        });
       }
     }
   } else if (activeLease && !shouldEndTenancy) {
@@ -305,7 +315,18 @@ export async function setupUnitDetails(
       .eq("id", activeLease.id);
 
     if (billingProfile.baseRentNgn > 0 || annualRentRaw) {
-      await regenerateLedgerForUnit(admin, ctx.org.id, unitId, billingProfile);
+      const previousProfile = await loadUnitBillingProfile(admin, unitId);
+      const rentChanged =
+        !previousProfile ||
+        previousProfile.baseRentNgn !== billingProfile.baseRentNgn ||
+        previousProfile.servicePct !== billingProfile.servicePct ||
+        previousProfile.agencyFeeNgn !== billingProfile.agencyFeeNgn ||
+        previousProfile.vatPct !== billingProfile.vatPct;
+
+      await regenerateLedgerForUnit(admin, ctx.org.id, unitId, billingProfile, {
+        // Only ask/apply the mode when billing figures changed; otherwise keep past periods.
+        rentChangeMode: rentChanged ? rentChangeMode : "forward_only",
+      });
     }
   }
 
