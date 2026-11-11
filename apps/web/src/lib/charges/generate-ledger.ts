@@ -5,9 +5,22 @@ import {
   sumChargeLines,
   type UnitBillingProfile,
 } from "@/lib/charges/billing-profile";
-import { listBillingPeriods } from "@/lib/charges/period-ranges";
+import { listBillingPeriods, toIsoDate } from "@/lib/charges/period-ranges";
 
 type AdminClient = ReturnType<typeof createAdminClient>;
+
+/** How a rent edit applies to existing open ledger periods. */
+export type RentChangeMode = "forward_only" | "recalculate_all";
+
+export type LedgerRegenOptions = {
+  /**
+   * forward_only (default): past completed periods keep their old expected
+   * totals; unpaid balances stay outstanding as arrears. Only the current and
+   * future periods use the new rent.
+   * recalculate_all: rewrite every open period with the new rent (old behaviour).
+   */
+  rentChangeMode?: RentChangeMode;
+};
 
 export async function saveUnitBillingProfile(
   admin: AdminClient,
@@ -132,10 +145,13 @@ export async function generateLedgerForLease(
     leaseEnd: string;
     cadence: BillingCadence;
     profile: UnitBillingProfile;
-  }
+  } & LedgerRegenOptions
 ): Promise<void> {
   const { orgId, unitId, leaseId, leaseStart, leaseEnd, cadence, profile } =
     input;
+  const rentChangeMode: RentChangeMode =
+    input.rentChangeMode ?? "forward_only";
+  const today = toIsoDate(new Date());
 
   if (
     profile.baseRentNgn <= 0 &&
@@ -145,6 +161,13 @@ export async function generateLedgerForLease(
   }
 
   await saveUnitBillingProfile(admin, unitId, profile);
+
+  const periods = listBillingPeriods(leaseStart, leaseEnd, cadence);
+  // New rent applies from the first period that has not fully ended yet.
+  const forwardFrom =
+    periods.find((p) => p.periodEnd >= today)?.periodStart ??
+    periods[periods.length - 1]?.periodStart ??
+    leaseStart;
 
   await admin
     .from("charge_templates")
@@ -183,7 +206,8 @@ export async function generateLedgerForLease(
               ? profile.vatPct
               : annualAmount,
         billing_period: cadence,
-        effective_from: leaseStart,
+        effective_from:
+          rentChangeMode === "forward_only" ? forwardFrom : leaseStart,
         priority: line.priority,
       })
       .select("id")
@@ -192,25 +216,59 @@ export async function generateLedgerForLease(
     if (tpl) templateIds.set(line.chargeKind, tpl.id);
   }
 
-  const periods = listBillingPeriods(leaseStart, leaseEnd, cadence);
   const expectedStarts = periods.map((p) => p.periodStart);
   const idByStart = new Map<string, string>();
 
   let isFirst = true;
   for (const periodRange of periods) {
-    const lines = buildPeriodChargeLines(profile, cadence, isFirst);
-    isFirst = false;
-    const expectedTotal = sumChargeLines(lines);
-
     const { data: existing } = await admin
       .from("ledger_periods")
-      .select("id, paid_total_ngn")
+      .select(
+        "id, paid_total_ngn, expected_total_ngn, arrears_opening_ngn"
+      )
       .eq("unit_id", unitId)
       .eq("period_start", periodRange.periodStart)
       .eq("billing_cadence", cadence)
       .maybeSingle();
 
     const paidTotal = Number(existing?.paid_total_ngn ?? 0);
+    const preservePast =
+      rentChangeMode === "forward_only" &&
+      periodRange.periodStart < forwardFrom;
+
+    // Do not invent past periods at the new rent — leave history alone.
+    if (preservePast && !existing) {
+      isFirst = false;
+      continue;
+    }
+
+    if (preservePast && existing) {
+      const expectedTotal = Number(existing.expected_total_ngn);
+      const arrearsOpening = Number(existing.arrears_opening_ngn ?? 0);
+      await admin
+        .from("ledger_periods")
+        .update({
+          lease_id: leaseId,
+          period_end: periodRange.periodEnd,
+          status: "open",
+          arrears_closing_ngn: Math.max(
+            expectedTotal + arrearsOpening - paidTotal,
+            0
+          ),
+        })
+        .eq("id", existing.id);
+      idByStart.set(periodRange.periodStart, existing.id);
+      isFirst = false;
+      continue;
+    }
+
+    const lines = buildPeriodChargeLines(profile, cadence, isFirst);
+    isFirst = false;
+    const expectedTotal = sumChargeLines(lines);
+    const arrearsOpening =
+      rentChangeMode === "recalculate_all"
+        ? 0
+        : Number(existing?.arrears_opening_ngn ?? 0);
 
     const { data: period } = await admin
       .from("ledger_periods")
@@ -224,8 +282,11 @@ export async function generateLedgerForLease(
           status: "open",
           expected_total_ngn: expectedTotal,
           paid_total_ngn: paidTotal,
-          arrears_opening_ngn: 0,
-          arrears_closing_ngn: Math.max(expectedTotal - paidTotal, 0),
+          arrears_opening_ngn: arrearsOpening,
+          arrears_closing_ngn: Math.max(
+            expectedTotal + arrearsOpening - paidTotal,
+            0
+          ),
         },
         { onConflict: "unit_id,period_start,billing_cadence" }
       )
@@ -348,6 +409,7 @@ export async function repairStaleLedgerPeriodsForUnit(
     leaseEnd: lease.end_date,
     cadence: lease.billing_cadence,
     profile,
+    rentChangeMode: "forward_only",
   });
 
   return true;
@@ -357,7 +419,8 @@ export async function regenerateLedgerForUnit(
   admin: AdminClient,
   orgId: string,
   unitId: string,
-  profile?: UnitBillingProfile
+  profile?: UnitBillingProfile,
+  options?: LedgerRegenOptions
 ): Promise<void> {
   const { data: lease } = await admin
     .from("leases")
@@ -380,5 +443,6 @@ export async function regenerateLedgerForUnit(
     leaseEnd: lease.end_date,
     cadence: lease.billing_cadence,
     profile: billingProfile,
+    rentChangeMode: options?.rentChangeMode ?? "forward_only",
   });
 }
