@@ -1,5 +1,6 @@
 import { createAdminClient } from "@/lib/supabase/admin";
 import type { ExpenseCategory } from "@/types/database";
+import { getStorageObjectSizes } from "@/lib/storage/file-size";
 
 export type ExpenseListItem = {
   id: string;
@@ -11,6 +12,8 @@ export type ExpenseListItem = {
   description: string;
   amountNgn: number;
   expenseDate: string;
+  attachmentUrl: string | null;
+  attachmentSizeBytes: number | null;
 };
 
 export type PropertyPnL = {
@@ -47,17 +50,21 @@ function currentYearBounds() {
   };
 }
 
-function mapExpenseRow(row: {
-  id: string;
-  site_id: string;
-  unit_id: string | null;
-  category: string;
-  description: string;
-  amount_ngn: number;
-  expense_date: string;
-  sites: { name: string } | { name: string }[] | null;
-  units: { unit_code: string } | { unit_code: string }[] | null;
-}): ExpenseListItem {
+function mapExpenseRow(
+  row: {
+    id: string;
+    site_id: string;
+    unit_id: string | null;
+    category: string;
+    description: string;
+    amount_ngn: number;
+    expense_date: string;
+    attachment_url?: string | null;
+    sites: { name: string } | { name: string }[] | null;
+    units: { unit_code: string } | { unit_code: string }[] | null;
+  },
+  attachmentSizes: Map<string, number>
+): ExpenseListItem {
   const site = row.sites;
   const propertyName = Array.isArray(site) ? site[0]?.name : site?.name;
   const units = row.units;
@@ -66,6 +73,10 @@ function mapExpenseRow(row: {
       ? units[0]?.unit_code
       : units?.unit_code
     : null;
+  const attachmentUrl =
+    typeof row.attachment_url === "string" && row.attachment_url.length > 0
+      ? row.attachment_url
+      : null;
 
   return {
     id: row.id,
@@ -77,11 +88,25 @@ function mapExpenseRow(row: {
     description: row.description,
     amountNgn: Number(row.amount_ngn),
     expenseDate: row.expense_date,
+    attachmentUrl,
+    attachmentSizeBytes: attachmentUrl
+      ? attachmentSizes.get(attachmentUrl) ?? null
+      : null,
   };
 }
 
 const expenseSelect =
-  "id, site_id, unit_id, category, description, amount_ngn, expense_date, sites!inner(name, organization_id), units(unit_code)";
+  "id, site_id, unit_id, category, description, amount_ngn, expense_date, attachment_url, sites!inner(name, organization_id), units(unit_code)";
+
+async function mapExpenseRows(
+  rows: Parameters<typeof mapExpenseRow>[0][]
+): Promise<ExpenseListItem[]> {
+  const paths = rows
+    .map((r) => r.attachment_url)
+    .filter((p): p is string => typeof p === "string" && p.length > 0);
+  const sizes = await getStorageObjectSizes("documents", paths);
+  return rows.map((row) => mapExpenseRow(row, sizes));
+}
 
 export async function listExpensesForOrg(orgId: string): Promise<ExpenseListItem[]> {
   try {
@@ -92,7 +117,7 @@ export async function listExpensesForOrg(orgId: string): Promise<ExpenseListItem
       .eq("organization_id", orgId)
       .order("expense_date", { ascending: false });
 
-    return (data ?? []).map(mapExpenseRow);
+    return mapExpenseRows(data ?? []);
   } catch {
     return [];
   }
@@ -111,7 +136,7 @@ export async function listExpensesForUnit(
       .eq("unit_id", unitId)
       .order("expense_date", { ascending: false });
 
-    return (data ?? []).map(mapExpenseRow);
+    return mapExpenseRows(data ?? []);
   } catch {
     return [];
   }
@@ -130,7 +155,7 @@ export async function listExpensesForProperty(
       .eq("site_id", siteId)
       .order("expense_date", { ascending: false });
 
-    return (data ?? []).map(mapExpenseRow);
+    return mapExpenseRows(data ?? []);
   } catch {
     return [];
   }
