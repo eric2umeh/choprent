@@ -19,6 +19,29 @@ import { isPaystackDvaEnabled } from "@/lib/paystack/client";
 import { isUuid } from "@/lib/utils/slug";
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
+import type { Metadata } from "next";
+
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ orgSlug: string; propertySlug: string; unitSlug: string[] }>;
+}): Promise<Metadata> {
+  const { orgSlug, propertySlug: rawPropertySlug, unitSlug: unitSlugParts } =
+    await params;
+  if (!unitSlugParts?.length) return { title: "Unit" };
+  try {
+    const propertySlug = decodeURIComponent(rawPropertySlug);
+    const unitRef = unitCodeFromUrlRef(unitSlugParts);
+    const ctx = await requireStaffContext(orgSlug);
+    const property = await resolveProperty(ctx.org.id, propertySlug);
+    if (!property) return { title: "Unit" };
+    const unit = await resolveUnit(ctx.org.id, property.id, unitRef);
+    if (unit) return { title: `Unit ${unit.unitCode}` };
+  } catch {
+    /* fall through */
+  }
+  return { title: "Unit" };
+}
 
 export default async function PropertyUnitDetailPage({
   params,
