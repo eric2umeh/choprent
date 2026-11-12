@@ -6,6 +6,8 @@ import { LoginAuthAlerts } from "@/components/auth/login-auth-alerts";
 import { RecoveryHashHandler } from "@/components/auth/recovery-hash-handler";
 import { LoadingState } from "@/components/ui/loading-state";
 
+export const metadata = { title: "Sign in" };
+
 export default function LoginPage() {
   return (
     <div className="flex min-h-screen bg-white">
