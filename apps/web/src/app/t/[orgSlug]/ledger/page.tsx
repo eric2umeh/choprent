@@ -6,6 +6,8 @@ import { TenantEngagementBeacon } from "@/components/reports/tenant-engagement-b
 import { requireTenantContext } from "@/lib/auth/session";
 import { getTenantLedger } from "@/lib/data/ledger";
 
+export const metadata = { title: "Transactions" };
+
 export default async function TenantLedgerPage({
   params,
 }: {

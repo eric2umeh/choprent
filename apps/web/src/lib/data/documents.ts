@@ -1,6 +1,10 @@
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { actorLabel, resolveActorLabels } from "@/lib/data/audit-actors";
+import {
+  getStorageObjectSizesForEntries,
+  type StorageBucket,
+} from "@/lib/storage/file-size";
 
 export type DocumentType =
   | "tenancy_agreement"
@@ -25,6 +29,10 @@ export type DocumentListItem = {
   siteId: string | null;
   folderId: string | null;
   filePath: string;
+  /** Supabase storage bucket for this file. */
+  storageBucket: StorageBucket;
+  /** Bytes from storage.objects metadata when available. */
+  fileSizeBytes: number | null;
   issuedAt: string;
   issuedByName: string | null;
 };
@@ -55,6 +63,22 @@ const documentSelect =
 const documentSelectLegacy =
   "id, title, doc_type, unit_id, lease_id, site_id, file_url, issued_at, issued_by, units(unit_code)";
 
+async function attachDocumentSizes(
+  docs: DocumentListItem[]
+): Promise<DocumentListItem[]> {
+  if (!docs.length) return docs;
+  const sizes = await getStorageObjectSizesForEntries(
+    docs.map((doc) => ({ bucket: doc.storageBucket, path: doc.filePath }))
+  );
+  return docs.map((doc) => ({
+    ...doc,
+    fileSizeBytes:
+      sizes.get(`${doc.storageBucket}:${doc.filePath}`) ??
+      sizes.get(doc.filePath) ??
+      null,
+  }));
+}
+
 async function mapDocumentRows(
   orgId: string,
   rows: DocumentRow[]
@@ -64,7 +88,7 @@ async function mapDocumentRows(
     rows.map((row) => row.issued_by)
   );
 
-  return rows.map((row) => ({
+  const docs: DocumentListItem[] = rows.map((row) => ({
     id: row.id,
     title: row.title,
     docType: row.doc_type,
@@ -74,9 +98,13 @@ async function mapDocumentRows(
     siteId: row.site_id,
     folderId: row.folder_id ?? null,
     filePath: row.file_url,
+    storageBucket: "documents" as const,
+    fileSizeBytes: null,
     issuedAt: row.issued_at,
     issuedByName: actorLabel(actors, row.issued_by),
   }));
+
+  return attachDocumentSizes(docs);
 }
 
 async function fetchAllDocumentRows(orgId: string): Promise<DocumentRow[]> {
@@ -308,6 +336,8 @@ async function listPaymentAttachmentsForUnit(
             siteId: null,
             folderId: null,
             filePath: att.file_url,
+            storageBucket: "receipts",
+            fileSizeBytes: null,
             issuedAt: String(att.created_at).slice(0, 10) || date,
             issuedByName: null,
           });
@@ -326,13 +356,15 @@ async function listPaymentAttachmentsForUnit(
           siteId: null,
           folderId: null,
           filePath: payment.receipt_file_url as string,
+          storageBucket: "receipts",
+          fileSizeBytes: null,
           issuedAt: date,
           issuedByName: null,
         });
       }
     }
 
-    return docs;
+    return attachDocumentSizes(docs);
   } catch {
     return [];
   }
@@ -362,7 +394,7 @@ async function listExpenseAttachmentsForUnit(
       data.map((row) => row.created_by as string | null)
     );
 
-    return data
+    const docs: DocumentListItem[] = data
       .filter((row) => typeof row.attachment_url === "string" && row.attachment_url.length > 0)
       .map((row) => {
         const units = row.units as
@@ -383,10 +415,14 @@ async function listExpenseAttachmentsForUnit(
           siteId: (row.site_id as string) ?? null,
           folderId: null,
           filePath: row.attachment_url as string,
+          storageBucket: "documents",
+          fileSizeBytes: null,
           issuedAt: String(row.expense_date),
           issuedByName: actorLabel(actors, row.created_by as string | null),
         } satisfies DocumentListItem;
       });
+
+    return attachDocumentSizes(docs);
   } catch {
     return [];
   }

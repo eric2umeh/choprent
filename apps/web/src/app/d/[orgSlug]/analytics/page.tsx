@@ -3,6 +3,8 @@ import { AnalyticsPageClient } from "@/components/analytics/analytics-page-clien
 import { requireStaffContext } from "@/lib/auth/session";
 import { getPortfolioSummary, getRentAdvisor } from "@/lib/data/analytics";
 
+export const metadata = { title: "Analytics" };
+
 export default async function AnalyticsPage({
   params,
 }: {

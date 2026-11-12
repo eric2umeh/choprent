@@ -11,6 +11,7 @@ import {
 import type { DocumentFolderItem } from "@/lib/data/document-folders";
 import type { DocumentListItem } from "@/lib/data/documents";
 import { formatDocumentCategory } from "@/lib/documents/categories";
+import { formatFileSize } from "@/lib/storage/file-size";
 import { formatDisplayDate } from "@/lib/utils/format-date";
 import { ListPanel } from "@/components/ui/page-header";
 import { ResponsiveDataTable, type Column } from "@/components/ui/responsive-table";
@@ -265,6 +266,15 @@ export function TenantFoldersSection({
       render: (d) => (
         <span className="text-table-cell-muted tabular-nums">
           {formatDisplayDate(d.issuedAt)}
+        </span>
+      ),
+    },
+    {
+      key: "size",
+      header: "Size",
+      render: (d) => (
+        <span className="text-table-cell-muted tabular-nums">
+          {formatFileSize(d.fileSizeBytes)}
         </span>
       ),
     },

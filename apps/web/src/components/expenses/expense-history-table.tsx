@@ -6,6 +6,7 @@ import {
   type ExpenseListItem,
 } from "@/lib/data/expenses";
 import { formatNaira } from "@/lib/auth/roles";
+import { formatFileSize } from "@/lib/storage/file-size";
 import { formatDisplayDate } from "@/lib/utils/format-date";
 
 export function ExpenseHistoryTable({
@@ -74,6 +75,18 @@ export function ExpenseHistoryTable({
       render: (e) => (
         <span className="text-table-cell-strong tabular-nums">{formatNaira(e.amountNgn)}</span>
       ),
+    },
+    {
+      key: "file",
+      header: "File",
+      render: (e) =>
+        e.attachmentUrl ? (
+          <span className="text-table-cell-muted tabular-nums">
+            {formatFileSize(e.attachmentSizeBytes)}
+          </span>
+        ) : (
+          <span className="text-table-cell-muted">—</span>
+        ),
     },
   ];
 

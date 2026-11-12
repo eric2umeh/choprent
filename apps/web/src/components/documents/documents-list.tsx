@@ -19,6 +19,7 @@ import {
 } from "@/lib/actions/documents";
 import type { DocumentListItem, DocumentType } from "@/lib/data/documents";
 import { toast } from "@/components/ui/toast";
+import { formatFileSize } from "@/lib/storage/file-size";
 import { formatDisplayDate } from "@/lib/utils/format-date";
 import { Spinner } from "@/components/ui/spinner";
 import { Download, FileText } from "lucide-react";
@@ -145,6 +146,16 @@ export function DocumentsList({
             <p className="mt-0.5 text-[11px] text-muted">{d.issuedByName}</p>
           )}
         </div>
+      ),
+    },
+    {
+      key: "size",
+      header: "Size",
+      className: "w-[10%]",
+      render: (d) => (
+        <span className="text-table-cell-muted tabular-nums">
+          {formatFileSize(d.fileSizeBytes)}
+        </span>
       ),
     },
     {

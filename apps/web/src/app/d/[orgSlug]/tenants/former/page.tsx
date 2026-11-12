@@ -6,6 +6,8 @@ import { FormerTenantsList } from "@/components/tenants/former-tenants-list";
 import { requireStaffContext } from "@/lib/auth/session";
 import { listLeasesForOrg } from "@/lib/data/leases";
 
+export const metadata = { title: "Former tenants" };
+
 export default async function FormerTenantsPage({
   params,
 }: {

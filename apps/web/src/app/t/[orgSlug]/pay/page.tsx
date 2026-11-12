@@ -3,6 +3,8 @@ import { Card } from "@/components/ui/card";
 import { TenantPayForm } from "@/components/tenant/tenant-pay-form";
 import { requireTenantContext } from "@/lib/auth/session";
 
+export const metadata = { title: "Pay" };
+
 export default async function TenantPayPage({
   params,
 }: {

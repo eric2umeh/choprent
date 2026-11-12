@@ -11,6 +11,8 @@ import { TenantNotificationsList } from "@/components/tenant/tenant-notification
 import { formatNaira } from "@/lib/auth/roles";
 import { Upload, HelpCircle } from "lucide-react";
 
+export const metadata = { title: "Home" };
+
 export default async function TenantHomePage({
   params,
 }: {

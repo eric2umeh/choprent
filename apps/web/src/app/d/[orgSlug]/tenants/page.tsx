@@ -8,6 +8,8 @@ import { canManageLeases } from "@/lib/auth/roles";
 import { listLeasesForOrg, listVacantUnitsForLease } from "@/lib/data/leases";
 import { listSettlementAccounts } from "@/lib/data/settlement-accounts";
 
+export const metadata = { title: "Tenants" };
+
 export default async function TenantsPage({
   params,
 }: {

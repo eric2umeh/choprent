@@ -1,6 +1,8 @@
 import { TenantFaqChat } from "@/components/tenant/tenant-faq-chat";
 import { requireTenantContext } from "@/lib/auth/session";
 
+export const metadata = { title: "Help" };
+
 export default async function TenantHelpPage({
   params,
 }: {

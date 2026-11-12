@@ -7,6 +7,8 @@ import {
 import { requireTenantContext } from "@/lib/auth/session";
 import { createAdminClient } from "@/lib/supabase/admin";
 
+export const metadata = { title: "Account" };
+
 export default async function TenantAccountPage({
   params,
   searchParams,

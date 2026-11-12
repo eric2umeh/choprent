@@ -13,6 +13,7 @@ import {
 import { metadataWithPaymentNote } from "@/lib/payments/payment-metadata";
 import { parseStaffRecordPaymentMethod } from "@/lib/payments/methods";
 import { uploadPaymentAttachments } from "@/lib/storage/payment-attachments";
+import { deleteObjects } from "@/lib/storage/object-store";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 
@@ -316,7 +317,9 @@ export async function deletePayment(
   const admin = createAdminClient();
   const { data: payment } = await admin
     .from("payments")
-    .select("id, status, organization_id, unit_id, payment_method, amount_ngn")
+    .select(
+      "id, status, organization_id, unit_id, payment_method, amount_ngn, receipt_file_url"
+    )
     .eq("id", paymentId)
     .eq("organization_id", ctx.org.id)
     .maybeSingle();
@@ -335,6 +338,19 @@ export async function deletePayment(
   }
 
   // Best-effort attachment cleanup (do not block delete).
+  const { data: attachments } = await admin
+    .from("payment_attachments")
+    .select("file_url")
+    .eq("payment_id", paymentId);
+  const receiptPaths = [
+    ...(payment.receipt_file_url ? [payment.receipt_file_url as string] : []),
+    ...((attachments ?? [])
+      .map((a) => a.file_url as string | null)
+      .filter((p): p is string => !!p)),
+  ];
+  if (receiptPaths.length) {
+    await deleteObjects("receipts", receiptPaths);
+  }
   await admin.from("payment_attachments").delete().eq("payment_id", paymentId);
   await admin.from("payment_allocations").delete().eq("payment_id", paymentId);
 

@@ -1,4 +1,5 @@
 import { createAdminClient } from "@/lib/supabase/admin";
+import { deleteObjects, uploadObject } from "@/lib/storage/object-store";
 
 const ALLOWED_MIME = new Set([
   "image/jpeg",
@@ -55,13 +56,16 @@ export async function uploadPaymentAttachments(
     const ext = file.name.split(".").pop()?.toLowerCase() ?? "jpg";
     const path = `${orgId}/${unitId}/${paymentId}/${crypto.randomUUID()}.${ext}`;
 
-    const { error: uploadError } = await admin.storage
-      .from("receipts")
-      .upload(path, file, { upsert: false, contentType: file.type });
+    const uploaded = await uploadObject({
+      bucket: "receipts",
+      path,
+      body: file,
+      contentType: file.type,
+    });
 
-    if (uploadError) {
-      if (paths.length) await admin.storage.from("receipts").remove(paths);
-      return { paths: [], error: uploadError.message, attachmentsInDb };
+    if (uploaded.error) {
+      if (paths.length) await deleteObjects("receipts", paths);
+      return { paths: [], error: uploaded.error, attachmentsInDb };
     }
 
     paths.push(path);
@@ -80,7 +84,7 @@ export async function uploadPaymentAttachments(
         attachmentsInDb = false;
         continue;
       }
-      await admin.storage.from("receipts").remove(paths);
+      await deleteObjects("receipts", paths);
       return { paths: [], error: insertError.message, attachmentsInDb: true };
     }
   }

@@ -6,6 +6,8 @@ import { PortalTenantsList } from "@/components/tenants/portal-tenants-list";
 import { requireStaffContext } from "@/lib/auth/session";
 import { listPortalTenants } from "@/lib/data/portal-tenants";
 
+export const metadata = { title: "Portal tenants" };
+
 export default async function PortalTenantsPage({
   params,
 }: {

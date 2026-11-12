@@ -6,6 +6,8 @@ import { getPropertyPnL, listExpensesForOrg } from "@/lib/data/expenses";
 import { listPropertiesForOrg } from "@/lib/data/sites";
 import { listUnitsForOrg } from "@/lib/data/units";
 
+export const metadata = { title: "Expenses" };
+
 export default async function ExpensesPage({
   params,
 }: {

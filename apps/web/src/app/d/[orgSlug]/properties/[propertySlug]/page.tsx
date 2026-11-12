@@ -10,6 +10,23 @@ import { listSettlementAccounts } from "@/lib/data/settlement-accounts";
 import { isPaystackDvaEnabled } from "@/lib/paystack/client";
 import { propertyPath } from "@/lib/routes/dashboard-paths";
 import { isUuid } from "@/lib/utils/slug";
+import type { Metadata } from "next";
+
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ orgSlug: string; propertySlug: string }>;
+}): Promise<Metadata> {
+  const { orgSlug, propertySlug } = await params;
+  try {
+    const ctx = await requireStaffContext(orgSlug);
+    const property = await resolveProperty(ctx.org.id, propertySlug);
+    if (property) return { title: property.name };
+  } catch {
+    /* fall through */
+  }
+  return { title: "Property" };
+}
 
 export default async function PropertyDetailPage({
   params,

@@ -9,6 +9,7 @@ import {
   MIN_PASSWORD_LENGTH,
   MIN_PASSWORD_MESSAGE,
 } from "@/lib/auth/password-validation";
+import { uploadObject } from "@/lib/storage/object-store";
 import { slugify } from "@/lib/utils/slug";
 
 export type OrgSettingsActionState = {
@@ -87,10 +88,14 @@ export async function updateOrgProfile(
     }
     const ext = logo.name.split(".").pop()?.toLowerCase() ?? "png";
     const path = `${ctx.org.id}/branding/logo.${ext}`;
-    const { error: uploadError } = await supabase.storage
-      .from("documents")
-      .upload(path, logo, { upsert: true, contentType: logo.type });
-    if (uploadError) return { error: uploadError.message };
+    const uploaded = await uploadObject({
+      bucket: "documents",
+      path,
+      body: logo,
+      contentType: logo.type,
+      upsert: true,
+    });
+    if (uploaded.error) return { error: uploaded.error };
     settings.logo_path = path;
   }
 

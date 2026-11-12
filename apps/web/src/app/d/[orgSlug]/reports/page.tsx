@@ -4,6 +4,8 @@ import { requireStaffContext } from "@/lib/auth/session";
 import { getTenantActivity } from "@/lib/data/tenant-activity";
 import { getSavedReportSnapshots } from "@/lib/actions/reports";
 
+export const metadata = { title: "Reports" };
+
 export default async function ReportsPage({
   params,
 }: {

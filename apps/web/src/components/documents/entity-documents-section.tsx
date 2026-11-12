@@ -11,6 +11,7 @@ import {
   formatDocumentCategory,
 } from "@/lib/documents/categories";
 import type { DocumentListItem } from "@/lib/data/documents";
+import { formatFileSize } from "@/lib/storage/file-size";
 import { formatDisplayDate } from "@/lib/utils/format-date";
 import { FilterBar, FilterSelect } from "@/components/ui/filter-bar";
 import { ListPanel } from "@/components/ui/page-header";
@@ -99,9 +100,10 @@ export function EntityDocumentsSection({
   }
 
   async function handleDelete(doc: DocumentListItem) {
+    const sizeLabel = formatFileSize(doc.fileSizeBytes);
     const { confirmed } = await confirmDialog({
       title: "Delete document?",
-      message: `Delete "${doc.title}"? This cannot be undone.`,
+      message: `Delete "${doc.title}"${sizeLabel !== "—" ? ` (${sizeLabel})` : ""}? This cannot be undone.`,
       confirmLabel: "Delete",
       destructive: true,
     });
@@ -151,6 +153,15 @@ export function EntityDocumentsSection({
       render: (d) => (
         <span className="text-table-cell-muted tabular-nums">
           {formatDisplayDate(d.issuedAt)}
+        </span>
+      ),
+    },
+    {
+      key: "size",
+      header: "Size",
+      render: (d) => (
+        <span className="text-table-cell-muted tabular-nums">
+          {formatFileSize(d.fileSizeBytes)}
         </span>
       ),
     },

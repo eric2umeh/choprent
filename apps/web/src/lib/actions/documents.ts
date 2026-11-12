@@ -17,6 +17,7 @@ import {
 } from "@/lib/documents/upload";
 import { buildStatementPdf } from "@/lib/pdf/statement";
 import { createSignedStorageUrl } from "@/lib/storage/signed-url";
+import { deleteObjects, uploadObject } from "@/lib/storage/object-store";
 import { createAdminClient } from "@/lib/supabase/admin";
 
 export type DocumentActionState = {
@@ -342,14 +343,13 @@ export async function generateStatement(
     });
 
     const path = `${ctx.org.id}/${unitId}/statement-${issuedAt}-${crypto.randomUUID()}.pdf`;
-    const { error: uploadError } = await admin.storage
-      .from("documents")
-      .upload(path, pdfBytes, {
-        upsert: false,
-        contentType: "application/pdf",
-      });
-
-    if (uploadError) return { error: uploadError.message };
+    const uploaded = await uploadObject({
+      bucket: "documents",
+      path,
+      body: pdfBytes,
+      contentType: "application/pdf",
+    });
+    if (uploaded.error) return { error: uploaded.error };
 
     const { error: insertError } = await admin.from("management_documents").insert({
       organization_id: ctx.org.id,
@@ -363,7 +363,7 @@ export async function generateStatement(
     });
 
     if (insertError) {
-      await admin.storage.from("documents").remove([path]);
+      await deleteObjects("documents", [path]);
       return { error: insertError.message };
     }
 
@@ -423,7 +423,6 @@ function docTypeToExpenseCategory(docType: DocumentType): string {
 }
 
 async function uploadReplacementFile(
-  admin: ReturnType<typeof createAdminClient>,
   orgId: string,
   unitId: string | null,
   siteId: string | null,
@@ -435,10 +434,13 @@ async function uploadReplacementFile(
   const ext = file.name.split(".").pop()?.toLowerCase() ?? "bin";
   const contentType = inferContentType(file, ext);
   const path = `${orgId}/${unitId ?? siteId ?? "plaza"}/${crypto.randomUUID()}.${ext}`;
-  const { error } = await admin.storage
-    .from("documents")
-    .upload(path, file, { upsert: false, contentType });
-  if (error) return { error: error.message };
+  const uploaded = await uploadObject({
+    bucket: "documents",
+    path,
+    body: file,
+    contentType,
+  });
+  if (uploaded.error) return { error: uploaded.error };
   return { path };
 }
 
@@ -476,7 +478,6 @@ export async function updateDocument(
     let attachmentUrl = expense.attachment_url as string | null;
     if (newFile) {
       const uploaded = await uploadReplacementFile(
-        admin,
         ctx.org.id,
         expense.unit_id,
         expense.site_id,
@@ -486,7 +487,7 @@ export async function updateDocument(
         return { error: uploaded.error ?? "Could not upload file." };
       }
       if (attachmentUrl) {
-        await admin.storage.from("documents").remove([attachmentUrl]);
+        await deleteObjects("documents", [attachmentUrl]);
         await admin
           .from("management_documents")
           .delete()
@@ -544,7 +545,6 @@ export async function updateDocument(
   let fileUrl = doc.file_url as string;
   if (newFile) {
     const uploaded = await uploadReplacementFile(
-      admin,
       ctx.org.id,
       doc.unit_id,
       doc.site_id,
@@ -553,7 +553,7 @@ export async function updateDocument(
     if (uploaded.error || !uploaded.path) {
       return { error: uploaded.error ?? "Could not upload file." };
     }
-    await admin.storage.from("documents").remove([fileUrl]);
+    await deleteObjects("documents", [fileUrl]);
     await admin
       .from("property_expenses")
       .update({ attachment_url: uploaded.path })
@@ -615,7 +615,7 @@ export async function deleteDocument(
         .delete()
         .eq("organization_id", ctx.org.id)
         .eq("file_url", filePath);
-      await admin.storage.from("documents").remove([filePath]);
+      await deleteObjects("documents", [filePath]);
     }
 
     const { error } = await admin
@@ -658,7 +658,7 @@ export async function deleteDocument(
     .eq("attachment_url", filePath);
 
   if (filePath) {
-    await admin.storage.from("documents").remove([filePath]);
+    await deleteObjects("documents", [filePath]);
   }
 
   revalidateDocumentPaths(orgSlug);

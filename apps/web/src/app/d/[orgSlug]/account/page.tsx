@@ -6,6 +6,8 @@ import { listPropertiesForOrg } from "@/lib/data/sites";
 import { listOrgVirtualAccounts } from "@/lib/actions/virtual-accounts";
 import { isPaystackConfigured, isPaystackDvaEnabled } from "@/lib/paystack/client";
 
+export const metadata = { title: "Account" };
+
 export default async function AccountPage({
   params,
 }: {

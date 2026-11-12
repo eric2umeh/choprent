@@ -6,6 +6,7 @@ import { requireStaffContext } from "@/lib/auth/session";
 import { getPropertyForOrg } from "@/lib/data/sites";
 import { revalidatePropertyDashboardPaths } from "@/lib/routes/revalidate-dashboard";
 import { inferContentType } from "@/lib/documents/upload";
+import { uploadObject } from "@/lib/storage/object-store";
 import { createAdminClient } from "@/lib/supabase/admin";
 import type { DocumentType } from "@/lib/data/documents";
 import type { ExpenseCategory } from "@/types/database";
@@ -86,10 +87,13 @@ export async function saveExpense(
     const ext = attachment.name.split(".").pop()?.toLowerCase() ?? "bin";
     const contentType = inferContentType(attachment, ext);
     const path = `${ctx.org.id}/expenses/${crypto.randomUUID()}.${ext}`;
-    const { error: uploadError } = await admin.storage
-      .from("documents")
-      .upload(path, attachment, { upsert: false, contentType });
-    if (uploadError) return { error: uploadError.message };
+    const uploaded = await uploadObject({
+      bucket: "documents",
+      path,
+      body: attachment,
+      contentType,
+    });
+    if (uploaded.error) return { error: uploaded.error };
     attachmentUrl = path;
   }
 

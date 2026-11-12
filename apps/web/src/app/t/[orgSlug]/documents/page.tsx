@@ -5,6 +5,8 @@ import { DocumentsList } from "@/components/documents/documents-list";
 import { requireTenantContext } from "@/lib/auth/session";
 import { listDocumentsForTenant } from "@/lib/data/documents";
 
+export const metadata = { title: "Documents" };
+
 export default async function TenantDocumentsPage({
   params,
 }: {

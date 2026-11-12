@@ -4,6 +4,7 @@ import type { PaymentMethod, PaymentStatus } from "@/types/database";
 import type { TenantPaymentStatus } from "@/lib/data/tenant-payment-status";
 import { paymentNoteFromRow } from "@/lib/payments/payment-note";
 import { actorLabel, resolveActorLabels } from "@/lib/data/audit-actors";
+import { getStorageObjectSizes } from "@/lib/storage/file-size";
 
 export type PaymentListItem = {
   id: string;
@@ -18,6 +19,7 @@ export type PaymentListItem = {
   status: PaymentStatus;
   bankReference: string | null;
   receiptFileUrl: string | null;
+  receiptFileSizeBytes: number | null;
   paymentDate: string | null;
   paymentNote: string | null;
   createdAt: string;
@@ -106,8 +108,10 @@ async function leaseInfoByUnitIds(
 function mapPaymentRow(
   row: PaymentRow,
   tenant: LeaseInfo,
-  actors: Map<string, string>
+  actors: Map<string, string>,
+  receiptSizes: Map<string, number>
 ): PaymentListItem {
+  const receiptPath = row.receipt_file_url;
   return {
     id: row.id,
     unitId: row.unit_id,
@@ -120,7 +124,10 @@ function mapPaymentRow(
     paymentMethod: row.payment_method,
     status: row.status,
     bankReference: row.bank_reference,
-    receiptFileUrl: row.receipt_file_url,
+    receiptFileUrl: receiptPath,
+    receiptFileSizeBytes: receiptPath
+      ? receiptSizes.get(receiptPath) ?? null
+      : null,
     paymentDate: row.payment_date,
     paymentNote: paymentNoteFromRow(row),
     createdAt: row.created_at,
@@ -138,7 +145,11 @@ async function mapPaymentRows(
   rows: PaymentRow[],
   statusByUnit: Map<string, { status: TenantPaymentStatus; leaseId: string }>
 ): Promise<PaymentListItem[]> {
-  const [actors, leaseByUnit] = await Promise.all([
+  const receiptPaths = rows
+    .map((r) => r.receipt_file_url)
+    .filter((p): p is string => !!p);
+
+  const [actors, leaseByUnit, receiptSizes] = await Promise.all([
     resolveActorLabels(
       orgId,
       rows.flatMap((r) => [r.recorded_by, r.tenant_id, r.verified_by])
@@ -148,6 +159,7 @@ async function mapPaymentRows(
       rows.map((r) => r.unit_id),
       statusByUnit
     ),
+    getStorageObjectSizes("receipts", receiptPaths),
   ]);
 
   return rows.map((row) => {
@@ -156,7 +168,7 @@ async function mapPaymentRows(
       leaseId: null,
       rentStatus: null,
     };
-    return mapPaymentRow(row, tenant, actors);
+    return mapPaymentRow(row, tenant, actors, receiptSizes);
   });
 }
 

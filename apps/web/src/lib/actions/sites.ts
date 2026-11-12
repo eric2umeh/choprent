@@ -8,6 +8,7 @@ import { getPropertyForOrg } from "@/lib/data/sites";
 import { slugify } from "@/lib/utils/slug";
 import { propertyPath } from "@/lib/routes/dashboard-paths";
 import { SITE_TYPE_OPTIONS } from "@/lib/data/property-types";
+import { uploadObject } from "@/lib/storage/object-store";
 import { createAdminClient } from "@/lib/supabase/admin";
 import type { Site } from "@/types/database";
 
@@ -183,10 +184,14 @@ export async function uploadPropertyLogo(
   const ext = logo.name.split(".").pop()?.toLowerCase() ?? "png";
   const path = `${ctx.org.id}/properties/${propertyId}/logo.${ext}`;
 
-  const { error: uploadError } = await admin.storage
-    .from("documents")
-    .upload(path, logo, { upsert: true, contentType: logo.type });
-  if (uploadError) return { error: uploadError.message };
+  const uploaded = await uploadObject({
+    bucket: "documents",
+    path,
+    body: logo,
+    contentType: logo.type,
+    upsert: true,
+  });
+  if (uploaded.error) return { error: uploaded.error };
 
   const { error } = await admin
     .from("sites")

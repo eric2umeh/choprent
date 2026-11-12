@@ -5,6 +5,8 @@ import { requireStaffContext } from "@/lib/auth/session";
 import { getOrgInsights } from "@/lib/data/org-insights";
 import { getSavedReportSnapshots } from "@/lib/actions/reports";
 
+export const metadata = { title: "Insights" };
+
 export default async function InsightsPage({
   params,
 }: {
