@@ -1,4 +1,5 @@
 import { createAdminClient } from "@/lib/supabase/admin";
+import { isR2Configured, r2GetObjectSize } from "@/lib/storage/r2";
 
 export type StorageBucket = "receipts" | "documents";
 
@@ -58,6 +59,17 @@ export async function getStorageObjectSizes(
     }
   } catch {
     // Size is best-effort — lists still render without it.
+  }
+
+  // New uploads live in R2 — fill gaps for paths not found in Supabase.
+  if (isR2Configured()) {
+    const missing = unique.filter((path) => !result.has(path));
+    await Promise.all(
+      missing.map(async (path) => {
+        const size = await r2GetObjectSize(bucket, path);
+        if (size != null) result.set(path, size);
+      })
+    );
   }
 
   return result;
