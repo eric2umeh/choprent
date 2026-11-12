@@ -4,16 +4,19 @@ import { revalidatePath } from "next/cache";
 import { canManageDocumentFolders } from "@/lib/auth/roles";
 import { requireStaffContext } from "@/lib/auth/session";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { deleteObjects } from "@/lib/storage/object-store";
 
 export type FolderActionState = {
   error?: string;
   success?: boolean;
   folderId?: string;
+  deletedDocumentCount?: number;
 };
 
 function revalidateTenantPaths(orgSlug: string, leaseId: string) {
   revalidatePath(`/d/${orgSlug}/tenants/${leaseId}`);
   revalidatePath(`/d/${orgSlug}/tenants`);
+  revalidatePath(`/d/${orgSlug}/documents`);
 }
 
 function isRealDocumentId(id: string): boolean {
@@ -139,7 +142,43 @@ export async function deleteDocumentFolder(
 
   if (!folder) return { error: "Folder not found." };
 
-  // Documents keep their files; folder_id is cleared via ON DELETE SET NULL.
+  // Delete folder contents (DB rows + storage files) before removing the folder.
+  // Without this, ON DELETE SET NULL leaves documents on the Documents tab.
+  const { data: docs, error: docsError } = await admin
+    .from("management_documents")
+    .select("id, file_url")
+    .eq("organization_id", ctx.org.id)
+    .eq("folder_id", folderId);
+
+  if (docsError) return { error: docsError.message };
+
+  const filePaths = (docs ?? [])
+    .map((doc) => doc.file_url as string | null)
+    .filter((path): path is string => !!path?.trim());
+
+  if ((docs ?? []).length > 0) {
+    const { error: deleteDocsError } = await admin
+      .from("management_documents")
+      .delete()
+      .eq("organization_id", ctx.org.id)
+      .eq("folder_id", folderId);
+
+    if (deleteDocsError) return { error: deleteDocsError.message };
+
+    if (filePaths.length > 0) {
+      await admin
+        .from("property_expenses")
+        .update({
+          attachment_url: null,
+          updated_at: new Date().toISOString(),
+        })
+        .eq("organization_id", ctx.org.id)
+        .in("attachment_url", filePaths);
+
+      await deleteObjects("documents", filePaths);
+    }
+  }
+
   const { error } = await admin
     .from("document_folders")
     .delete()
@@ -149,7 +188,10 @@ export async function deleteDocumentFolder(
   if (error) return { error: error.message };
 
   revalidateTenantPaths(orgSlug, folder.lease_id);
-  return { success: true };
+  return {
+    success: true,
+    deletedDocumentCount: docs?.length ?? 0,
+  };
 }
 
 export async function moveDocumentsToFolder(

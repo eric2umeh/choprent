@@ -155,10 +155,14 @@ export function TenantFoldersSection({
   }
 
   async function handleDeleteFolder(folder: DocumentFolderItem) {
+    const count = folder.documentCount;
     const { confirmed } = await confirmDialog({
       title: "Delete folder?",
-      message: `Delete “${folder.name}”? Documents inside stay available — they are only removed from this folder.`,
-      confirmLabel: "Delete folder",
+      message:
+        count > 0
+          ? `Delete “${folder.name}” and permanently remove its ${count} document${count === 1 ? "" : "s"}? This cannot be undone.`
+          : `Delete empty folder “${folder.name}”?`,
+      confirmLabel: count > 0 ? "Delete folder & files" : "Delete folder",
       destructive: true,
     });
     if (!confirmed) return;
@@ -173,7 +177,12 @@ export function TenantFoldersSection({
       }
       if (activeFolderId === folder.id) setActiveFolderId(null);
       clearSelection();
-      toast.success("Folder deleted.");
+      const deleted = result.deletedDocumentCount ?? 0;
+      toast.success(
+        deleted > 0
+          ? `Folder deleted with ${deleted} document${deleted === 1 ? "" : "s"}.`
+          : "Folder deleted."
+      );
       router.refresh();
     });
   }
