@@ -24,6 +24,7 @@ import { EditCashForm } from "@/components/payments/edit-cash-form";
 import { getReceiptDownloadUrl } from "@/lib/actions/documents";
 import type { PaymentListItem } from "@/lib/data/payments";
 import { formatNaira } from "@/lib/auth/roles";
+import { formatFileSize } from "@/lib/storage/file-size";
 import { formatDisplayDate } from "@/lib/utils/format-date";
 import { toast } from "@/components/ui/toast";
 import { Spinner } from "@/components/ui/spinner";
@@ -272,22 +273,27 @@ export function PaymentsList({
       header: "Receipt",
       render: (p) =>
         p.receiptFileUrl ? (
-          <button
-            type="button"
-            className="btn-ghost inline-flex gap-1 px-2 py-1 text-xs"
-            disabled={receiptLoadingId === p.id}
-            onClick={(e) => {
-              e.stopPropagation();
-              handleViewReceipt(p.id);
-            }}
-          >
-            {receiptLoadingId === p.id ? (
-              <Spinner size="sm" />
-            ) : (
-              <FileImage className="h-3.5 w-3.5" />
-            )}
-            View
-          </button>
+          <div className="flex flex-col items-start gap-0.5">
+            <button
+              type="button"
+              className="btn-ghost inline-flex gap-1 px-2 py-1 text-xs"
+              disabled={receiptLoadingId === p.id}
+              onClick={(e) => {
+                e.stopPropagation();
+                handleViewReceipt(p.id);
+              }}
+            >
+              {receiptLoadingId === p.id ? (
+                <Spinner size="sm" />
+              ) : (
+                <FileImage className="h-3.5 w-3.5" />
+              )}
+              View
+            </button>
+            <span className="px-2 text-[11px] text-muted tabular-nums">
+              {formatFileSize(p.receiptFileSizeBytes)}
+            </span>
+          </div>
         ) : (
           <span className="text-table-cell-muted">—</span>
         ),

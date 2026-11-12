@@ -10,6 +10,7 @@ import {
 } from "@/lib/data/expenses";
 import type { PropertySummary } from "@/lib/data/property-types";
 import { formatNaira } from "@/lib/auth/roles";
+import { formatFileSize } from "@/lib/storage/file-size";
 import { formatDisplayDate } from "@/lib/utils/format-date";
 import { StatCard } from "@/components/ui/card";
 import { Modal } from "@/components/ui/modal";
@@ -72,9 +73,14 @@ export function ExpensesPageClient({
   const { page, setPage, totalPages, slice, pageSize } = usePagination(filtered);
 
   async function handleDelete(expense: ExpenseListItem) {
+    const sizeLabel = formatFileSize(expense.attachmentSizeBytes);
     const { confirmed } = await confirmDialog({
       title: "Delete expense?",
-      message: `Remove ${formatNaira(expense.amountNgn)} — ${expense.description}?`,
+      message: `Remove ${formatNaira(expense.amountNgn)} — ${expense.description}${
+        expense.attachmentUrl && sizeLabel !== "—"
+          ? ` (attachment ${sizeLabel})`
+          : ""
+      }?`,
       confirmLabel: "Delete",
       destructive: true,
     });
@@ -133,6 +139,18 @@ export function ExpensesPageClient({
       header: "Amount",
       mobilePrimary: true,
       render: (e) => <span className="text-money">{formatNaira(e.amountNgn)}</span>,
+    },
+    {
+      key: "file",
+      header: "File",
+      render: (e) =>
+        e.attachmentUrl ? (
+          <span className="text-table-cell-muted tabular-nums">
+            {formatFileSize(e.attachmentSizeBytes)}
+          </span>
+        ) : (
+          <span className="text-table-cell-muted">—</span>
+        ),
     },
     ...(canManage
       ? [
