@@ -6,6 +6,7 @@ import { UnitEditForm } from "@/components/units/unit-edit-form";
 import type { UnitDetail } from "@/lib/data/unit-types";
 import type { SettlementAccountItem } from "@/lib/settlement/format-account";
 import { Pencil } from "lucide-react";
+import { useDocumentTitle } from "@/components/layout/document-title";
 
 export function UnitDetailClient({
   orgSlug,
@@ -25,6 +26,7 @@ export function UnitDetailClient({
   children: React.ReactNode;
 }) {
   const [editing, setEditing] = useState(false);
+  useDocumentTitle(`Unit ${unit.unitCode}`);
 
   return (
     <>

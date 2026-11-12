@@ -22,6 +22,7 @@ import { toast } from "@/components/ui/toast";
 import { confirmDialog } from "@/components/ui/confirm-dialog";
 import Link from "next/link";
 import { Pencil, Plus, Trash2 } from "lucide-react";
+import { useDocumentTitle } from "@/components/layout/document-title";
 
 export function PropertyDetailPageClient({
   orgSlug,
@@ -48,6 +49,8 @@ export function PropertyDetailPageClient({
   const [showAddUnit, setShowAddUnit] = useState(false);
   const [editing, setEditing] = useState(false);
   const [, startDelete] = useTransition();
+
+  useDocumentTitle(property.name);
 
   async function handleDeleteProperty() {
     const { confirmed } = await confirmDialog({
