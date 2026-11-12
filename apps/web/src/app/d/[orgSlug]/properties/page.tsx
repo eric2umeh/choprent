@@ -6,6 +6,8 @@ import { listUnitsForOrg } from "@/lib/data/units";
 import { listSettlementAccounts } from "@/lib/data/settlement-accounts";
 import { isPaystackDvaEnabled } from "@/lib/paystack/client";
 
+export const metadata = { title: "Units & properties" };
+
 export default async function PropertiesPage({
   params,
 }: {

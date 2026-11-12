@@ -19,6 +19,8 @@ import { formatNaira } from "@/lib/auth/roles";
 import { formatDisplayDate } from "@/lib/utils/format-date";
 import { getPilotOnboardingStatus } from "@/lib/data/pilot-onboarding";
 
+export const metadata = { title: "Dashboard" };
+
 export default async function DashboardHomePage({
   params,
 }: {

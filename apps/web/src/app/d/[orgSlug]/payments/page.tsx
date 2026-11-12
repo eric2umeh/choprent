@@ -7,6 +7,8 @@ import { canVerifyPayments } from "@/lib/auth/roles";
 import { listPaymentsForOrg } from "@/lib/data/payments";
 import { listUnitsForOrg } from "@/lib/data/units";
 
+export const metadata = { title: "Payments" };
+
 export default async function PaymentsPage({
   params,
 }: {
