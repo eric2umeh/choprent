@@ -25,6 +25,7 @@ import type { SettlementAccountItem } from "@/lib/settlement/format-account";
 import { formatNaira } from "@/lib/auth/roles";
 import { formatDisplayDate, formatDateRange } from "@/lib/utils/format-date";
 import { Mail } from "lucide-react";
+import { useDocumentTitle } from "@/components/layout/document-title";
 
 const DETAIL_TABS = [
   { id: "payments", label: "Payment history" },
@@ -59,6 +60,8 @@ export function TenantDetailClient({
   const [detailTab, setDetailTab] = useState<DetailTabId>("payments");
   const [ending, startEnd] = useTransition();
   const [inviting, startInvite] = useTransition();
+
+  useDocumentTitle(lease.tenantName);
 
   function handleInviteTenant() {
     if (!lease.tenantEmail) {

@@ -122,16 +122,17 @@ export async function getObjectSize(
 
   try {
     const admin = createAdminClient();
-    const { data, error } = await admin
-      .schema("storage")
-      .from("objects")
-      .select("metadata")
-      .eq("bucket_id", bucket)
-      .eq("name", path)
-      .maybeSingle();
-    if (error || !data) return null;
-    const meta = data.metadata as { size?: unknown } | null;
-    const size = Number(meta?.size);
+    const slash = path.lastIndexOf("/");
+    const folder = slash >= 0 ? path.slice(0, slash) : "";
+    const name = slash >= 0 ? path.slice(slash + 1) : path;
+    const { data, error } = await admin.storage.from(bucket).list(folder, {
+      limit: 100,
+      search: name,
+    });
+    if (error || !data?.length) return null;
+    const row = data.find((item) => item.name === name);
+    const meta = row?.metadata as { size?: unknown; contentLength?: unknown } | null;
+    const size = Number(meta?.size ?? meta?.contentLength);
     return Number.isFinite(size) && size >= 0 ? size : null;
   } catch {
     return null;
