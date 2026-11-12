@@ -1,6 +1,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { DocumentType } from "@/lib/data/documents";
 import { parseDocumentType } from "@/lib/documents/categories";
+import { deleteObjects, uploadObject } from "@/lib/storage/object-store";
 
 export function inferContentType(file: File, ext: string): string {
   if (file.type && file.type !== "application/octet-stream") return file.type;
@@ -85,11 +86,15 @@ export async function insertManagementDocuments({
     const contentType = inferContentType(file, ext);
     const path = `${orgId}/${unitId ?? siteId ?? "plaza"}/${crypto.randomUUID()}.${ext}`;
 
-    const { error: uploadError } = await admin.storage
-      .from("documents")
-      .upload(path, file, { upsert: false, contentType });
-
-    if (uploadError) return { error: uploadError.message, count: uploaded };
+    const uploadedFile = await uploadObject({
+      bucket: "documents",
+      path,
+      body: file,
+      contentType,
+    });
+    if (uploadedFile.error) {
+      return { error: uploadedFile.error, count: uploaded };
+    }
 
     const docTitle = title || file.name.replace(/\.[^.]+$/, "");
 
@@ -106,7 +111,7 @@ export async function insertManagementDocuments({
     });
 
     if (insertError) {
-      await admin.storage.from("documents").remove([path]);
+      await deleteObjects("documents", [path]);
       if (insertError.message.includes("invalid input value for enum")) {
         return {
           error:
