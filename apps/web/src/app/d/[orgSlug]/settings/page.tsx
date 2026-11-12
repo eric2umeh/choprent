@@ -7,6 +7,8 @@ import { getOrgProfile } from "@/lib/data/org-profile";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { notFound } from "next/navigation";
 
+export const metadata = { title: "Settings" };
+
 export default async function SettingsPage({
   params,
 }: {

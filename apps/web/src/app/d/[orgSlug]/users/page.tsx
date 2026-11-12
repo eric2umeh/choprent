@@ -6,6 +6,8 @@ import { listPropertiesForOrg } from "@/lib/data/sites";
 import { listTeamMembers, listPendingResignations } from "@/lib/actions/team";
 import { notFound, redirect } from "next/navigation";
 
+export const metadata = { title: "Users & roles" };
+
 export default async function UsersPage({
   params,
 }: {

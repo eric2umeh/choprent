@@ -9,6 +9,25 @@ import { listDocumentFoldersForLease } from "@/lib/data/document-folders";
 import { listSettlementAccounts } from "@/lib/data/settlement-accounts";
 import { notFound } from "next/navigation";
 import Link from "next/link";
+import type { Metadata } from "next";
+
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ orgSlug: string; leaseId: string }>;
+}): Promise<Metadata> {
+  const { orgSlug, leaseId } = await params;
+  try {
+    const ctx = await requireStaffContext(orgSlug);
+    const lease = await getLeaseDetail(ctx.org.id, leaseId);
+    if (lease) {
+      return { title: `${lease.tenantName} · Tenants` };
+    }
+  } catch {
+    /* fall through */
+  }
+  return { title: "Tenant" };
+}
 
 export default async function TenantDetailPage({
   params,
