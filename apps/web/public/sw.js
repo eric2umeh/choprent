@@ -1,18 +1,28 @@
 /* ChopRent PWA service worker — required for Chrome/Edge install prompts. */
-const CACHE = "choprent-shell-v1";
-const PRECACHE = ["/", "/manifest.webmanifest", "/icons/icon-192.png", "/icons/icon-512.png"];
+const CACHE = "choprent-shell-v2";
+const PRECACHE = ["/manifest.webmanifest", "/icons/icon-192.png", "/icons/icon-512.png"];
 
 self.addEventListener("install", (event) => {
   event.waitUntil(
-    caches.open(CACHE).then((cache) => cache.addAll(PRECACHE)).then(() => self.skipWaiting())
+    (async () => {
+      const cache = await caches.open(CACHE);
+      // Add individually so one failure (e.g. auth redirect on "/") doesn't abort install.
+      await Promise.all(
+        PRECACHE.map((url) => cache.add(url).catch(() => undefined))
+      );
+      await self.skipWaiting();
+    })()
   );
 });
 
 self.addEventListener("activate", (event) => {
   event.waitUntil(
-    caches.keys().then((keys) =>
-      Promise.all(keys.filter((k) => k !== CACHE).map((k) => caches.delete(k)))
-    ).then(() => self.clients.claim())
+    caches
+      .keys()
+      .then((keys) =>
+        Promise.all(keys.filter((k) => k !== CACHE).map((k) => caches.delete(k)))
+      )
+      .then(() => self.clients.claim())
   );
 });
 
@@ -23,7 +33,7 @@ self.addEventListener("fetch", (event) => {
   const url = new URL(request.url);
   if (url.origin !== self.location.origin) return;
 
-  // Network-first for app navigations and APIs; cache fallback for offline shell.
+  // Network-first for app navigations; cache fallback for offline shell.
   if (request.mode === "navigate") {
     event.respondWith(
       fetch(request)
@@ -32,13 +42,19 @@ self.addEventListener("fetch", (event) => {
           caches.open(CACHE).then((cache) => cache.put(request, copy));
           return res;
         })
-        .catch(() => caches.match(request).then((cached) => cached || caches.match("/")))
+        .catch(() =>
+          caches.match(request).then((cached) => cached || caches.match("/"))
+        )
     );
     return;
   }
 
   // Cache-first for static icons / images
-  if (url.pathname.startsWith("/icons/") || url.pathname.endsWith(".png") || url.pathname.endsWith(".svg")) {
+  if (
+    url.pathname.startsWith("/icons/") ||
+    url.pathname.endsWith(".png") ||
+    url.pathname.endsWith(".svg")
+  ) {
     event.respondWith(
       caches.match(request).then(
         (cached) =>
