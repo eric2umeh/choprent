@@ -2,15 +2,16 @@ import type { MetadataRoute } from "next";
 
 export default function manifest(): MetadataRoute.Manifest {
   return {
+    id: "/",
     name: "ChopRent",
     short_name: "ChopRent",
     description:
       "Rent collection and plaza management for Nigerian landlords and tenants.",
     start_url: "/",
+    scope: "/",
     display: "standalone",
     background_color: "#ffffff",
     theme_color: "#16a34a",
-    orientation: "portrait-primary",
     categories: ["finance", "business"],
     icons: [
       {
