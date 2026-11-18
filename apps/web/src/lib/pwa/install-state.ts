@@ -17,17 +17,32 @@ export function isStandaloneDisplayMode(): boolean {
   );
 }
 
+const DISMISS_MS = 14 * 24 * 60 * 60 * 1000;
+
 export function pwaDismissKey(orgSlug: string): string {
   return `choprent-a2hs-dismiss-${orgSlug}`;
 }
 
 export function isInstallPromptDismissed(orgSlug: string): boolean {
   if (typeof window === "undefined") return false;
-  return !!localStorage.getItem(pwaDismissKey(orgSlug));
+  const raw = localStorage.getItem(pwaDismissKey(orgSlug));
+  if (!raw) return false;
+  // Legacy value was "1" — treat as dismissed until reset / expiry rewrite.
+  if (raw === "1") return true;
+  const until = Number(raw);
+  if (!Number.isFinite(until)) return false;
+  if (Date.now() > until) {
+    localStorage.removeItem(pwaDismissKey(orgSlug));
+    return false;
+  }
+  return true;
 }
 
 export function dismissInstallPrompt(orgSlug: string) {
-  localStorage.setItem(pwaDismissKey(orgSlug), "1");
+  localStorage.setItem(
+    pwaDismissKey(orgSlug),
+    String(Date.now() + DISMISS_MS)
+  );
 }
 
 export function resetInstallPromptDismiss(orgSlug: string) {
