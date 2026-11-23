@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useSyncExternalStore } from "react";
 import { X, Smartphone, Download } from "lucide-react";
 import {
   dismissInstallPrompt,
@@ -10,6 +10,12 @@ import {
   resetInstallPromptDismiss,
 } from "@/lib/pwa/install-state";
 import {
+  ensureInstallPromptListener,
+  getDeferredInstallPrompt,
+  subscribeInstallPrompt,
+  clearDeferredInstallPrompt,
+} from "@/lib/pwa/install-prompt-store";
+import {
   logInstallPromptDismissed,
   logInstallPromptShown,
 } from "@/components/pwa/app-usage-recorder";
@@ -17,6 +23,14 @@ import {
 export { isInstallPromptDismissed, resetInstallPromptDismiss };
 
 type Audience = "staff" | "tenant";
+
+function useDeferredInstallPrompt() {
+  return useSyncExternalStore(
+    subscribeInstallPrompt,
+    getDeferredInstallPrompt,
+    () => null
+  );
+}
 
 /** Floating install banner — phone and desktop (Chrome/Edge Install). */
 export function AddToHomeScreenPrompt({
@@ -28,27 +42,12 @@ export function AddToHomeScreenPrompt({
   userId?: string;
   audience?: Audience;
 }) {
+  const deferredPrompt = useDeferredInstallPrompt();
   const [visible, setVisible] = useState(false);
-  const [deferredPrompt, setDeferredPrompt] = useState<{
-    prompt: () => Promise<void>;
-  } | null>(null);
 
   useEffect(() => {
+    ensureInstallPromptListener();
     if (isStandaloneDisplayMode() || isInstallPromptDismissed(orgSlug)) return;
-
-    const onBeforeInstall = (e: Event) => {
-      e.preventDefault();
-      const ev = e as BeforeInstallPromptEvent;
-      setDeferredPrompt({
-        prompt: async () => {
-          await ev.prompt();
-        },
-      });
-      setVisible(true);
-      logInstallPromptShown(orgSlug, userId ?? null, audience);
-    };
-
-    window.addEventListener("beforeinstallprompt", onBeforeInstall as EventListener);
 
     // Show guidance even before Chromium fires the event (iOS / Firefox / Safari).
     const timer = window.setTimeout(() => {
@@ -56,13 +55,23 @@ export function AddToHomeScreenPrompt({
       logInstallPromptShown(orgSlug, userId ?? null, audience);
     }, 1500);
 
-    return () => {
-      window.clearTimeout(timer);
-      window.removeEventListener("beforeinstallprompt", onBeforeInstall as EventListener);
-    };
+    return () => window.clearTimeout(timer);
   }, [orgSlug, userId, audience]);
 
-  if (!visible || isStandaloneDisplayMode() || isInstallPromptDismissed(orgSlug)) return null;
+  useEffect(() => {
+    if (
+      deferredPrompt &&
+      !isStandaloneDisplayMode() &&
+      !isInstallPromptDismissed(orgSlug)
+    ) {
+      setVisible(true);
+      logInstallPromptShown(orgSlug, userId ?? null, audience);
+    }
+  }, [deferredPrompt, orgSlug, userId, audience]);
+
+  if (!visible || isStandaloneDisplayMode() || isInstallPromptDismissed(orgSlug)) {
+    return null;
+  }
 
   return (
     <InstallPromptContent
@@ -83,34 +92,19 @@ export function TenantInstallAppCard({
   orgSlug: string;
   userId?: string;
 }) {
+  const deferredPrompt = useDeferredInstallPrompt();
   const [visible, setVisible] = useState(false);
-  const [deferredPrompt, setDeferredPrompt] = useState<{
-    prompt: () => Promise<void>;
-  } | null>(null);
 
   useEffect(() => {
+    ensureInstallPromptListener();
     if (isStandaloneDisplayMode() || isInstallPromptDismissed(orgSlug)) return;
-
-    const onBeforeInstall = (e: Event) => {
-      e.preventDefault();
-      const ev = e as BeforeInstallPromptEvent;
-      setDeferredPrompt({
-        prompt: async () => {
-          await ev.prompt();
-        },
-      });
-    };
-
-    window.addEventListener("beforeinstallprompt", onBeforeInstall as EventListener);
     setVisible(true);
     logInstallPromptShown(orgSlug, userId ?? null, "tenant");
-
-    return () => {
-      window.removeEventListener("beforeinstallprompt", onBeforeInstall as EventListener);
-    };
   }, [orgSlug, userId]);
 
-  if (!visible || isStandaloneDisplayMode() || isInstallPromptDismissed(orgSlug)) return null;
+  if (!visible || isStandaloneDisplayMode() || isInstallPromptDismissed(orgSlug)) {
+    return null;
+  }
 
   return (
     <div className="border-b border-green-200 bg-white px-3 py-3">
@@ -150,6 +144,7 @@ function InstallPromptContent({
   async function install() {
     if (deferredPrompt) {
       await deferredPrompt.prompt();
+      clearDeferredInstallPrompt();
       dismiss();
     }
   }
@@ -181,8 +176,9 @@ function InstallPromptContent({
             <p className="mt-1 text-xs text-list-secondary">{blurb}</p>
           ) : (
             <p className="mt-1 text-xs text-list-secondary">
-              Use the browser menu (⋮ or ⋯) and choose <strong>Install app</strong> or{" "}
-              <strong>Add to Home screen</strong>.
+              Chrome: look for the install icon in the address bar, or open ⋮ →{" "}
+              <strong>Cast, save and share</strong> → <strong>Install ChopRent</strong>.
+              Settings also has an Install button anytime.
             </p>
           )}
           <div className="mt-2 flex flex-wrap gap-2">
@@ -202,8 +198,4 @@ function InstallPromptContent({
       </div>
     </div>
   );
-}
-
-interface BeforeInstallPromptEvent extends Event {
-  prompt: () => Promise<void>;
 }

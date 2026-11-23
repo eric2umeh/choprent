@@ -11,6 +11,7 @@ import { KeyRound, LogOut, UserRound } from "lucide-react";
 import { StaffDisplayNameForm, ResignationForm } from "@/components/settings/staff-settings-form";
 import { ReminderRulesPanel } from "@/components/settings/reminder-rules-panel";
 import { PilotSetupSettingsCard } from "@/components/onboarding/pilot-setup-settings-card";
+import { InstallAppButton } from "@/components/pwa/install-app-button";
 import type { ReminderRule } from "@/lib/actions/reminders";
 import type { OrgProfile } from "@/lib/data/org-profile";
 
@@ -131,6 +132,13 @@ export function SettingsPageClient({
           </button>
         }
       />
+
+      <SettingsSectionCard
+        title="Install app"
+        description="Add ChopRent to your desktop or phone for faster access — works like a normal app."
+      >
+        <InstallAppButton orgSlug={orgSlug} />
+      </SettingsSectionCard>
 
       {isStaff && (
         <SettingsSectionCard

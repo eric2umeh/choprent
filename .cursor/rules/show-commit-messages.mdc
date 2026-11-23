@@ -1,0 +1,25 @@
+---
+description: Always show suggested commit messages for every file changed
+alwaysApply: true
+---
+
+# Show commit messages for changed files
+
+After completing a coding task that modifies files, always end with suggested git commit messages covering the work.
+
+## Required format
+
+1. List **every changed file** (modified, added, deleted, renamed) with a short one-line commit-style note for that file.
+2. Also provide **one overall commit message** (1–2 sentences, why-focused) that could be used if committing everything together.
+3. Do this even when the user did not ask to commit. Do **not** create a commit unless they explicitly ask.
+
+## Example
+
+```
+### Per-file
+- `apps/web/src/lib/foo.ts` — fix null size lookup via Storage list API
+- `apps/web/src/components/bar.tsx` — show formatted file sizes in the table
+
+### Suggested commit
+fix file sizes for documents and receipts by reading Storage list metadata.
+```

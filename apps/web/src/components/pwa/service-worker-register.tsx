@@ -1,10 +1,13 @@
 "use client";
 
 import { useEffect } from "react";
+import { ensureInstallPromptListener } from "@/lib/pwa/install-prompt-store";
 
-/** Registers the service worker so Chromium can offer Install app. */
+/** Registers the service worker and captures install prompts early. */
 export function ServiceWorkerRegister() {
   useEffect(() => {
+    ensureInstallPromptListener();
+
     if (typeof window === "undefined" || !("serviceWorker" in navigator)) return;
 
     const register = () => {

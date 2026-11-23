@@ -4,6 +4,7 @@ import {
   TenantPasswordForm,
   TenantSignOutButton,
 } from "@/components/tenant/tenant-account-client";
+import { InstallAppButton } from "@/components/pwa/install-app-button";
 import { requireTenantContext } from "@/lib/auth/session";
 import { createAdminClient } from "@/lib/supabase/admin";
 
@@ -70,6 +71,16 @@ export default async function TenantAccountPage({
         </p>
         <div className="mt-3">
           <TenantPasswordForm orgSlug={orgSlug} autoFocus={focusPassword} />
+        </div>
+      </div>
+
+      <div className="border-b border-border bg-white px-3 py-4">
+        <h2 className="text-section-title">Install app</h2>
+        <p className="mt-1 text-list-meta">
+          Add ChopRent to your home screen for quicker access to pay and documents.
+        </p>
+        <div className="mt-3">
+          <InstallAppButton orgSlug={orgSlug} />
         </div>
       </div>
 
