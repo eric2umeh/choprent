@@ -107,6 +107,7 @@ export async function insertManagementDocuments({
       doc_type: docType,
       title: files.length > 1 && title ? `${docTitle} (${file.name})` : docTitle,
       file_url: path,
+      file_size_bytes: file.size,
       issued_by: userId,
     });
 
