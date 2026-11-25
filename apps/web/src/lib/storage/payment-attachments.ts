@@ -76,6 +76,7 @@ export async function uploadPaymentAttachments(
       payment_id: paymentId,
       file_url: path,
       file_name: file.name,
+      file_size_bytes: file.size,
       uploaded_by: uploadedBy,
     });
 

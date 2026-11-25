@@ -1,15 +1,28 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 
 /** Subscribes to payment/unit/expense changes and refreshes server-rendered dashboard data. */
 export function DashboardLiveSync({ orgId }: { orgId: string }) {
   const router = useRouter();
+  const refreshTimer = useRef<number | null>(null);
 
   useEffect(() => {
     const supabase = createClient();
+
+    // Debounce refreshes so bursts of Realtime events don't fan out into
+    // Auth + PostgREST + Storage log volume on every single change.
+    const scheduleRefresh = () => {
+      if (refreshTimer.current != null) {
+        window.clearTimeout(refreshTimer.current);
+      }
+      refreshTimer.current = window.setTimeout(() => {
+        refreshTimer.current = null;
+        router.refresh();
+      }, 1500);
+    };
 
     const channel = supabase
       .channel(`dashboard-live-${orgId}`)
@@ -21,7 +34,7 @@ export function DashboardLiveSync({ orgId }: { orgId: string }) {
           table: "payments",
           filter: `organization_id=eq.${orgId}`,
         },
-        () => router.refresh()
+        scheduleRefresh
       )
       .on(
         "postgres_changes",
@@ -31,7 +44,7 @@ export function DashboardLiveSync({ orgId }: { orgId: string }) {
           table: "units",
           filter: `organization_id=eq.${orgId}`,
         },
-        () => router.refresh()
+        scheduleRefresh
       )
       .on(
         "postgres_changes",
@@ -41,7 +54,7 @@ export function DashboardLiveSync({ orgId }: { orgId: string }) {
           table: "property_expenses",
           filter: `organization_id=eq.${orgId}`,
         },
-        () => router.refresh()
+        scheduleRefresh
       )
       .on(
         "postgres_changes",
@@ -50,11 +63,14 @@ export function DashboardLiveSync({ orgId }: { orgId: string }) {
           schema: "public",
           table: "ledger_periods",
         },
-        () => router.refresh()
+        scheduleRefresh
       )
       .subscribe();
 
     return () => {
+      if (refreshTimer.current != null) {
+        window.clearTimeout(refreshTimer.current);
+      }
       void supabase.removeChannel(channel);
     };
   }, [orgId, router]);
