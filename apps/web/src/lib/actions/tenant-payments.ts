@@ -140,9 +140,12 @@ export async function submitTransferPayment(
   }
 
   const firstPath = uploadResult.paths[0];
+  const firstSize = files[0]?.size;
   if (firstPath) {
     const receiptUpdate: Record<string, unknown> = {
       receipt_file_url: firstPath,
+      receipt_file_size_bytes:
+        typeof firstSize === "number" && firstSize > 0 ? firstSize : null,
     };
     if (!uploadResult.attachmentsInDb && uploadResult.paths.length > 0) {
       receiptUpdate.metadata = {
@@ -154,7 +157,7 @@ export async function submitTransferPayment(
   } else if (uploadResult.attachmentsInDb) {
     const { data: firstAttachment } = await admin
       .from("payment_attachments")
-      .select("file_url")
+      .select("file_url, file_size_bytes")
       .eq("payment_id", payment.id)
       .order("created_at", { ascending: true })
       .limit(1)
@@ -163,7 +166,10 @@ export async function submitTransferPayment(
     if (firstAttachment?.file_url) {
       await admin
         .from("payments")
-        .update({ receipt_file_url: firstAttachment.file_url })
+        .update({
+          receipt_file_url: firstAttachment.file_url,
+          receipt_file_size_bytes: firstAttachment.file_size_bytes ?? null,
+        })
         .eq("id", payment.id);
     }
   }
