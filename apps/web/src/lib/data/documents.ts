@@ -46,6 +46,7 @@ type DocumentRow = {
   site_id: string | null;
   folder_id?: string | null;
   file_url: string;
+  file_size_bytes?: number | null;
   issued_at: string;
   issued_by: string | null;
   units: { unit_code: string } | { unit_code: string }[] | null;
@@ -58,7 +59,7 @@ function unitCodeFromRow(units: DocumentRow["units"]): string | null {
 }
 
 const documentSelect =
-  "id, title, doc_type, unit_id, lease_id, site_id, folder_id, file_url, issued_at, issued_by, units(unit_code)";
+  "id, title, doc_type, unit_id, lease_id, site_id, folder_id, file_url, file_size_bytes, issued_at, issued_by, units(unit_code)";
 
 const documentSelectLegacy =
   "id, title, doc_type, unit_id, lease_id, site_id, file_url, issued_at, issued_by, units(unit_code)";
@@ -67,16 +68,22 @@ async function attachDocumentSizes(
   docs: DocumentListItem[]
 ): Promise<DocumentListItem[]> {
   if (!docs.length) return docs;
+  const missing = docs.filter((doc) => doc.fileSizeBytes == null);
+  if (!missing.length) return docs;
+
   const sizes = await getStorageObjectSizesForEntries(
-    docs.map((doc) => ({ bucket: doc.storageBucket, path: doc.filePath }))
+    missing.map((doc) => ({ bucket: doc.storageBucket, path: doc.filePath }))
   );
-  return docs.map((doc) => ({
-    ...doc,
-    fileSizeBytes:
-      sizes.get(`${doc.storageBucket}:${doc.filePath}`) ??
-      sizes.get(doc.filePath) ??
-      null,
-  }));
+  return docs.map((doc) => {
+    if (doc.fileSizeBytes != null) return doc;
+    return {
+      ...doc,
+      fileSizeBytes:
+        sizes.get(`${doc.storageBucket}:${doc.filePath}`) ??
+        sizes.get(doc.filePath) ??
+        null,
+    };
+  });
 }
 
 async function mapDocumentRows(
@@ -88,21 +95,24 @@ async function mapDocumentRows(
     rows.map((row) => row.issued_by)
   );
 
-  const docs: DocumentListItem[] = rows.map((row) => ({
-    id: row.id,
-    title: row.title,
-    docType: row.doc_type,
-    unitCode: unitCodeFromRow(row.units),
-    unitId: row.unit_id,
-    leaseId: row.lease_id,
-    siteId: row.site_id,
-    folderId: row.folder_id ?? null,
-    filePath: row.file_url,
-    storageBucket: "documents" as const,
-    fileSizeBytes: null,
-    issuedAt: row.issued_at,
-    issuedByName: actorLabel(actors, row.issued_by),
-  }));
+  const docs: DocumentListItem[] = rows.map((row) => {
+    const cached = Number(row.file_size_bytes);
+    return {
+      id: row.id,
+      title: row.title,
+      docType: row.doc_type,
+      unitCode: unitCodeFromRow(row.units),
+      unitId: row.unit_id,
+      leaseId: row.lease_id,
+      siteId: row.site_id,
+      folderId: row.folder_id ?? null,
+      filePath: row.file_url,
+      storageBucket: "documents" as const,
+      fileSizeBytes: Number.isFinite(cached) && cached >= 0 ? cached : null,
+      issuedAt: row.issued_at,
+      issuedByName: actorLabel(actors, row.issued_by),
+    };
+  });
 
   return attachDocumentSizes(docs);
 }
