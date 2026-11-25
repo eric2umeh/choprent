@@ -60,6 +60,7 @@ function mapExpenseRow(
     amount_ngn: number;
     expense_date: string;
     attachment_url?: string | null;
+    attachment_size_bytes?: number | null;
     sites: { name: string } | { name: string }[] | null;
     units: { unit_code: string } | { unit_code: string }[] | null;
   },
@@ -77,6 +78,7 @@ function mapExpenseRow(
     typeof row.attachment_url === "string" && row.attachment_url.length > 0
       ? row.attachment_url
       : null;
+  const cached = Number(row.attachment_size_bytes);
 
   return {
     id: row.id,
@@ -90,18 +92,27 @@ function mapExpenseRow(
     expenseDate: row.expense_date,
     attachmentUrl,
     attachmentSizeBytes: attachmentUrl
-      ? attachmentSizes.get(attachmentUrl) ?? null
+      ? Number.isFinite(cached) && cached >= 0
+        ? cached
+        : attachmentSizes.get(attachmentUrl) ?? null
       : null,
   };
 }
 
 const expenseSelect =
-  "id, site_id, unit_id, category, description, amount_ngn, expense_date, attachment_url, sites!inner(name, organization_id), units(unit_code)";
+  "id, site_id, unit_id, category, description, amount_ngn, expense_date, attachment_url, attachment_size_bytes, sites!inner(name, organization_id), units(unit_code)";
 
 async function mapExpenseRows(
   rows: Parameters<typeof mapExpenseRow>[0][]
 ): Promise<ExpenseListItem[]> {
   const paths = rows
+    .filter((r) => {
+      if (!(typeof r.attachment_url === "string" && r.attachment_url.length > 0)) {
+        return false;
+      }
+      const cached = Number(r.attachment_size_bytes);
+      return !(Number.isFinite(cached) && cached >= 0);
+    })
     .map((r) => r.attachment_url)
     .filter((p): p is string => typeof p === "string" && p.length > 0);
   const sizes = await getStorageObjectSizes("documents", paths);
