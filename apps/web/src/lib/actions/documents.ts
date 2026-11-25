@@ -359,6 +359,7 @@ export async function generateStatement(
       doc_type: "statement" satisfies DocumentType,
       title,
       file_url: path,
+      file_size_bytes: pdfBytes.byteLength,
       issued_by: ctx.user.id,
     });
 
@@ -504,6 +505,7 @@ export async function updateDocument(
         doc_type: docType,
         title,
         file_url: attachmentUrl,
+        file_size_bytes: newFile.size,
         issued_by: ctx.user.id,
       });
     }
@@ -514,6 +516,7 @@ export async function updateDocument(
         description: title,
         category: docTypeToExpenseCategory(docType),
         attachment_url: attachmentUrl,
+        ...(newFile ? { attachment_size_bytes: newFile.size } : {}),
         updated_at: new Date().toISOString(),
       })
       .eq("id", expenseId);
@@ -556,7 +559,10 @@ export async function updateDocument(
     await deleteObjects("documents", [fileUrl]);
     await admin
       .from("property_expenses")
-      .update({ attachment_url: uploaded.path })
+      .update({
+        attachment_url: uploaded.path,
+        attachment_size_bytes: newFile.size,
+      })
       .eq("organization_id", ctx.org.id)
       .eq("attachment_url", fileUrl);
     fileUrl = uploaded.path;
@@ -568,6 +574,7 @@ export async function updateDocument(
       title,
       doc_type: docType,
       file_url: fileUrl,
+      ...(newFile ? { file_size_bytes: newFile.size } : {}),
     })
     .eq("id", documentId);
 
