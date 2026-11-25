@@ -37,6 +37,7 @@ type PaymentRow = {
   status: PaymentStatus;
   bank_reference: string | null;
   receipt_file_url: string | null;
+  receipt_file_size_bytes?: number | null;
   payment_date: string | null;
   payment_note?: string | null;
   metadata?: unknown;
@@ -112,6 +113,7 @@ function mapPaymentRow(
   receiptSizes: Map<string, number>
 ): PaymentListItem {
   const receiptPath = row.receipt_file_url;
+  const cachedSize = Number(row.receipt_file_size_bytes);
   return {
     id: row.id,
     unitId: row.unit_id,
@@ -126,7 +128,9 @@ function mapPaymentRow(
     bankReference: row.bank_reference,
     receiptFileUrl: receiptPath,
     receiptFileSizeBytes: receiptPath
-      ? receiptSizes.get(receiptPath) ?? null
+      ? Number.isFinite(cachedSize) && cachedSize >= 0
+        ? cachedSize
+        : receiptSizes.get(receiptPath) ?? null
       : null,
     paymentDate: row.payment_date,
     paymentNote: paymentNoteFromRow(row),
@@ -138,7 +142,7 @@ function mapPaymentRow(
 }
 
 const paymentSelect =
-  "id, unit_id, amount_ngn, period_label, payment_method, status, bank_reference, receipt_file_url, payment_date, payment_note, metadata, created_at, recorded_by, verified_by, verified_at, tenant_id, units!inner(unit_code)";
+  "id, unit_id, amount_ngn, period_label, payment_method, status, bank_reference, receipt_file_url, receipt_file_size_bytes, payment_date, payment_note, metadata, created_at, recorded_by, verified_by, verified_at, tenant_id, units!inner(unit_code)";
 
 async function mapPaymentRows(
   orgId: string,
@@ -146,6 +150,11 @@ async function mapPaymentRows(
   statusByUnit: Map<string, { status: TenantPaymentStatus; leaseId: string }>
 ): Promise<PaymentListItem[]> {
   const receiptPaths = rows
+    .filter((r) => {
+      if (!r.receipt_file_url) return false;
+      const cached = Number(r.receipt_file_size_bytes);
+      return !(Number.isFinite(cached) && cached >= 0);
+    })
     .map((r) => r.receipt_file_url)
     .filter((p): p is string => !!p);
 

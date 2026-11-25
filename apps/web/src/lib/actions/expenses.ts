@@ -107,7 +107,15 @@ export async function saveExpense(
     expense_date: expenseDate,
     created_by: ctx.user.id,
     updated_at: new Date().toISOString(),
-    ...(attachmentUrl ? { attachment_url: attachmentUrl } : {}),
+    ...(attachmentUrl
+      ? {
+          attachment_url: attachmentUrl,
+          attachment_size_bytes:
+            attachment instanceof File && attachment.size > 0
+              ? attachment.size
+              : null,
+        }
+      : {}),
   };
 
   if (expenseId) {
