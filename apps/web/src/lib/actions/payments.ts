@@ -219,8 +219,13 @@ export async function recordCashPayment(
     if (uploadResult.error) return { error: uploadResult.error };
 
     const firstPath = uploadResult.paths[0];
+    const firstSize = attachmentFiles[0]?.size;
     if (firstPath) {
-      const update: Record<string, unknown> = { receipt_file_url: firstPath };
+      const update: Record<string, unknown> = {
+        receipt_file_url: firstPath,
+        receipt_file_size_bytes:
+          typeof firstSize === "number" && firstSize > 0 ? firstSize : null,
+      };
       if (!uploadResult.attachmentsInDb && uploadResult.paths.length > 0) {
         update.metadata = metadataWithPaymentNote(
           { attachment_paths: uploadResult.paths },
@@ -231,13 +236,16 @@ export async function recordCashPayment(
     } else if (uploadResult.attachmentsInDb) {
       const { data: attachments } = await admin
         .from("payment_attachments")
-        .select("file_url")
+        .select("file_url, file_size_bytes")
         .eq("payment_id", payment.id)
         .limit(1);
       if (attachments?.[0]?.file_url) {
         await admin
           .from("payments")
-          .update({ receipt_file_url: attachments[0].file_url })
+          .update({
+            receipt_file_url: attachments[0].file_url,
+            receipt_file_size_bytes: attachments[0].file_size_bytes ?? null,
+          })
           .eq("id", payment.id);
       }
     }
